@@ -38,6 +38,8 @@ const TOOL_LABEL: Record<string, string> = {
   assess_crop_suitability: 'Matching crops to your land',
   compare_regenerative_practices: 'Projecting your soil carbon',
   diagnose: 'Looking at your photo and checking disease pressure',
+  get_crop_health: 'Reading the satellite view of your field',
+  get_mandi_prices: 'Checking today\'s mandi rates',
 }
 
 export default function App() {

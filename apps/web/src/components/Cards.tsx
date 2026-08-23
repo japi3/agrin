@@ -543,6 +543,86 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
   )
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Mandi prices                                                        */
+/* ------------------------------------------------------------------ */
+
+export function MandiCard({ d }: { d: any }) {
+  const median = d.median_rs_per_quintal
+  const best = d.best_market
+  const local = d.local_market
+  const national = d.scope === 'national'
+
+  return (
+    <Card tone={national ? 'warn' : 'neutral'}>
+      {/* Rupees per quintal, always stated. A farmer hearing a per-kg figure
+          when it is per-quintal is out by a hundredfold. */}
+      <Headline>
+        ₹{median?.toLocaleString('en-IN')} per quintal
+      </Headline>
+      <div className="text-[14px]" style={{ color: 'var(--text-muted)' }}>
+        {d.crop_name} · {d.markets_reporting} market
+        {d.markets_reporting === 1 ? '' : 's'} reporting
+        {d.as_of ? ` · ${d.as_of}` : ''}
+      </div>
+
+      {national && (
+        <div className="mt-2 text-[14px] rounded-lg p-2"
+             style={{ background: 'var(--bg-sunken)', color: 'var(--text-muted)' }}>
+          No mandi in your state traded this crop today — it is likely out of
+          season locally. These are rates from elsewhere in India, a guide to
+          what to expect rather than what you would be paid today.
+        </div>
+      )}
+
+      <div className="mt-3 space-y-1">
+        {local && (
+          <Detail label={`Your district (${local.market})`}
+                  value={`₹${local.modal_rs_per_quintal.toLocaleString('en-IN')}`} />
+        )}
+        {best && (
+          <Detail label={`Best rate (${best.market}, ${best.district})`}
+                  value={`₹${best.modal_rs_per_quintal.toLocaleString('en-IN')}`} />
+        )}
+      </div>
+
+      {/* The gap matters more than the level. Shown per tonne because that is
+          how a load is costed -- a per-quintal gap looks trivial until scaled. */}
+      {d.premium_per_tonne_rs > 0 && (
+        <div className="mt-3 text-[14px] rounded-lg p-3"
+             style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+          {best.market} is paying about ₹
+          {d.premium_per_tonne_rs.toLocaleString('en-IN')} more per tonne than
+          your local mandi. Worth it only if transport costs less than that.
+        </div>
+      )}
+
+      {d.top_markets?.length > 1 && (
+        <details className="mt-3">
+          <summary className="text-[13px] cursor-pointer"
+                   style={{ color: 'var(--text-muted)' }}>
+            All reporting markets
+          </summary>
+          <div className="mt-2 space-y-1">
+            {d.top_markets.map((m: any, i: number) => (
+              <div key={i} className="flex justify-between text-[13px] gap-3">
+                <span className="truncate">
+                  {m.market}
+                  <span style={{ color: 'var(--text-muted)' }}> · {m.district}</span>
+                </span>
+                <span className="shrink-0">
+                  ₹{m.modal_rs_per_quintal.toLocaleString('en-IN')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </Card>
+  )
+}
+
 /** Dispatch a card payload to its renderer. */
 export function RenderCard({ card }: { card: any }) {
   switch (card.card) {
@@ -552,6 +632,7 @@ export function RenderCard({ card }: { card: any }) {
     case 'suitability': return <SuitabilityCard d={card} />
     case 'carbon':      return <CarbonCard d={card} />
     case 'diagnosis':   return <DiagnosisCard d={card} imageUrl={card.imageUrl} />
+    case 'mandi':       return <MandiCard d={card} />
     default: return null
   }
 }

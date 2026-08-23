@@ -43,6 +43,34 @@ All open-licensed, all globally available, none requiring a per-country agreemen
 |---|---|---|
 | ISRIC SoilGrids 2.0 | Soil texture, pH, SOC, bulk density, CEC @250 m | CC BY 4.0 |
 | Open-Meteo | Forecast + ERA5 reanalysis back to 1940 | CC BY 4.0 |
+| Copernicus Sentinel-2 | NDVI crop health, 10 m, ~5 day revisit | Copernicus open |
+| Agmarknet via data.gov.in | Daily mandi prices, ~3,000 APMC markets | GODL-India |
+| OpenStreetMap Nominatim | District lookup from coordinates | ODbL |
+
+Satellite reads go through Google Earth Engine when credentials are present
+(server-side reduction, one request per season) and fall back to Planetary
+Computer STAC otherwise, so the platform works with no account at all.
+
+## Running it
+
+```bash
+docker compose -f deploy/docker-compose.yml up --build
+```
+
+Then open http://localhost:8080. Only `GEMINI_API_KEY` is required
+(free from https://aistudio.google.com/apikey); soil, weather, satellite and
+mandi prices all work without keys.
+
+Deploy to Cloud Run:
+
+```bash
+export GOOGLE_CLOUD_PROJECT=your-project
+./deploy/cloudrun.sh
+```
+
+Defaults to `asia-south1` (Mumbai) for latency and in-country data
+residency. With no `GEMINI_API_KEY` set it configures Vertex AI against the
+service account's own identity instead, so there is no key to rotate or leak.
 
 ## Layout
 

@@ -44,6 +44,9 @@ TTL = {
     "elevation": 365 * 24 * 3600,      # static
     "stac_search": 24 * 3600,          # append-only scene index
     "geocode": 30 * 24 * 3600,
+    # Mandi rates are spot prices that move daily with arrivals. Six hours
+    # keeps a demo responsive without ever showing yesterday's rate as today's.
+    "mandi": 6 * 3600,
 }
 
 

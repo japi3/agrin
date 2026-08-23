@@ -1,0 +1,34 @@
+# Local / on-premise deployment.
+#
+# Included because not every deployment target is a cloud account. A state
+# agriculture department running this on an internal server, or a demo on a
+# laptop with no GCP project, needs a path that is one command.
+services:
+  agrin:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AGRIN_MODEL: ${AGRIN_MODEL:-gemini-3.7-flash}
+      AGRIN_CORS_ORIGINS: "*"
+      DATA_GOV_IN_KEY: ${DATA_GOV_IN_KEY:-}
+    volumes:
+      # Persist the soil and satellite cache across restarts. Without this,
+      # every container restart re-pays the slow first-query cost.
+      - agrin-cache:/app/.cache
+      - agrin-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request;urllib.request.urlopen('http://localhost:8080/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  agrin-cache:
+  agrin-data:

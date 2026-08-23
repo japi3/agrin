@@ -1,0 +1,64 @@
+# ---------------------------------------------------------------------------
+# AgriN — single-container deployment
+#
+# Multi-stage: the frontend is built with Node, then served as static files by
+# the same FastAPI process that serves the API. One container, one port, no
+# reverse proxy to configure.
+#
+# That choice is deliberate. The realistic first deployment of this platform
+# is a state agriculture department or an FPO with no platform team, and a
+# system that needs an ingress controller and a separate CDN before it answers
+# one question does not get deployed. It runs identically on Cloud Run, on a
+# bare VPS, and on a laptop.
+# ---------------------------------------------------------------------------
+
+FROM node:22-slim AS web
+WORKDIR /build
+COPY apps/web/package*.json ./
+RUN npm ci
+COPY apps/web/ ./
+RUN npm run build
+
+
+FROM python:3.12-slim AS runtime
+
+# GDAL runtime libraries are needed by rasterio for the Sentinel-2 COG reads.
+# Installed from the slim base rather than using a GDAL image, which is ~1 GB.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Dependencies first, so a source change does not invalidate the layer.
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY packages/ ./packages/
+COPY apps/api/ ./apps/api/
+COPY scripts/ ./scripts/
+
+# The built frontend is served from where main.py expects it.
+COPY --from=web /build/dist ./apps/web/dist
+
+# Soil and satellite responses are cached to disk. On Cloud Run this is the
+# container's ephemeral filesystem, so the cache warms per instance; for a
+# persistent cache across revisions, mount a volume here.
+ENV AGRIN_CACHE_DIR=/app/.cache \
+    AGRIN_DB=/app/data/agrin.db \
+    PYTHONPATH=/app/packages/agronomy:/app/packages/geo:/app/apps/api \
+    PYTHONUNBUFFERED=1
+RUN mkdir -p /app/.cache /app/data
+
+# Cloud Run injects PORT; default to 8080 for local runs.
+ENV PORT=8080
+EXPOSE 8080
+
+# Run as a non-root user.
+RUN useradd --create-home --uid 1000 agrin && chown -R agrin:agrin /app
+USER agrin
+
+# One worker: the workload is I/O-bound (waiting on SoilGrids, Open-Meteo,
+# Gemini) and handled with asyncio, so extra workers multiply memory without
+# adding throughput. Cloud Run scales by adding instances instead.
+CMD ["sh", "-c", "exec uvicorn agrin_api.main:app --host 0.0.0.0 --port ${PORT} --workers 1"]

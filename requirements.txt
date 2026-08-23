@@ -1,0 +1,25 @@
+# Pinned to the versions this project is actually tested against, taken from
+# the working development environment rather than chosen by hand. An earlier
+# hand-picked pin of pydantic==2.10.4 conflicted with google-genai, which
+# requires >=2.12.5, and failed the container build.
+
+# --- API ---
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.4
+python-multipart==0.0.32
+
+# --- Google AI ---
+google-genai==2.19.0
+
+# --- Data sources ---
+httpx==0.28.1
+
+# --- Satellite (Sentinel-2 COG reads) ---
+rasterio==1.5.1
+pystac-client==0.9.0
+planetary-computer==1.0.0
+numpy==2.5.2
+
+# --- Earth Engine (optional; used when credentials are present) ---
+earthengine-api==1.7.40

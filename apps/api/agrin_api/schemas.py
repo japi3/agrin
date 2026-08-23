@@ -190,6 +190,39 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "get_mandi_prices",
+        "description": (
+            "Today's prices for a crop at Indian regulated markets (APMC "
+            "mandis), from the government Agmarknet feed. Returns the local "
+            "rate, the best rate in range, and how far apart markets are.\n\n"
+            "Use this for 'what is the rate', 'where should I sell', whether "
+            "to hold or sell, and when comparing which crop is worth growing "
+            "— yield advice without price answers half the question.\n\n"
+            "Prices are rupees per QUINTAL (100 kg). Always say the unit; a "
+            "farmer hearing a per-kg figure when it is per-quintal is out by "
+            "a hundredfold.\n\n"
+            "Agmarknet lists only markets that actually traded that day, so "
+            "an out-of-season crop legitimately has no local rate. These are "
+            "spot prices, not forecasts — never predict where prices will go."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "crop": {
+                    "type": "string",
+                    "description": "Crop key, e.g. rice_paddy, wheat_spring, cotton.",
+                },
+                "latitude": {"type": "number", "description": "Field latitude."},
+                "longitude": {"type": "number", "description": "Field longitude."},
+                "state": {
+                    "type": "string",
+                    "description": "Indian state name, if known. Otherwise inferred.",
+                },
+            },
+            "required": ["crop"],
+        },
+    },
+    {
         "name": "compare_regenerative_practices",
         "description": (
             "Project soil organic carbon over time under four managements — "

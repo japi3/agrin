@@ -48,6 +48,7 @@ from agronomy.fao56 import et0_from_daily_weather  # noqa: E402
 from agronomy.waterbalance import (  # noqa: E402
     DailyWeather, next_irrigation_advice, simulate,
 )
+from geo.mandi import prices_for_crop  # noqa: E402
 from geo.satellite import fetch_ndvi_series  # noqa: E402
 from geo.soilgrids import fetch_soil_profile_resilient  # noqa: E402
 from geo.weather import (  # noqa: E402
@@ -826,6 +827,126 @@ async def get_crop_health(
         result["note"] = (
             "Tell me which crop is planted and roughly when it was sown, and "
             "I can say whether this greenness is normal for its stage."
+        )
+
+    return result
+
+
+# --------------------------------------------------------------------------
+# Tool: mandi prices
+# --------------------------------------------------------------------------
+
+async def get_mandi_prices(
+    crop: str,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    state: str | None = None,
+) -> dict[str, Any]:
+    """Today's regulated-market (APMC) prices for a crop near the farmer.
+
+    Reports the local rate, the best rate in range, and the spread between
+    markets -- because the spread is often the actionable part. A farmer who
+    learns a mandi two districts away is paying appreciably more can decide
+    whether the transport is worth it; one who only sees a single number
+    cannot.
+    """
+    if crop not in CROPS:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                f"'{crop}' is not in the crop set, so I cannot look up its "
+                f"market rate."
+            ),
+        }
+
+    try:
+        report = await prices_for_crop(
+            crop, latitude=latitude, longitude=longitude, state=state
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "abstain_reason": (
+                f"The mandi price service did not respond ({type(exc).__name__}). "
+                f"Rates change daily, so please check Agmarknet or your local "
+                f"mandi directly rather than relying on an older figure."
+            ),
+        }
+
+    if not report.quotes:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                f"No market anywhere in India reported {CROPS[crop].name_en} "
+                f"arrivals today. Agmarknet lists only markets that actually "
+                f"traded, so this usually means the crop is out of season. "
+                f"Rates will appear as harvest arrivals begin."
+            ),
+            "evidence": report.evidence(),
+        }
+
+    modal_prices = sorted(q.modal_price for q in report.quotes)
+    median = modal_prices[len(modal_prices) // 2]
+    best = report.best
+    local = report.local
+
+    markets = [
+        {
+            "market": q.market,
+            "district": q.district,
+            "state": q.state,
+            "variety": q.variety,
+            "modal_rs_per_quintal": round(q.modal_price),
+            "min_rs_per_quintal": round(q.min_price),
+            "max_rs_per_quintal": round(q.max_price),
+        }
+        for q in sorted(report.quotes, key=lambda x: x.modal_price, reverse=True)[:8]
+    ]
+
+    result: dict[str, Any] = {
+        "ok": True,
+        "crop_name": CROPS[crop].name_en,
+        "unit": "Indian rupees per quintal (100 kg)",
+        "as_of": report.as_of.isoformat() if report.as_of else None,
+        "scope": report.scope,
+        "median_rs_per_quintal": round(median),
+        "lowest_rs_per_quintal": round(modal_prices[0]),
+        "highest_rs_per_quintal": round(modal_prices[-1]),
+        "markets_reporting": len({q.market for q in report.quotes}),
+        "top_markets": markets,
+        "evidence": report.evidence(),
+    }
+
+    if best:
+        result["best_market"] = {
+            "market": best.market, "district": best.district,
+            "state": best.state,
+            "modal_rs_per_quintal": round(best.modal_price),
+            "rs_per_kg": round(best.modal_per_kg, 1),
+        }
+    if local:
+        result["local_market"] = {
+            "market": local.market, "district": local.district,
+            "modal_rs_per_quintal": round(local.modal_price),
+        }
+        if best and best.modal_price > local.modal_price:
+            gap = best.modal_price - local.modal_price
+            result["premium_elsewhere_rs_per_quintal"] = round(gap)
+            # Stated per tonne as well: transport is costed by the load, and
+            # a per-quintal gap looks trivially small until it is scaled up.
+            result["premium_per_tonne_rs"] = round(gap * 10)
+    elif report.scope == "state":
+        result["note"] = (
+            "No market in your own district reported arrivals of this crop "
+            "today. These are the nearest reporting markets in your state."
+        )
+
+    if report.scope == "national":
+        result["note"] = (
+            f"No market in {report.state or 'your state'} reported this crop "
+            f"today, which usually means it is out of season locally. These "
+            f"are rates from elsewhere in India and are a guide to what to "
+            f"expect, not what your mandi will pay today."
         )
 
     return result
