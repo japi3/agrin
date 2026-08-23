@@ -1,0 +1,39 @@
+# Five BRICS country nodes plus a coordinator.
+#
+# Each node is a separate service with its own volume. The coordinator can
+# reach the nodes; the nodes cannot reach each other, and none of them exposes
+# an endpoint that returns field records. The isolation is enforced by the
+# topology, not by convention.
+services:
+  node-in:
+    build: { context: .., dockerfile: federation/Dockerfile }
+    environment: { COUNTRY: IN, PORT: "9000", NODE_DATA: /data/IN.pkl }
+    volumes: [ "./nodedata/IN:/data" ]
+    ports: [ "9001:9000" ]
+
+  node-br:
+    build: { context: .., dockerfile: federation/Dockerfile }
+    environment: { COUNTRY: BR, PORT: "9000", NODE_DATA: /data/BR.pkl }
+    volumes: [ "./nodedata/BR:/data" ]
+    ports: [ "9002:9000" ]
+
+  node-ru:
+    build: { context: .., dockerfile: federation/Dockerfile }
+    environment: { COUNTRY: RU, PORT: "9000", NODE_DATA: /data/RU.pkl }
+    volumes: [ "./nodedata/RU:/data" ]
+    ports: [ "9003:9000" ]
+
+  node-cn:
+    build: { context: .., dockerfile: federation/Dockerfile }
+    environment: { COUNTRY: CN, PORT: "9000", NODE_DATA: /data/CN.pkl }
+    volumes: [ "./nodedata/CN:/data" ]
+    ports: [ "9004:9000" ]
+
+  node-za:
+    build: { context: .., dockerfile: federation/Dockerfile }
+    environment: { COUNTRY: ZA, PORT: "9000", NODE_DATA: /data/ZA.pkl }
+    volumes: [ "./nodedata/ZA:/data" ]
+    ports: [ "9005:9000" ]
+# Data directories are bind-mounted per country from ./nodedata/<CODE>.
+# A node sees its own directory and nothing else -- the isolation is visible
+# in the filesystem rather than asserted in a comment.
