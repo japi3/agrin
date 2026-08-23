@@ -10,6 +10,8 @@ than useless because it is also ignored on the one occasion it is right.
 import pytest
 
 from agronomy.canopy import (
+    looks_like_annual_cropland,
+    representative_ndvi,
     NDVI_BARE_SOIL,
     NDVI_FULL_CANOPY,
     CropStatus,
@@ -304,3 +306,61 @@ class TestEmergenceDetection:
         r = reconcile_sowing_date(stated, bare)
         assert r["sowing_date"] == stated
         assert r["source"] == "farmer"
+
+
+class TestCroplandGating:
+    """Stage verdicts assume the greenness belongs to the named crop."""
+
+    def test_annual_cropping_is_recognised(self):
+        # Bare between seasons, full canopy in season: the classic signature.
+        history = [0.13, 0.15, 0.30, 0.55, 0.75, 0.80, 0.60, 0.25, 0.14,
+                   0.18, 0.45, 0.72]
+        assert looks_like_annual_cropland(history) is True
+
+    def test_permanent_vegetation_is_rejected(self):
+        # An orchard or roadside tree cover never goes bare.
+        history = [0.62, 0.65, 0.68, 0.70, 0.66, 0.64, 0.67, 0.69, 0.71,
+                   0.66, 0.63, 0.65]
+        assert looks_like_annual_cropland(history) is False
+
+    def test_sparse_history_does_not_doubt_the_farmer(self):
+        assert looks_like_annual_cropland([0.5, 0.6, 0.55]) is True
+
+    def test_peri_urban_case(self):
+        # The real failure this guards: a point with permanent greenery read
+        # as "ahead of expected" for a crop that was never planted there.
+        history = [0.18, 0.25, 0.32, 0.35, 0.30, 0.28, 0.33, 0.40, 0.45,
+                   0.38, 0.30, 0.26]
+        assert looks_like_annual_cropland(history) is False
+
+
+class TestRepresentativeNDVI:
+    """Atmospheric contamination almost always lowers NDVI, never raises it."""
+
+    def test_takes_recent_maximum(self):
+        obs = [
+            (date(2026, 8, 1), 0.70),
+            (date(2026, 8, 6), 0.72),
+            (date(2026, 8, 11), 0.40),   # hazy scene
+        ]
+        assert representative_ndvi(obs) == 0.72
+
+    def test_ignores_observations_outside_the_window(self):
+        obs = [
+            (date(2026, 5, 1), 0.90),    # last season, far outside 30 days
+            (date(2026, 8, 6), 0.55),
+            (date(2026, 8, 11), 0.58),
+        ]
+        assert representative_ndvi(obs, within_days=30) == 0.58
+
+    def test_empty_returns_none(self):
+        assert representative_ndvi([]) is None
+
+    def test_single_observation(self):
+        assert representative_ndvi([(date(2026, 8, 1), 0.44)]) == 0.44
+
+    def test_one_bad_scene_does_not_condemn_a_season(self):
+        # The concrete failure: a healthy crop judged on one hazy pass.
+        healthy = [(date(2026, 8, 1), 0.78), (date(2026, 8, 6), 0.80),
+                   (date(2026, 8, 11), 0.35)]
+        assert representative_ndvi(healthy) == 0.80

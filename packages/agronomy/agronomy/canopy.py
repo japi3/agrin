@@ -83,6 +83,61 @@ class CropStatus(str, Enum):
     SENESCING = "senescing_normally"
 
 
+def looks_like_annual_cropland(ndvi_history: list[float]) -> bool:
+    """Whether a field's NDVI history behaves like annual cropland.
+
+    Annual cropping has a characteristic signature: the ground goes bare
+    between seasons, so NDVI swings through a wide amplitude every year.
+    Orchards, plantations, permanent grassland, scrub and peri-urban tree
+    cover stay green and swing narrowly.
+
+    This matters because every stage-based judgement in this module assumes
+    the greenness it sees belongs to the crop the farmer named. Over
+    permanent vegetation that assumption is simply false, and the output is
+    confidently meaningless -- a peri-urban point with roadside trees read as
+    "ahead of expected" for a maize crop that was never there.
+
+    Returning False does not mean the field is worthless; it means canopy
+    should be reported without a stage verdict, and the farmer asked to
+    confirm the boundary.
+    """
+    values = [v for v in ndvi_history if v is not None and -1.0 <= v <= 1.0]
+    if len(values) < 8:
+        return True  # Not enough evidence to doubt the farmer.
+    ordered = sorted(values)
+    low = ordered[int(0.05 * (len(ordered) - 1))]
+    high = ordered[int(0.95 * (len(ordered) - 1))]
+    # Annual cropland typically swings by 0.35 or more between bare soil and
+    # full canopy; a permanently vegetated pixel rarely does.
+    return (high - low) >= 0.30
+
+
+def representative_ndvi(
+    observations: list[tuple["date", float]], within_days: int = 30
+) -> float | None:
+    """The NDVI to judge the crop by: the best recent observation.
+
+    A single latest reading is fragile. Thin cirrus that survives the cloud
+    mask, an off-nadir view, or haze all depress one scene, and judging a
+    season on it produces a failure verdict for a healthy crop.
+
+    Taking the maximum over recent passes is the standard compositing
+    approach in vegetation monitoring for exactly this reason: atmospheric
+    effects almost always reduce NDVI, so the maximum is the observation
+    least contaminated by them.
+    """
+    if not observations:
+        return None
+    ordered = sorted(observations, key=lambda o: o[0])
+    latest_day = ordered[-1][0]
+    from datetime import timedelta
+    cutoff = latest_day - timedelta(days=within_days)
+    window = [v for d, v in ordered if d >= cutoff]
+    if not window:
+        window = [ordered[-1][1]]
+    return max(window)
+
+
 def calibrate_endpoints(
     ndvi_history: list[float],
     fallback_soil: float = NDVI_BARE_SOIL,

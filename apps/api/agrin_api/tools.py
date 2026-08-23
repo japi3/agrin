@@ -41,7 +41,8 @@ from agronomy.crops import (  # noqa: E402
     CROPS, soil_from_texture, total_available_water,
 )
 from agronomy.canopy import (  # noqa: E402
-    assess_canopy, calibrate_endpoints, reconcile_sowing_date,
+    assess_canopy, calibrate_endpoints, looks_like_annual_cropland,
+    reconcile_sowing_date, representative_ndvi,
 )
 from agronomy.fao56 import et0_from_daily_weather  # noqa: E402
 from agronomy.waterbalance import (  # noqa: E402
@@ -748,16 +749,63 @@ async def get_crop_health(
                 result["sowing_date_note"] = reconciled["note"]
 
         if das is not None and das >= 0:
-            ndvi_soil, ndvi_veg = calibrate_endpoints(
-                [o.ndvi_mean for o in series.observations]
-            )
+            history_values = [o.ndvi_mean for o in series.observations]
+            ndvi_soil, ndvi_veg = calibrate_endpoints(history_values)
+
+            # Judge on the best recent pass rather than the single latest.
+            # Haze and thin cirrus depress individual scenes, and a season
+            # should not be condemned on one bad observation.
+            judged_ndvi = representative_ndvi(
+                [(o.day, o.ndvi_mean) for o in series.observations]
+            ) or latest.ndvi_mean
+
+            is_cropland = looks_like_annual_cropland(history_values)
+            result["looks_like_annual_cropland"] = is_cropland
+
             assessment = assess_canopy(
-                crop, das, latest.ndvi_mean,
+                crop, das, judged_ndvi,
                 uniformity=latest.uniformity, trend_per_day=trend,
                 ndvi_soil=ndvi_soil, ndvi_veg=ndvi_veg,
-            )
+            ) if is_cropland else None
+
+            if not is_cropland:
+                # Report what was measured, withhold the stage verdict.
+                result["note"] = (
+                    "This location stays green all year rather than going "
+                    "bare between seasons, which is what an orchard, "
+                    "plantation, permanent grass or tree cover looks like "
+                    "from orbit — not an annual crop field. I can report the "
+                    "greenness but not judge it against a crop's growth "
+                    "stage. If the field boundary is wrong, please set it "
+                    "again."
+                )
             if assessment:
-                result["assessment"] = assessment.to_dict()
+                verdict = assessment.to_dict()
+                # A behind-schedule verdict rests entirely on the sowing date
+                # being right, and sowing dates are usually recalled weeks
+                # later. Where the satellite has not independently confirmed
+                # it, the model must say so rather than assert crop failure
+                # on an unverified premise.
+                behind = verdict["status"] in (
+                    "behind", "severely_behind", "slightly_behind"
+                )
+                confirmed = result.get("sowing_date_source") in (
+                    "satellite", "farmer_confirmed_by_satellite"
+                )
+                if behind and not confirmed:
+                    verdict["depends_on"] = (
+                        "This comparison assumes the sowing date given is "
+                        "correct. If sowing was later than stated, the crop "
+                        "may be fine. Confirm the sowing date before acting."
+                    )
+                # Canopy expectations are generic FAO-56 stage curves, not
+                # variety-specific. Short-duration and hybrid varieties reach
+                # canopy sooner than the table crop.
+                verdict["caveat"] = (
+                    "Expected canopy is a generic curve for this crop, not "
+                    "for your specific variety or spacing."
+                )
+                result["assessment"] = verdict
                 result["crop_name"] = CROPS[crop].name_en
                 result["calibration"] = {
                     "ndvi_bare_soil": round(ndvi_soil, 3),

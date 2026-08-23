@@ -217,9 +217,25 @@ def _fetch_stac_sync(
     if not items:
         return NDVISeries(latitude, longitude, [], "planetary_computer", buffer_m)
 
-    # Keep the most recent scenes; a season can return dozens and each costs
-    # three windowed HTTP reads.
-    items = items[-max_scenes:]
+    # Subsample evenly across the requested window rather than keeping the
+    # tail.
+    #
+    # Taking the most recent N scenes seems reasonable and is wrong for the
+    # calibration path: it samples only recent months, so a year-long request
+    # over a rabi-kharif rotation misses both the winter canopy peak and the
+    # pre-monsoon bare-soil trough -- exactly the two extremes the per-field
+    # NDVI scaling is calibrated against. At Moga that produced endpoints of
+    # 0.28 and 0.68 in place of the true 0.13 and 0.80.
+    #
+    # Even spacing keeps the seasonal cycle intact at a fraction of the cost;
+    # the most recent scene is always retained, since "how is my crop right
+    # now" depends on it.
+    if len(items) > max_scenes:
+        step = len(items) / max_scenes
+        picked = [items[int(i * step)] for i in range(max_scenes)]
+        if picked[-1] is not items[-1]:
+            picked[-1] = items[-1]
+        items = picked
 
     observations: list[NDVIObservation] = []
     for item in items:
