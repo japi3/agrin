@@ -48,7 +48,7 @@ from agronomy.fao56 import et0_from_daily_weather  # noqa: E402
 from agronomy.waterbalance import (  # noqa: E402
     DailyWeather, next_irrigation_advice, simulate,
 )
-from geo.mandi import prices_for_crop  # noqa: E402
+from geo.mandi import geocode_place, prices_for_crop  # noqa: E402
 from geo.satellite import fetch_ndvi_series  # noqa: E402
 from geo.soilgrids import fetch_soil_profile_resilient  # noqa: E402
 from geo.weather import (  # noqa: E402
@@ -950,3 +950,58 @@ async def get_mandi_prices(
         )
 
     return result
+
+
+# --------------------------------------------------------------------------
+# Tool: find a place
+# --------------------------------------------------------------------------
+
+async def find_place(query: str) -> dict[str, Any]:
+    """Turn a village, town or district name into coordinates.
+
+    Every other tool needs latitude and longitude; farmers have place names.
+    This closes that gap so the assistant never has to ask for something the
+    farmer cannot supply.
+    """
+    if not query or not query.strip():
+        return {"ok": False, "abstain_reason": "No place name given."}
+
+    try:
+        matches = await geocode_place(query)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "abstain_reason": (
+                f"The place lookup service did not respond "
+                f"({type(exc).__name__}). Ask the farmer to drop a pin using "
+                f"the 'Set field' button instead."
+            ),
+        }
+
+    if not matches:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                f"No place in India matched '{query}'. Ask for the nearest "
+                f"larger town or the district, or ask them to use the "
+                f"'Set field' button to drop a pin."
+            ),
+        }
+
+    return {
+        "ok": True,
+        "query": query,
+        "best_match": matches[0],
+        "other_matches": matches[1:4],
+        # Village names repeat across India, so ambiguity is surfaced rather
+        # than silently resolved to the first hit -- picking the wrong
+        # Rampur would produce confidently wrong advice for another state.
+        "ambiguous": len(matches) > 1 and len({
+            m.get("district") for m in matches[:3]
+        }) > 1,
+        "evidence": {
+            "source": "OpenStreetMap Nominatim",
+            "licence": "ODbL",
+            "matches_found": len(matches),
+        },
+    }

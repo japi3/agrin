@@ -16,7 +16,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RenderCard, EvidenceLedger } from './components/Cards'
-import { streamChat, fetchLanguages, fetchHealth, session,
+import { FieldPanel } from './components/FieldPanel'
+import { streamChat, fetchLanguages, fetchHealth, saveField, session,
          type LanguageInfo, type EvidenceEntry } from './lib/api'
 
 interface Msg {
@@ -31,6 +32,26 @@ interface Msg {
 /* Human-readable labels for the "working on it" strip. Naming the actual
    data source rather than showing a generic spinner makes the wait feel
    purposeful and quietly teaches what the system is doing. */
+/**
+ * BCP-47 tags for speech recognition and synthesis.
+ *
+ * Kept in one place because input and output previously carried separate,
+ * subtly different tables -- recognition used pa-Guru-IN while synthesis used
+ * pa-IN, so a farmer could be understood in Punjabi and answered in English.
+ */
+const SPEECH_TAG: Record<string, string> = {
+  hi: 'hi-IN', pa: 'pa-IN', bn: 'bn-IN', mr: 'mr-IN', te: 'te-IN',
+  ta: 'ta-IN', gu: 'gu-IN', kn: 'kn-IN', ml: 'ml-IN', or: 'or-IN',
+  as: 'as-IN', en: 'en-IN', zh: 'zh-CN', ru: 'ru-RU', pt: 'pt-BR',
+  es: 'es-ES', fr: 'fr-FR', ar: 'ar-SA', fa: 'fa-IR', am: 'am-ET',
+  sw: 'sw-KE', af: 'af-ZA', zu: 'zu-ZA', xh: 'xh-ZA',
+}
+
+// Indic scripts share enough phonology that a Hindi voice is a far better
+// fallback than an English one when the exact language has no voice installed.
+const INDIC = new Set(['hi', 'pa', 'bn', 'mr', 'te', 'ta', 'gu', 'kn', 'ml',
+                       'or', 'as'])
+
 const TOOL_LABEL: Record<string, string> = {
   get_soil_profile: 'Reading the soil survey for your field',
   get_weather: 'Checking the weather model',
@@ -53,6 +74,11 @@ export default function App() {
   const [listening, setListening] = useState(false)
   const [health, setHealth] = useState<any>(null)
   const [showLangPicker, setShowLangPicker] = useState(false)
+  // Open by default when a field is already saved. A returning farmer should
+  // see how their field is doing without asking; a first-time user still
+  // gets the blank conversation-first screen.
+  const [panelOpen, setPanelOpen] = useState(() => Boolean(session.fieldId))
+  const [fieldId, setFieldId] = useState<string | null>(session.fieldId)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -76,14 +102,32 @@ export default function App() {
     if (!navigator.geolocation) return
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude })
+      async (pos) => {
+        const lat = pos.coords.latitude
+        const lon = pos.coords.longitude
+        setCoords({ lat, lon })
         setLocating(false)
+        // Save it server-side so the field panel and season memory have
+        // something durable to hang off, not just this browser tab.
+        try {
+          let farmer = session.farmerId
+          if (!farmer) {
+            const r = await fetch(`/api/farmer?language=${lang}`, { method: 'POST' })
+            farmer = (await r.json()).farmer_id
+            session.farmerId = farmer
+          }
+          const id = await saveField(farmer!, lat, lon)
+          session.fieldId = id
+          setFieldId(id)
+          setPanelOpen(true)
+        } catch {
+          // Non-fatal: the conversation still works from coordinates alone.
+        }
       },
       () => setLocating(false),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
     )
-  }, [])
+  }, [lang])
 
   /* ---------------------------------------------------------------- */
   /* Voice input                                                       */
@@ -136,20 +180,63 @@ export default function App() {
   /* Voice output                                                      */
   /* ---------------------------------------------------------------- */
 
+  /**
+   * Speak a reply aloud in the farmer's language.
+   *
+   * Setting `utterance.lang` alone is not enough, which is the bug this
+   * fixes: browsers fall back to the default system voice when no voice is
+   * explicitly assigned, so Punjabi text was being read by an English voice
+   * — audible as gibberish, and worse than silence for someone relying on
+   * audio because they cannot read.
+   *
+   * So a matching voice is selected from the installed set, preferring an
+   * exact locale match, then the bare language, then a Hindi voice as a last
+   * resort for Indic scripts (its phoneme set renders Devanagari-family text
+   * far better than an English voice does).
+   */
+  const pickVoice = useCallback((tag: string): SpeechSynthesisVoice | null => {
+    const voices = window.speechSynthesis.getVoices()
+    if (!voices.length) return null
+    const base = tag.split('-')[0]
+    return (
+      voices.find((v) => v.lang.toLowerCase() === tag.toLowerCase()) ||
+      voices.find((v) => v.lang.toLowerCase().replace('_', '-') === tag.toLowerCase()) ||
+      voices.find((v) => v.lang.toLowerCase().startsWith(base)) ||
+      (INDIC.has(base) ? voices.find((v) => v.lang.toLowerCase().startsWith('hi')) : null) ||
+      null
+    )
+  }, [])
+
   const speak = useCallback((text: string) => {
     if (!('speechSynthesis' in window)) return
     window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    const TAG: Record<string, string> = {
-      hi: 'hi-IN', pa: 'pa-IN', bn: 'bn-IN', mr: 'mr-IN', te: 'te-IN',
-      ta: 'ta-IN', gu: 'gu-IN', kn: 'kn-IN', en: 'en-IN',
+
+    const tag = SPEECH_TAG[lang] || 'en-IN'
+
+    const say = () => {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = tag
+      const voice = pickVoice(tag)
+      if (voice) utterance.voice = voice
+      // Slightly slower than default: advisory content carries numbers people
+      // need to retain, and the default rate is tuned for notifications.
+      utterance.rate = 0.92
+      window.speechSynthesis.speak(utterance)
     }
-    utterance.lang = TAG[lang] || 'en-IN'
-    // Slightly slower than default: advisory content carries numbers people
-    // need to retain, and the default rate is tuned for notifications.
-    utterance.rate = 0.92
-    window.speechSynthesis.speak(utterance)
-  }, [lang])
+
+    // getVoices() is empty until the voice list loads, and on a cold page
+    // that race is exactly when the first "Listen" tap happens.
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.addEventListener('voiceschanged', say, { once: true })
+      // Safety net: if the event never fires, speak with the default voice
+      // rather than staying silent.
+      setTimeout(() => {
+        if (!window.speechSynthesis.speaking) say()
+      }, 600)
+    } else {
+      say()
+    }
+  }, [lang, pickVoice])
 
   /* ---------------------------------------------------------------- */
   /* Send                                                              */
@@ -180,6 +267,10 @@ export default function App() {
     try {
       for await (const ev of streamChat({
         message: trimmed,
+        // Without this the server opens a fresh conversation on every turn
+        // and the model sees no history at all -- the assistant re-asks for
+        // the village it was told one message ago.
+        conversation_id: session.conversationId,
         farmer_id: session.farmerId,
         field_id: session.fieldId,
         language: lang,
@@ -189,7 +280,11 @@ export default function App() {
         switch (ev.type) {
           case 'session':
             session.farmerId = ev.farmer_id
-            if (ev.field_id) session.fieldId = ev.field_id
+            session.conversationId = ev.conversation_id
+            if (ev.field_id) {
+              session.fieldId = ev.field_id
+              setFieldId(ev.field_id)
+            }
             break
           case 'text':
             update((m) => ({ ...m, text: m.text + ev.delta }))
@@ -328,6 +423,14 @@ export default function App() {
                   }}>
             {locating ? 'Finding…' : coords ? '📍 Field set' : '📍 Set field'}
           </button>
+          {fieldId && (
+            <button onClick={() => setPanelOpen(!panelOpen)}
+                    aria-label="Show field details"
+                    className="text-[13px] px-3 py-1.5 rounded-full border"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+              My field
+            </button>
+          )}
           <button onClick={() => setShowLangPicker(!showLangPicker)}
                   className="text-[13px] px-3 py-1.5 rounded-full border"
                   style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
@@ -354,7 +457,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Conversation */}
+      {/* Conversation + field panel */}
+      <div className="flex-1 flex min-h-0">
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-6">
 
@@ -446,6 +550,14 @@ export default function App() {
           <div ref={bottomRef} />
         </div>
       </main>
+
+      <FieldPanel
+        fieldId={fieldId}
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        onAsk={(q) => { setPanelOpen(false); send(q) }}
+      />
+      </div>
 
       {/* Composer */}
       <footer className="border-t px-4 py-3" style={{ borderColor: 'var(--border)' }}>

@@ -379,3 +379,134 @@ async def prices_for_crop(
         as_of=max(dates) if dates else None,
         scope=scope,
     )
+
+
+# --------------------------------------------------------------------------
+# Forward geocoding
+# --------------------------------------------------------------------------
+
+NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search"
+
+
+def _relax_query(query: str) -> list[str]:
+    """Progressively simpler forms of a place query, most specific first.
+
+    Nominatim indexes many Indian villages but not all, and it matches poorly
+    against the way people actually write an address -- "Dharamgarh Bohli,
+    district Jind, Haryana" returns nothing, while "Dharamgarh Bohli, Jind"
+    resolves. Small hamlets may be absent entirely, in which case the
+    district is still a far better answer than failing: soil, weather and
+    market data at district resolution are genuinely useful, and the
+    alternative is telling a farmer their village does not exist.
+
+    So the query is relaxed step by step rather than tried once and abandoned.
+    """
+    raw = query.strip()
+    # Strip administrative qualifiers that hurt matching.
+    cleaned = raw
+    for word in ("district ", "distt ", "dist ", "tehsil ", "tahsil ",
+                 "village ", "block ", "po ", "p.o. "):
+        cleaned = cleaned.replace(word, "").replace(word.title(), "")
+    parts = [p.strip() for p in cleaned.split(",") if p.strip()]
+
+    candidates = [raw, cleaned]
+    # Village + state, dropping the middle administrative level.
+    if len(parts) >= 3:
+        candidates.append(f"{parts[0]}, {parts[-1]}")
+    # Progressively drop the leading (most local) component, so a missing
+    # hamlet falls back to its district and then its state.
+    for i in range(1, len(parts)):
+        candidates.append(", ".join(parts[i:]))
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for c in candidates:
+        key = c.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            ordered.append(c.strip())
+    return ordered
+
+
+async def geocode_place(
+    query: str,
+    country_codes: str = "in",
+    client: httpx.AsyncClient | None = None,
+) -> list[dict[str, Any]]:
+    """Resolve a place name to coordinates.
+
+    This is the bridge between how farmers describe where they are and what
+    every model in this platform needs. Nobody says "my field is at 29.31
+    north, 76.31 east"; they say "Dharamgarh Bohli, Jind". Without forward
+    geocoding the assistant has to keep asking for something the farmer does
+    not have, which is exactly the interrogation the interface is meant to
+    avoid.
+
+    Restricted to India by default and cached for a month -- villages do not
+    move, and Nominatim's usage policy expects heavy consumers to cache.
+    """
+    cache = get_cache()
+    key = cache_key(q=query.strip().lower(), cc=country_codes, kind="forward")
+    cached = cache.get("geocode", key)
+    # An empty result is deliberately NOT treated as a cache hit. Caching a
+    # miss makes a transient upstream failure permanent for a month, and a
+    # place that "does not exist" is exactly the answer a farmer would retry.
+    if cached:
+        return cached
+
+    owns = client is None
+    client = client or httpx.AsyncClient(timeout=20.0)
+    payload: list = []
+    matched_query = query
+    try:
+        for candidate in _relax_query(query):
+            response = await client.get(
+                NOMINATIM_SEARCH,
+                params={
+                    "q": candidate, "format": "json", "addressdetails": 1,
+                    "limit": 5, "countrycodes": country_codes,
+                },
+                headers={"User-Agent": "AgriN/0.1 (agricultural advisory platform)"},
+            )
+            found = response.json()
+            if found:
+                payload = found
+                matched_query = candidate
+                break
+    except (httpx.HTTPError, ValueError) as exc:
+        raise MandiError(f"Place lookup failed: {exc}") from exc
+    finally:
+        if owns:
+            await client.aclose()
+
+    results = []
+    for item in payload:
+        address = item.get("address", {}) or {}
+        district = (
+            address.get("state_district") or address.get("county")
+            or address.get("district")
+        )
+        if district:
+            for suffix in (" Tahsil", " Tehsil", " District", " Taluk", " Taluka"):
+                if district.endswith(suffix):
+                    district = district[: -len(suffix)].strip()
+        results.append({
+            "display_name": item.get("display_name"),
+            "latitude": float(item["lat"]),
+            "longitude": float(item["lon"]),
+            "village": (
+                address.get("village") or address.get("hamlet")
+                or address.get("town") or address.get("city")
+            ),
+            "district": district,
+            "state": address.get("state"),
+            "type": item.get("type"),
+            # Records which form of the query actually matched, so the
+            # assistant can tell the farmer when it fell back to the district
+            # rather than pinning their village exactly.
+            "matched_query": matched_query,
+            "exact_query_matched": matched_query.strip().lower() == query.strip().lower(),
+        })
+    if results:
+        cache.set("geocode", key, results)
+    return results

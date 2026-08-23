@@ -48,17 +48,29 @@ VISION_MODEL = os.environ.get("AGRIN_VISION_MODEL", "gemini-3.7-flash")
 # answer of nearly identical quality here, because the agronomy comes from
 # validated models rather than from the LLM -- the language model is doing
 # routing and translation, which every model in this chain does well.
+# gemini-2.5-flash is deliberately absent: it is no longer served to newly
+# issued API keys and returns 404. A 404 is not retryable, so having it in the
+# chain meant that once the newer models were all busy the loop terminated on
+# a hard error and the farmer saw a failure instead of a slightly older model.
+# `gemini-flash-latest` anchors the end of the chain because it always
+# resolves to a current model, so the chain cannot rot as versions retire.
 MODEL_FALLBACK_CHAIN = [
     m.strip()
     for m in os.environ.get(
         "AGRIN_MODEL_FALLBACKS",
-        "gemini-3.6-flash,gemini-3.5-flash,gemini-2.5-flash",
+        "gemini-3.6-flash,gemini-3.5-flash,gemini-flash-latest",
     ).split(",")
     if m.strip()
 ]
 
 # Status codes worth retrying on a different model rather than failing.
 _RETRYABLE_STATUS = (429, 500, 502, 503, 504)
+
+# A 404 means the model does not exist for this key -- usually a retired
+# version. It is not transient, but it IS worth trying the next model in the
+# chain rather than failing the request, which is the opposite of how a 400
+# (malformed request) should be treated.
+_TRY_NEXT_MODEL_STATUS = (404,)
 
 
 def model_candidates(preferred: str | None = None) -> list[str]:
@@ -78,10 +90,11 @@ def is_retryable(exc: Exception) -> bool:
     and adding seconds to the farmer's wait.
     """
     status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    codes = _RETRYABLE_STATUS + _TRY_NEXT_MODEL_STATUS
     if isinstance(status, int):
-        return status in _RETRYABLE_STATUS
+        return status in codes
     text = str(exc)
-    return any(str(code) in text for code in _RETRYABLE_STATUS)
+    return any(str(code) in text for code in codes)
 
 _JSON_TYPE_TO_GENAI = {
     "string": types.Type.STRING,
@@ -310,3 +323,66 @@ def to_contents(messages: list[dict[str, Any]]) -> list[types.Content]:
         if parts:
             contents.append(types.Content(role=role, parts=parts))
     return contents
+
+
+def friendly_error(exc: Exception) -> tuple[str, str]:
+    """Turn an upstream failure into something a farmer can act on.
+
+    Returns (message, kind).
+
+    Raw API errors are unusable here. A farmer standing in a field sees a
+    JSON blob about `generativelanguage.googleapis.com` quota metrics and
+    learns nothing except that the tool is broken. Worse, it leaks internal
+    detail that means nothing to them and everything to nobody.
+
+    Each case says what happened in plain words and what to do next.
+    """
+    text = str(exc)
+    status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+
+    def has(code: int) -> bool:
+        return status == code or str(code) in text
+
+    if has(429):
+        # Extract the retry delay the API supplies, so the wait is concrete
+        # rather than an open-ended "try later".
+        import re
+        match = re.search(r"retry in ([\d.]+)s", text, re.IGNORECASE)
+        wait = ""
+        if match:
+            seconds = int(float(match.group(1))) + 1
+            wait = f" Please try again in about {seconds} seconds."
+        return (
+            "Too many questions have come in at once and the service is "
+            "briefly rate limited." + wait,
+            "rate_limited",
+        )
+    if has(503) or has(504):
+        return (
+            "The service is very busy right now. Please try again in a "
+            "moment — your field details are saved.",
+            "busy",
+        )
+    if has(401) or has(403):
+        return (
+            "This installation is not set up correctly: the Google AI key is "
+            "missing or not authorised. Whoever runs this service needs to "
+            "check it.",
+            "auth",
+        )
+    if has(404):
+        return (
+            "The configured AI model is unavailable. Whoever runs this "
+            "service needs to update the model setting.",
+            "config",
+        )
+    if has(400):
+        return (
+            "Something in that request could not be processed. Please try "
+            "rephrasing your question.",
+            "bad_request",
+        )
+    return (
+        "Something went wrong reaching the AI service. Please try again.",
+        "upstream",
+    )

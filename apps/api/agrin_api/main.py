@@ -9,6 +9,7 @@ special handling to work through a CDN.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import sys
@@ -302,6 +303,97 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# --------------------------------------------------------------------------
+# Field summary (side panel)
+# --------------------------------------------------------------------------
+
+@app.get("/api/field/{field_id}/summary")
+async def field_summary(
+    field_id: str, include_irrigation: bool = False
+) -> dict[str, Any]:
+    """Everything the side panel shows about a field, in one call.
+
+    Soil and weather are fetched concurrently and both are cached, so for a
+    returning farmer this is effectively instant. Satellite is deliberately
+    excluded: a cold NDVI read takes 30-60 seconds and would make the panel
+    feel broken every time someone opens the app. It stays available on
+    request through the conversation.
+
+    Any part that fails returns null rather than failing the whole call --
+    a farmer opening the app should never see an error page because one
+    upstream service is slow.
+    """
+    field = storage.get_field(field_id)
+    if not field:
+        raise HTTPException(404, "No such field")
+
+    lat, lon = field["latitude"], field["longitude"]
+    season = storage.current_season(field_id)
+
+    from . import tools as tool_impl
+
+    soil_task = tool_impl.get_soil_profile(lat, lon)
+    weather_task = tool_impl.get_weather(lat, lon, days_ahead=7)
+    results = await asyncio.gather(soil_task, weather_task, return_exceptions=True)
+    soil, weather = [None if isinstance(r, BaseException) else r for r in results]
+
+    summary: dict[str, Any] = {
+        "field": {
+            "id": field_id,
+            "name": field.get("name"),
+            "latitude": lat,
+            "longitude": lon,
+            "area_hectares": field.get("area_hectares"),
+        },
+        "season": season,
+        "soil": None,
+        "weather": None,
+    }
+
+    if soil and soil.get("ok"):
+        summary["soil"] = {
+            "texture": soil["texture"]["usda_class"],
+            "ph": soil["chemistry"]["ph"],
+            "ph_class": soil["chemistry"]["ph_class"],
+            "organic_carbon_g_per_kg": soil["chemistry"]["organic_carbon_g_per_kg"],
+            "available_water_mm_per_m": soil["water_holding"]["available_water_mm_per_m"],
+            "confidence": soil.get("confidence"),
+        }
+
+    if weather and weather.get("ok"):
+        forecast = weather.get("forecast", [])[:7]
+        summary["weather"] = {
+            "rain_last_14_days_mm": weather.get("rain_last_14_days_mm"),
+            "rain_next_7_days_mm": weather.get("rain_next_7_days_mm"),
+            "today": forecast[0] if forecast else None,
+            "forecast": forecast,
+        }
+
+    # Irrigation is the most useful line on the panel and also the slowest to
+    # compute -- it runs a full season water balance. Off by default so soil
+    # and weather paint immediately; the panel requests it separately and
+    # fills it in when it arrives. Blocking the whole panel on it made the
+    # app look broken for thirteen seconds on every open.
+    if include_irrigation and season and season.get("crop") and season.get("sowing_date"):
+        try:
+            advice = await tool_impl.get_irrigation_advice(
+                lat, lon, season["crop"], season["sowing_date"]
+            )
+            if advice.get("ok"):
+                summary["irrigation"] = {
+                    "verdict": advice.get("verdict"),
+                    "soil_moisture_percent": advice.get("soil_moisture_percent"),
+                    "days_until_stress": advice.get("days_until_stress"),
+                    "gross_depth_mm": advice.get("gross_depth_mm"),
+                    "growth_stage": advice.get("growth_stage"),
+                    "days_after_sowing": advice.get("days_after_sowing"),
+                }
+        except Exception:  # noqa: BLE001
+            pass
+
+    return summary
 
 
 # --------------------------------------------------------------------------

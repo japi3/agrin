@@ -48,6 +48,7 @@ MAX_TOOL_ROUNDS = 6
 # getattr so that a model hallucinating a plausible tool name gets a clean
 # error instead of reaching an arbitrary module attribute.
 TOOL_REGISTRY: dict[str, Callable[..., Awaitable[dict[str, Any]]]] = {
+    "find_place": tool_impl.find_place,
     "get_soil_profile": tool_impl.get_soil_profile,
     "get_weather": tool_impl.get_weather,
     "get_irrigation_advice": tool_impl.get_irrigation_advice,
@@ -312,14 +313,15 @@ async def stream_turn(
                 break
 
         if not succeeded:
+            # Farmers get a plain-language message; the raw error goes to the
+            # logs and to the `detail` field for whoever operates the service.
+            message, kind = llm.friendly_error(last_error or Exception("unknown"))
             yield Event(
                 "error",
                 {
-                    "message": (
-                        f"Gemini request failed: {type(last_error).__name__}: "
-                        f"{last_error}"
-                    ),
-                    "kind": "upstream",
+                    "message": message,
+                    "kind": kind,
+                    "detail": f"{type(last_error).__name__}: {last_error}",
                 },
             )
             return

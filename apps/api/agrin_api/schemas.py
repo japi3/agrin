@@ -29,6 +29,35 @@ _LOCATION_PROPS = {
 
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
+        "name": "find_place",
+        "description": (
+            "Turn a place name into coordinates: a village, town, tehsil or "
+            "district in India.\n\n"
+            "Use this the moment a farmer names where they are. Every other "
+            "tool needs latitude and longitude, and farmers give place names "
+            "— 'Dharamgarh Bohli, Jind, Haryana', not decimal degrees. Call "
+            "this first, then pass the coordinates it returns to the other "
+            "tools in the same turn.\n\n"
+            "Never ask a farmer for latitude and longitude. If the name is "
+            "ambiguous the result says so; ask which district they meant "
+            "rather than guessing, because village names repeat across India "
+            "and the wrong match gives confidently wrong advice."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": (
+                        "Place name as the farmer said it, including district "
+                        "and state when given."
+                    ),
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
         "name": "get_soil_profile",
         "description": (
             "Look up soil properties for a field: texture (sand/silt/clay), "

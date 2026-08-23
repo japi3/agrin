@@ -126,6 +126,15 @@ export const session = {
   set farmerId(v: string | null) {
     if (v) localStorage.setItem('agrin.farmer_id', v)
   },
+  get conversationId() {
+    return sessionStorage.getItem('agrin.conversation_id')
+  },
+  set conversationId(v: string | null) {
+    if (v) sessionStorage.setItem('agrin.conversation_id', v)
+  },
+  newConversation() {
+    sessionStorage.removeItem('agrin.conversation_id')
+  },
   get fieldId() {
     return localStorage.getItem('agrin.field_id')
   },
