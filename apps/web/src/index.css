@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/*
+  AgriN design tokens.
+
+  The palette is deliberately warm and earthy rather than the blue-grey of a
+  typical SaaS dashboard. Two reasons: this is a tool used outdoors in bright
+  sun, where high contrast and warm tones stay legible behind glare; and the
+  people using it should feel they are talking to a companion, not filing a
+  return with an agriculture department.
+
+  Every colour is defined at :root and re-declared for dark mode, so nothing
+  inherits an undefined value in either theme.
+*/
+@theme {
+  --color-soil-50:  #faf7f2;
+  --color-soil-100: #f2ece1;
+  --color-soil-200: #e4d8c5;
+  --color-soil-300: #d0bc9c;
+  --color-soil-600: #7a6244;
+  --color-soil-800: #43362c;
+  --color-soil-900: #2b2318;
+
+  --color-leaf-50:  #f1f8f0;
+  --color-leaf-100: #ddeeda;
+  --color-leaf-500: #4c8b3f;
+  --color-leaf-600: #3c7031;
+  --color-leaf-700: #2f5827;
+
+  --color-sky-500:  #3b82c4;
+  --color-clay-500: #c2703d;
+  --color-alert:    #c2452d;
+}
+
+:root {
+  --bg:            #faf7f2;
+  --bg-raised:     #ffffff;
+  --bg-sunken:     #f2ece1;
+  --border:        #e4d8c5;
+  --text:          #2b2318;
+  --text-muted:    #7a6244;
+  --accent:        #3c7031;
+  --accent-soft:   #f1f8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:          #1a1611;
+    --bg-raised:   #241f18;
+    --bg-sunken:   #12100c;
+    --border:      #3a3226;
+    --text:        #f2ece1;
+    --text-muted:  #b3a288;
+    --accent:      #7cb86a;
+    --accent-soft: #1f2b1a;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:          #1a1611;
+  --bg-raised:   #241f18;
+  --bg-sunken:   #12100c;
+  --border:      #3a3226;
+  --text:        #f2ece1;
+  --text-muted:  #b3a288;
+  --accent:      #7cb86a;
+  --accent-soft: #1f2b1a;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Noto Sans", "Noto Sans Devanagari", "Noto Sans Gurmukhi",
+    "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu", sans-serif;
+  /* Larger base size than a desktop app: this is read at arm's length,
+     outdoors, often by someone who does not read comfortably. */
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every interactive target meets the 44px minimum for use with wet or
+   calloused hands on a cheap touchscreen. */
+button, [role="button"] { min-height: 44px; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.animate-in { animation: fade-up 0.28s ease-out both; }
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(60,112,49,0.45); }
+  70%  { box-shadow: 0 0 0 14px rgba(60,112,49,0); }
+  100% { box-shadow: 0 0 0 0 rgba(60,112,49,0); }
+}
+.recording { animation: pulse-ring 1.5s infinite; }
+
+/* Respect a user's reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in, .recording { animation: none; }
+}
