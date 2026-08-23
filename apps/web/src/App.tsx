@@ -37,6 +37,7 @@ const TOOL_LABEL: Record<string, string> = {
   get_irrigation_advice: 'Running the water balance',
   assess_crop_suitability: 'Matching crops to your land',
   compare_regenerative_practices: 'Projecting your soil carbon',
+  diagnose: 'Looking at your photo and checking disease pressure',
 }
 
 export default function App() {
@@ -55,6 +56,7 @@ export default function App() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const recognitionRef = useRef<any>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const current = languages.find((l) => l.code === lang)
   const assistantName = current?.assistant_name || 'Saathi'
@@ -223,6 +225,74 @@ export default function App() {
 
   const stop = () => { abortRef.current?.abort(); setBusy(false) }
 
+  /* ---------------------------------------------------------------- */
+  /* Photo diagnosis                                                   */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * Send a crop photo for diagnosis.
+   *
+   * Posted as multipart rather than base64 in JSON: phone photos run 2-5 MB
+   * and base64 inflates them by a third, which is a real cost on a metered
+   * rural connection.
+   *
+   * The preview is a local object URL, so the farmer sees their photo in the
+   * conversation instantly while the upload is still in flight.
+   */
+  const sendPhoto = useCallback(async (file: File) => {
+    if (busy) return
+    const previewUrl = URL.createObjectURL(file)
+    setBusy(true)
+    setMessages((m) => [
+      ...m,
+      { role: 'user', text: input.trim() || 'Something is wrong with my crop',
+        cards: [{ card: 'photo', imageUrl: previewUrl }], evidence: [], tools: [] },
+      { role: 'assistant', text: '',
+        cards: [], evidence: [],
+        tools: [{ name: 'diagnose', done: false }] },
+    ])
+    const note = input.trim()
+    setInput('')
+
+    const form = new FormData()
+    form.append('image', file)
+    form.append('language', lang)
+    form.append('note', note)
+    if (coords) {
+      form.append('latitude', String(coords.lat))
+      form.append('longitude', String(coords.lon))
+    }
+    if (session.fieldId) form.append('field_id', session.fieldId)
+
+    try {
+      const r = await fetch('/api/diagnose', { method: 'POST', body: form })
+      const d = await r.json()
+      setMessages((prev) => {
+        const next = [...prev]
+        const last = next[next.length - 1]
+        next[next.length - 1] = {
+          ...last,
+          tools: [{ name: 'diagnose', done: true, ok: !!d.ok }],
+          text: d.ok ? (d.farmer_summary || '') : '',
+          cards: d.ok ? [{ card: 'diagnosis', ...d, imageUrl: previewUrl }] : [],
+          error: d.ok ? undefined : (d.abstain_reason || 'Diagnosis failed'),
+          evidence: d.evidence ? [{ tool: 'diagnose_crop_photo', input: {},
+                                    evidence: d.evidence }] : [],
+        }
+        return next
+      })
+    } catch (e: any) {
+      setMessages((prev) => {
+        const next = [...prev]
+        next[next.length - 1] = { ...next[next.length - 1],
+          error: String(e?.message || e) }
+        return next
+      })
+    } finally {
+      setBusy(false)
+    }
+  }, [busy, input, lang, coords])
+
   const empty = messages.length === 0
 
   /* ---------------------------------------------------------------- */
@@ -317,6 +387,12 @@ export default function App() {
                 <div className="flex justify-end">
                   <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-[16px]"
                        style={{ background: 'var(--accent-soft)', color: 'var(--text)' }}>
+                    {m.cards.find((c: any) => c.card === 'photo') && (
+                      <img
+                        src={m.cards.find((c: any) => c.card === 'photo').imageUrl}
+                        alt="Crop photo"
+                        className="rounded-xl mb-2 max-h-48 object-cover" />
+                    )}
                     {m.text}
                   </div>
                 </div>
@@ -341,7 +417,8 @@ export default function App() {
                     </div>
                   )}
 
-                  {m.cards.map((c, j) => <RenderCard key={j} card={c} />)}
+                  {m.cards.filter((c: any) => c.card !== 'photo')
+                    .map((c, j) => <RenderCard key={j} card={c} />)}
 
                   {m.error && (
                     <div className="rounded-xl p-3 text-[14px] mt-2"
@@ -389,6 +466,25 @@ export default function App() {
               className="flex-1 resize-none bg-transparent outline-none py-2 text-[16px]"
               style={{ color: 'var(--text)', maxHeight: 140 }}
             />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) sendPhoto(f)
+                e.target.value = ''
+              }}
+            />
+            <button onClick={() => fileRef.current?.click()}
+                    aria-label="Photograph the crop"
+                    disabled={busy}
+                    className="rounded-full w-11 h-11 flex items-center justify-center shrink-0 disabled:opacity-30"
+                    style={{ background: 'var(--bg-sunken)', color: 'var(--text-muted)' }}>
+              📷
+            </button>
             <button onClick={toggleVoice}
                     aria-label={listening ? 'Stop recording' : 'Speak'}
                     className={`rounded-full w-11 h-11 flex items-center justify-center shrink-0 ${listening ? 'recording' : ''}`}

@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 from . import storage
 from .orchestrator import stream_turn
 from .prompts import OPENING_SUGGESTIONS, SUPPORTED_LANGUAGES, ASSISTANT_NAMES
+from .vision import diagnose_crop_photo
 
 # Load .env from the repository root before anything reads the environment.
 _ROOT = Path(__file__).resolve().parents[3]
@@ -301,6 +302,80 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# --------------------------------------------------------------------------
+# Crop disease diagnosis
+# --------------------------------------------------------------------------
+
+@app.post("/api/diagnose")
+async def diagnose(
+    image: UploadFile = File(...),
+    latitude: float | None = Form(None),
+    longitude: float | None = Form(None),
+    crop: str | None = Form(None),
+    sowing_date: str | None = Form(None),
+    note: str = Form(""),
+    language: str = Form("en"),
+    field_id: str | None = Form(None),
+    conversation_id: str | None = Form(None),
+    farmer_id: str | None = Form(None),
+) -> dict[str, Any]:
+    """Diagnose a crop photograph.
+
+    Multipart rather than base64-in-JSON: phone photos run 2-5 MB and
+    base64 inflates them by a third, which is a real cost on a metered
+    rural connection.
+
+    Field details are filled in from stored records when the client does not
+    supply them, so a farmer who has already told us their crop and sowing
+    date never has to repeat it to get a photo diagnosed.
+    """
+    data = await image.read()
+    if not data:
+        raise HTTPException(400, "Empty image")
+
+    # Fall back to the stored field and current season.
+    if field_id and (latitude is None or crop is None):
+        f = storage.get_field(field_id)
+        if f:
+            latitude = latitude if latitude is not None else f["latitude"]
+            longitude = longitude if longitude is not None else f["longitude"]
+            season = storage.current_season(field_id)
+            if season:
+                crop = crop or season["crop"]
+                sowing_date = sowing_date or season.get("sowing_date")
+
+    result = await diagnose_crop_photo(
+        image_bytes=data,
+        mime_type=image.content_type or "image/jpeg",
+        latitude=latitude,
+        longitude=longitude,
+        crop=crop,
+        sowing_date=sowing_date,
+        farmer_note=note,
+        language=language,
+        language_name=SUPPORTED_LANGUAGES.get(language, "English"),
+    )
+
+    # Record the diagnosis in the conversation so later questions have it in
+    # context -- "is it getting worse?" only means something if we remember.
+    if conversation_id and result.get("ok"):
+        summary = result.get("farmer_summary", "")
+        top = (result.get("candidates") or [{}])[0].get("name", "unknown")
+        storage.append_message(
+            conversation_id, "user",
+            [{"type": "text",
+              "text": f"[sent a photo of the crop{': ' + note if note else ''}]"}],
+        )
+        storage.append_message(
+            conversation_id, "assistant",
+            [{"type": "text",
+              "text": f"[photo diagnosis — most likely {top}] {summary}"}],
+            evidence=result.get("evidence"),
+        )
+
+    return result
 
 
 # --------------------------------------------------------------------------

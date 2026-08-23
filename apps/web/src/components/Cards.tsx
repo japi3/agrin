@@ -394,6 +394,155 @@ export function EvidenceLedger({ entries }: { entries: any[] }) {
   )
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Disease diagnosis                                                   */
+/* ------------------------------------------------------------------ */
+
+const CONF_TONE: Record<string, string> = {
+  high: 'var(--accent)', moderate: '#c2703d', low: 'var(--text-muted)',
+}
+
+type Tone = 'neutral' | 'good' | 'warn' | 'alert'
+
+const URGENCY_COPY: Record<string, { text: string; tone: Tone }> = {
+  today:     { text: 'Act today',         tone: 'alert'   },
+  this_week: { text: 'Act this week',     tone: 'warn'    },
+  monitor:   { text: 'Watch it',          tone: 'neutral' },
+  no_action: { text: 'Nothing to do yet', tone: 'good'    },
+}
+
+export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
+  // An unusable photo is not a failure to hide -- it is the most useful
+  // thing we can say, because it tells the farmer exactly how to get an
+  // answer on the next try.
+  if (!d.image_usable) {
+    return (
+      <Card tone="warn">
+        <Headline>I can't read this photo</Headline>
+        <div className="text-[16px] mt-1">{d.image_problem}</div>
+        {imageUrl && (
+          <img src={imageUrl} alt="" className="mt-3 rounded-xl max-h-40 object-cover" />
+        )}
+      </Card>
+    )
+  }
+
+  const urgency = URGENCY_COPY[d.urgency] ?? URGENCY_COPY.monitor
+  const top = (d.candidates || [])[0]
+
+  return (
+    <Card tone={urgency.tone}>
+      <div className="flex gap-3">
+        {imageUrl && (
+          <img src={imageUrl} alt=""
+               className="w-20 h-20 rounded-xl object-cover shrink-0" />
+        )}
+        <div className="min-w-0">
+          <Headline>{top?.name || 'Unclear'}</Headline>
+          <div className="text-[14px]" style={{ color: 'var(--text-muted)' }}>
+            {urgency.text}
+            {d.affected_part ? ` · affects the ${d.affected_part}` : ''}
+          </div>
+        </div>
+      </div>
+
+      {/* Ranked possibilities. Showing the alternatives is the point: a
+          single confident answer would misrepresent how much a photograph
+          can actually settle. */}
+      <div className="mt-3 space-y-2">
+        {(d.candidates || []).map((c: any, i: number) => (
+          <div key={i} className="rounded-xl p-3" style={{ background: 'var(--bg-sunken)' }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium text-[15px]">{c.name}</span>
+              <span className="text-[12px] px-2 py-0.5 rounded-full shrink-0"
+                    style={{ color: CONF_TONE[c.confidence] || 'var(--text-muted)',
+                             border: `1px solid ${CONF_TONE[c.confidence] || 'var(--border)'}` }}>
+                {c.confidence}
+              </span>
+            </div>
+            {c.why && (
+              <div className="text-[13px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                {c.why}
+              </div>
+            )}
+            {/* The check the farmer can run themselves. This is what turns an
+                unfalsifiable claim into something confirmable in the field. */}
+            {c.farmer_check && (
+              <div className="text-[14px] mt-2 rounded-lg p-2"
+                   style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+                Check for yourself: {c.farmer_check}
+              </div>
+            )}
+            {c.weather_consistent === false && (
+              <div className="text-[12px] mt-1" style={{ color: '#c2703d' }}>
+                Recent weather was not favourable for this — less likely.
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {d.immediate_actions?.length > 0 && (
+        <div className="mt-3">
+          <div className="font-medium text-[15px] mb-1">Do this now</div>
+          <ul className="space-y-1">
+            {d.immediate_actions.map((a: string, i: number) => (
+              <li key={i} className="text-[15px] flex gap-2">
+                <span style={{ color: 'var(--accent)' }}>·</span>{a}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Chemical guidance names a class and never a dose. Doses depend on
+          formulation and equipment, are printed on the label, and are set by
+          the state agriculture department. */}
+      {d.active_ingredient_class && (
+        <div className="mt-3 text-[14px] rounded-lg p-3"
+             style={{ background: 'var(--bg-sunken)' }}>
+          <span className="font-medium">If you spray: </span>
+          {d.active_ingredient_class}. Follow the dose on the label — we do
+          not advise quantities. Confirm with your KVK or extension officer.
+        </div>
+      )}
+
+      {d.refer_to_expert && (
+        <div className="mt-3 text-[14px] rounded-lg p-3"
+             style={{ background: '#fdf0ea', color: '#c2452d' }}>
+          This needs a real look. Please show it to your nearest KVK or
+          agriculture extension officer.
+        </div>
+      )}
+
+      {/* The weather-driven prior. This is the part that separates the
+          diagnosis from a generic image lookup, so it is shown, not hidden. */}
+      {d.infection_pressure?.length > 0 && (
+        <details className="mt-3">
+          <summary className="text-[13px] cursor-pointer"
+                   style={{ color: 'var(--text-muted)' }}>
+            Disease pressure at your field over the last 3 weeks
+          </summary>
+          <div className="mt-2 space-y-1">
+            {d.infection_pressure.map((p: any, i: number) => (
+              <div key={i} className="flex justify-between text-[13px]">
+                <span>{p.name}</span>
+                <span style={{
+                  color: ['severe', 'high'].includes(p.risk_level)
+                    ? '#c2452d' : 'var(--text-muted)',
+                }}>
+                  {p.risk_level} · {p.favourable_days}/{p.days_assessed} days
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </Card>
+  )
+}
+
 /** Dispatch a card payload to its renderer. */
 export function RenderCard({ card }: { card: any }) {
   switch (card.card) {
@@ -402,6 +551,7 @@ export function RenderCard({ card }: { card: any }) {
     case 'soil':        return <SoilCard d={card} />
     case 'suitability': return <SuitabilityCard d={card} />
     case 'carbon':      return <CarbonCard d={card} />
+    case 'diagnosis':   return <DiagnosisCard d={card} imageUrl={card.imageUrl} />
     default: return null
   }
 }

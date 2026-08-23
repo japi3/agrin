@@ -54,6 +54,18 @@ DAILY_VARIABLES = [
 ]
 
 
+# Hourly variables needed by the disease infection models. Leaf wetness is
+# inferred from hourly relative humidity, so daily aggregates are not enough:
+# a day averaging 70 percent RH may have spent twelve night hours above 90,
+# which is precisely the window a fungal spore needs.
+HOURLY_VARIABLES = [
+    "temperature_2m",
+    "relative_humidity_2m",
+    "dew_point_2m",
+    "precipitation",
+]
+
+
 @dataclass
 class WeatherDay:
     """One day of daily-aggregated weather at a point."""
@@ -70,6 +82,9 @@ class WeatherDay:
     wind_max_ms: float | None
     wind_mean_ms: float | None
     et0_openmeteo_mm: float | None
+    # 24 hourly relative humidity values, when hourly data was requested.
+    hourly_rh: list[float] = field(default_factory=list)
+    hourly_temp: list[float] = field(default_factory=list)
 
     @property
     def day_of_year(self) -> int:
@@ -173,6 +188,28 @@ def _parse(payload: dict, endpoint: str) -> WeatherSeries:
             )
         )
 
+    # Bucket hourly values onto their day. Open-Meteo returns hourly
+    # timestamps as ISO strings in the requested timezone, so the date prefix
+    # is a safe key.
+    hourly = payload.get("hourly") or {}
+    hourly_times = hourly.get("time") or []
+    if hourly_times:
+        rh_series = hourly.get("relative_humidity_2m") or []
+        t_series = hourly.get("temperature_2m") or []
+        by_day: dict[str, dict[str, list]] = {}
+        for i, stamp in enumerate(hourly_times):
+            day_key = stamp[:10]
+            bucket = by_day.setdefault(day_key, {"rh": [], "t": []})
+            if i < len(rh_series):
+                bucket["rh"].append(rh_series[i])
+            if i < len(t_series):
+                bucket["t"].append(t_series[i])
+        for d in days:
+            bucket = by_day.get(d.day.isoformat())
+            if bucket:
+                d.hourly_rh = bucket["rh"]
+                d.hourly_temp = bucket["t"]
+
     return WeatherSeries(
         latitude=payload.get("latitude", 0.0),
         longitude=payload.get("longitude", 0.0),
@@ -220,6 +257,7 @@ async def fetch_forecast(
     past_days: int = 30,
     client: httpx.AsyncClient | None = None,
     timeout: float = 20.0,
+    include_hourly: bool = False,
 ) -> WeatherSeries:
     """Fetch the forecast, optionally with recent observed days prepended.
 
@@ -238,6 +276,11 @@ async def fetch_forecast(
         "timezone": "auto",
         "wind_speed_unit": "ms",
     }
+    # Hourly data roughly quadruples the response size, so it is opt-in:
+    # only the disease models need it, and the irrigation path does not.
+    if include_hourly:
+        params["hourly"] = ",".join(HOURLY_VARIABLES)
+
     payload = await _request(
         FORECAST_URL, params, "weather_forecast", client, timeout
     )
