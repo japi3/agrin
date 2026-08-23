@@ -40,10 +40,14 @@ from agronomy.carbon import (  # noqa: E402
 from agronomy.crops import (  # noqa: E402
     CROPS, soil_from_texture, total_available_water,
 )
+from agronomy.canopy import (  # noqa: E402
+    assess_canopy, calibrate_endpoints, reconcile_sowing_date,
+)
 from agronomy.fao56 import et0_from_daily_weather  # noqa: E402
 from agronomy.waterbalance import (  # noqa: E402
     DailyWeather, next_irrigation_advice, simulate,
 )
+from geo.satellite import fetch_ndvi_series  # noqa: E402
 from geo.soilgrids import fetch_soil_profile_resilient  # noqa: E402
 from geo.weather import (  # noqa: E402
     fetch_climate_normals, fetch_forecast,
@@ -649,3 +653,131 @@ async def assess_crop_suitability(
             ),
         },
     }
+
+
+# --------------------------------------------------------------------------
+# Tool: satellite crop health
+# --------------------------------------------------------------------------
+
+async def get_crop_health(
+    latitude: float,
+    longitude: float,
+    crop: str | None = None,
+    sowing_date: str | None = None,
+    field_size_m: float = 200.0,
+) -> dict[str, Any]:
+    """Read the crop's condition from Sentinel-2 and compare it to expectation.
+
+    Returns raw NDVI history plus, when the crop and sowing date are known,
+    an interpretation: how much canopy the field actually has against how
+    much a healthy crop should have at this growth stage.
+
+    That comparison is the whole point. NDVI 0.45 is healthy for maize three
+    weeks after sowing and alarming at tasselling; handing a farmer the
+    number alone asks them to supply the agronomy themselves.
+    """
+    buffer_m = max(50.0, min(field_size_m / 2.0, 500.0))
+
+    # A full year is fetched rather than one season: the extra history is
+    # what allows the NDVI-to-cover scale to be calibrated against this
+    # field's own bare soil and own full canopy, instead of global constants
+    # that fit no particular field.
+    series = await fetch_ndvi_series(
+        latitude, longitude,
+        start=date.today() - timedelta(days=365),
+        buffer_m=buffer_m, max_scenes=18,
+    )
+
+    if not series.observations:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                "No usable satellite images of this field in the last four "
+                "months. Continuous cloud during the monsoon is the usual "
+                "reason. Try again after a clear spell."
+            ),
+            "evidence": series.evidence(),
+        }
+
+    latest = series.latest
+    trend = series.trend(days=30)
+
+    history = [
+        {
+            "date": o.day.isoformat(),
+            "ndvi": round(o.ndvi_mean, 3),
+            "uniformity_percent": round(o.uniformity * 100, 1),
+            "cloud_percent": round(o.scene_cloud_percent, 1),
+            "usable_pixels_percent": round(o.valid_fraction * 100, 1),
+        }
+        for o in series.observations
+    ]
+
+    result: dict[str, Any] = {
+        "ok": True,
+        "latest_ndvi": round(latest.ndvi_mean, 3),
+        "latest_date": latest.day.isoformat(),
+        "uniformity_percent": round(latest.uniformity * 100, 1),
+        "ndvi_trend_per_day": round(trend, 4) if trend is not None else None,
+        "observations": len(series.observations),
+        "history": history,
+        "provider": series.provider,
+        "evidence": series.evidence(),
+    }
+
+    # Interpretation requires knowing what is planted and when.
+    if crop in CROPS and sowing_date:
+        try:
+            stated = date.fromisoformat(sowing_date)
+        except ValueError:
+            stated = None
+
+        das = None
+        if stated is not None:
+            # Cross-check the stated sowing date against when the field
+            # actually greened up. A date a few weeks out turns a healthy
+            # crop into a false alarm.
+            reconciled = reconcile_sowing_date(
+                stated, [(o.day, o.ndvi_mean) for o in series.observations]
+            )
+            effective = reconciled["sowing_date"]
+            das = (date.today() - effective).days
+            result["sowing_date_used"] = effective.isoformat()
+            result["sowing_date_source"] = reconciled["source"]
+            if reconciled.get("note"):
+                result["sowing_date_note"] = reconciled["note"]
+
+        if das is not None and das >= 0:
+            ndvi_soil, ndvi_veg = calibrate_endpoints(
+                [o.ndvi_mean for o in series.observations]
+            )
+            assessment = assess_canopy(
+                crop, das, latest.ndvi_mean,
+                uniformity=latest.uniformity, trend_per_day=trend,
+                ndvi_soil=ndvi_soil, ndvi_veg=ndvi_veg,
+            )
+            if assessment:
+                result["assessment"] = assessment.to_dict()
+                result["crop_name"] = CROPS[crop].name_en
+                result["calibration"] = {
+                    "ndvi_bare_soil": round(ndvi_soil, 3),
+                    "ndvi_full_canopy": round(ndvi_veg, 3),
+                    "calibrated_from_field_history": (
+                        len(series.observations) >= 8
+                        and (ndvi_veg - ndvi_soil) >= 0.25
+                    ),
+                }
+                result["evidence"]["interpretation_method"] = (
+                    "NDVI converted to fractional canopy cover (Carlson & "
+                    "Ripley 1997) using endpoints calibrated from this "
+                    "field's own 12-month NDVI range (local scaling, Gutman "
+                    "& Ignatov 1998), then compared against the FAO-56 crop "
+                    "coefficient development curve for this crop and stage."
+                )
+    else:
+        result["note"] = (
+            "Tell me which crop is planted and roughly when it was sown, and "
+            "I can say whether this greenness is normal for its stage."
+        )
+
+    return result

@@ -148,6 +148,48 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "get_crop_health",
+        "description": (
+            "Read the crop's actual condition from Sentinel-2 satellite "
+            "imagery: greenness (NDVI) over the last four months, how evenly "
+            "the field is growing, and whether greenness is rising or "
+            "falling.\n\n"
+            "When the crop and sowing date are known it also reports whether "
+            "the canopy is ahead of, on track with, or behind what a healthy "
+            "crop should have reached at this growth stage — which is what "
+            "makes the number mean anything.\n\n"
+            "Use this for 'how is my crop doing', suspected stress, patchy "
+            "growth, or to check a problem the farmer has noticed. Also "
+            "useful alongside a photo diagnosis: patchiness visible from "
+            "space points to a cause the farmer can walk to.\n\n"
+            "Images are cloud-screened. During heavy monsoon there may be no "
+            "usable image for weeks, and the tool says so rather than "
+            "reporting stale data as current."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                **_LOCATION_PROPS,
+                "crop": {
+                    "type": "string",
+                    "description": "Crop key, if known. Enables interpretation.",
+                },
+                "sowing_date": {
+                    "type": "string",
+                    "description": "Sowing date as YYYY-MM-DD, if known.",
+                },
+                "field_size_m": {
+                    "type": "number",
+                    "description": (
+                        "Approximate width of the field in metres, default "
+                        "200. Sets the area sampled around the point."
+                    ),
+                },
+            },
+            "required": ["latitude", "longitude"],
+        },
+    },
+    {
         "name": "compare_regenerative_practices",
         "description": (
             "Project soil organic carbon over time under four managements — "
