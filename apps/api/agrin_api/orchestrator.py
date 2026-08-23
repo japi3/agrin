@@ -206,43 +206,98 @@ async def stream_turn(
     for _round in range(MAX_TOOL_ROUNDS):
         collected_text: list[str] = []
         function_calls: list[types.FunctionCall] = []
+        stream = None
 
-        try:
-            stream = await client.aio.models.generate_content_stream(
-                model=model_id, contents=contents, config=config
-            )
-            async for chunk in stream:
-                # Text and function calls can both appear across chunks, so
-                # walk parts explicitly rather than relying on chunk.text,
-                # which is None whenever the chunk carries a function call.
-                candidates = chunk.candidates or []
-                for candidate in candidates:
-                    content = candidate.content
-                    if not content or not content.parts:
-                        continue
-                    for part in content.parts:
-                        if getattr(part, "text", None):
-                            collected_text.append(part.text)
-                            yield Event("text", {"delta": part.text})
-                        if getattr(part, "function_call", None):
-                            function_calls.append(part.function_call)
+        # Try the preferred model, falling back down the chain on transient
+        # capacity errors.
+        #
+        # The retry wraps stream *consumption*, not just creation: the SDK
+        # issues the request lazily, so a 503 surfaces while iterating rather
+        # than at the await. Wrapping only the call looks correct and silently
+        # never fires.
+        #
+        # Fallback is allowed only while nothing has been shown to the farmer
+        # this round. Once words are on screen we do not restart the answer
+        # under a different model mid-sentence -- a reply that visibly rewrites
+        # itself is worse than one that errors honestly.
+        model_parts: list[types.Part] = []
+        succeeded = False
+        last_error: Exception | None = None
 
-        except Exception as exc:  # noqa: BLE001
+        for attempt, candidate in enumerate(llm.model_candidates(model_id)):
+            model_parts = []
+            collected_text = []
+            function_calls = []
+            emitted_this_round = False
+
+            try:
+                stream = await client.aio.models.generate_content_stream(
+                    model=candidate, contents=contents, config=config
+                )
+                async for chunk in stream:
+                    # Text and function calls can both appear across chunks,
+                    # so walk parts explicitly rather than relying on
+                    # chunk.text, which is None when a function call is
+                    # present.
+                    for cand in chunk.candidates or []:
+                        content = cand.content
+                        if not content or not content.parts:
+                            continue
+                        for part in content.parts:
+                            # Parts are preserved verbatim, never rebuilt.
+                            #
+                            # Gemini 3.x thinking models attach an encrypted
+                            # `thought_signature` to function-call parts,
+                            # carrying reasoning state across turns.
+                            # Reconstructing a Part from name and args drops
+                            # it, and the next request fails with "Function
+                            # call is missing a thought_signature". The docs
+                            # are explicit: resend blocks exactly as received.
+                            model_parts.append(part)
+
+                            # Thought summaries stay in history but are never
+                            # shown to the farmer as the answer.
+                            if getattr(part, "thought", False):
+                                continue
+
+                            if getattr(part, "text", None):
+                                collected_text.append(part.text)
+                                emitted_this_round = True
+                                yield Event("text", {"delta": part.text})
+                            if getattr(part, "function_call", None):
+                                function_calls.append(part.function_call)
+
+                if candidate != model_id:
+                    yield Event(
+                        "model_fallback",
+                        {"requested": model_id, "using": candidate},
+                    )
+                    model_id = candidate
+                succeeded = True
+                break
+
+            except Exception as exc:  # noqa: BLE001
+                last_error = exc
+                if llm.is_retryable(exc) and not emitted_this_round:
+                    # Brief backoff before the next model; capacity spikes
+                    # are usually short.
+                    await asyncio.sleep(0.6 * (attempt + 1))
+                    continue
+                break
+
+        if not succeeded:
             yield Event(
                 "error",
                 {
-                    "message": f"Gemini request failed: {type(exc).__name__}: {exc}",
+                    "message": (
+                        f"Gemini request failed: {type(last_error).__name__}: "
+                        f"{last_error}"
+                    ),
                     "kind": "upstream",
                 },
             )
             return
 
-        # Record the model's turn: its text and any function calls it made.
-        model_parts: list[types.Part] = []
-        if collected_text:
-            model_parts.append(types.Part(text="".join(collected_text)))
-        for fc in function_calls:
-            model_parts.append(types.Part(function_call=fc))
         if model_parts:
             contents.append(types.Content(role="model", parts=model_parts))
 

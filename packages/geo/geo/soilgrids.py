@@ -35,7 +35,16 @@ from typing import Any
 
 import httpx
 
+from .cache import cache_key, get_cache
+
 SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
+
+# ISRIC runs SoilGrids as a free public service and throttles aggressively:
+# nine simultaneous requests reliably produces read timeouts rather than a
+# 429. This semaphore is therefore a correctness measure, not politeness --
+# without it the ring search defeats itself, and it is also the right way to
+# treat a free scientific service we depend on.
+_ISRIC_CONCURRENCY = asyncio.Semaphore(4)
 
 # property -> (divisor to reach the stated unit, unit label, human label)
 # Source: https://www.isric.org/explore/soilgrids/faq-soilgrids  (units table)
@@ -197,7 +206,7 @@ async def fetch_soil_profile(
     properties: list[str] | None = None,
     depths: list[str] | None = None,
     client: httpx.AsyncClient | None = None,
-    timeout: float = 30.0,
+    timeout: float = 45.0,
 ) -> SoilProfile:
     """Fetch a soil profile for one point.
 
@@ -219,10 +228,24 @@ async def fetch_soil_profile(
     for v in ("mean", "Q0.05", "Q0.95"):
         params.append(("value", v))
 
+    # Soil does not change between seasons and ISRIC's service is slow --
+    # commonly several seconds, occasionally tens. Cached for a year.
+    #
+    # This is a correctness property, not just a speed one: the urban-mask
+    # ring search issues up to eight requests per ring, and without a cache a
+    # farmer whose pin lands on a town waits through all of them on every
+    # single question they ask.
+    cache = get_cache()
+    key = cache_key(lat=latitude, lon=longitude, props=properties, depths=depths)
+    cached = cache.get("soilgrids", key)
+    if cached is not None:
+        return _parse(cached, latitude, longitude)
+
     owns_client = client is None
     client = client or httpx.AsyncClient(timeout=timeout)
     try:
-        response = await client.get(SOILGRIDS_URL, params=params)
+        async with _ISRIC_CONCURRENCY:
+            response = await client.get(SOILGRIDS_URL, params=params)
         if response.status_code != 200:
             raise SoilGridsError(
                 f"SoilGrids returned {response.status_code}: {response.text[:200]}"
@@ -233,6 +256,11 @@ async def fetch_soil_profile(
     finally:
         if owns_client:
             await client.aclose()
+
+    # Masked cells (all-null bodies) are cached too. They are a stable
+    # property of the location, and re-querying them on every request is the
+    # single largest source of latency for anyone who pins a village.
+    cache.set("soilgrids", key, payload)
 
     return _parse(payload, latitude, longitude)
 
@@ -360,18 +388,61 @@ async def fetch_soil_profile_resilient(
     owns_client = client is None
     client = client or httpx.AsyncClient(timeout=30.0)
     try:
-        profile = await fetch_soil_profile(
-            latitude, longitude, properties, depths, client=client
+        # The exact point and the first ring are queried together rather than
+        # in sequence.
+        #
+        # Sequential is the obvious structure but it costs two full round
+        # trips whenever the pin is masked, and ISRIC round trips run 5-10
+        # seconds. Since a farmer naturally pins the landmark they know --
+        # their village, which is exactly what the urban mask covers -- the
+        # masked case is common rather than exceptional, and paying for it
+        # twice made a first question take nearly a minute.
+        #
+        # Speculating on the first ring costs 8 extra requests only on a
+        # cache miss, and they are useful whenever the pin turns out to be
+        # masked. Results are cached, so this is paid once per location ever.
+        # Only the four cardinal bearings are speculated. Eight would find a
+        # hit marginally more often but doubles the load on a throttled
+        # service for a case the cache absorbs after the first query.
+        first_ring = [
+            (bearing, *_offset_point(latitude, longitude, _SEARCH_RING_KM[0], bearing))
+            for bearing in (0, 90, 180, 270)
+        ]
+        point_and_ring = await asyncio.gather(
+            fetch_soil_profile(latitude, longitude, properties, depths, client=client),
+            *(
+                fetch_soil_profile(lat2, lon2, properties, depths, client=client)
+                for _, lat2, lon2 in first_ring
+            ),
+            return_exceptions=True,
         )
-        if profile.has_data:
+
+        profile = point_and_ring[0]
+        point_failed = isinstance(profile, BaseException)
+        if not point_failed and profile.has_data:
             return profile
+
+        # The pin is masked. Take the nearest hit from the ring we already have.
+        best: tuple[float, SoilProfile, float] | None = None
+        for (bearing, lat2, lon2), candidate in zip(first_ring, point_and_ring[1:]):
+            if isinstance(candidate, BaseException) or not candidate.has_data:
+                continue
+            distance = haversine_km(latitude, longitude, lat2, lon2)
+            if best is None or distance < best[0]:
+                best = (distance, candidate, bearing)
+        if best is not None:
+            distance, candidate, bearing = best
+            candidate.displaced_km = distance
+            candidate.displaced_from = (latitude, longitude)
+            candidate.displacement_bearing = bearing
+            return candidate
 
         # Rings are searched nearest-first, but the eight bearings within a
         # ring are issued concurrently: a serial sweep costs up to 40 sequential
         # round-trips and pushes a farmer's first answer past ten seconds.
         # Concurrency is capped at one ring (8 requests) at a time to stay
         # within ISRIC's fair-use expectations for a free public service.
-        for radius in _SEARCH_RING_KM:
+        for radius in _SEARCH_RING_KM[1:]:
             if radius > max_search_km:
                 break
 
@@ -403,7 +474,10 @@ async def fetch_soil_profile_resilient(
                 candidate.displacement_bearing = bearing
                 return candidate
 
-        # Nothing found: return the empty profile rather than inventing soil.
+        # Nothing found anywhere. Return an empty profile rather than
+        # inventing soil; the tool layer turns this into an honest abstention.
+        if point_failed:
+            profile = SoilProfile(latitude=latitude, longitude=longitude)
         profile.search_exhausted = True
         return profile
     finally:

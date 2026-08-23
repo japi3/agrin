@@ -35,8 +35,53 @@ from google.genai import types
 # markedly faster and cheaper at that job, which matters when the user is on
 # a 2G connection paying per megabyte. Pro is available for harder
 # multi-step diagnosis via AGRIN_MODEL.
-DEFAULT_MODEL = os.environ.get("AGRIN_MODEL", "gemini-2.5-flash")
-VISION_MODEL = os.environ.get("AGRIN_VISION_MODEL", "gemini-2.5-flash")
+DEFAULT_MODEL = os.environ.get("AGRIN_MODEL", "gemini-3.7-flash")
+VISION_MODEL = os.environ.get("AGRIN_VISION_MODEL", "gemini-3.7-flash")
+
+# Ordered fallback chain, tried when the preferred model returns 503
+# (high demand) or 429 (rate limited).
+#
+# This is not defensive over-engineering. Capacity for a newly released
+# flagship model is genuinely tight, and a public agricultural advisory
+# service cannot answer "the model is busy" to a farmer deciding whether to
+# irrigate today. Degrading to a slightly older Flash model produces an
+# answer of nearly identical quality here, because the agronomy comes from
+# validated models rather than from the LLM -- the language model is doing
+# routing and translation, which every model in this chain does well.
+MODEL_FALLBACK_CHAIN = [
+    m.strip()
+    for m in os.environ.get(
+        "AGRIN_MODEL_FALLBACKS",
+        "gemini-3.6-flash,gemini-3.5-flash,gemini-2.5-flash",
+    ).split(",")
+    if m.strip()
+]
+
+# Status codes worth retrying on a different model rather than failing.
+_RETRYABLE_STATUS = (429, 500, 502, 503, 504)
+
+
+def model_candidates(preferred: str | None = None) -> list[str]:
+    """The ordered list of models to try for one request."""
+    first = preferred or DEFAULT_MODEL
+    chain = [first] + [m for m in MODEL_FALLBACK_CHAIN if m != first]
+    return chain
+
+
+def is_retryable(exc: Exception) -> bool:
+    """Whether an exception warrants falling back to another model.
+
+    Matches on the numeric status where the SDK exposes one, falling back to
+    a string check. Deliberately conservative: a 400 (bad request, e.g. a
+    malformed tool schema) must NOT be retried against every model in the
+    chain, because it will fail identically each time while burning quota
+    and adding seconds to the farmer's wait.
+    """
+    status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    if isinstance(status, int):
+        return status in _RETRYABLE_STATUS
+    text = str(exc)
+    return any(str(code) in text for code in _RETRYABLE_STATUS)
 
 _JSON_TYPE_TO_GENAI = {
     "string": types.Type.STRING,
