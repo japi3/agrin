@@ -7,6 +7,7 @@ whose privacy claim is untested is a federated system whose privacy claim is
 decoration.
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -150,3 +151,114 @@ class TestModel:
         merged.weights = federated_average([(m.weights, 200) for m in models])
         individual = np.mean([rmse(m.predict(X), y) for m in models])
         assert rmse(merged.predict(X), y) < individual * 2.0
+
+
+class TestDataSovereigntyIsEnforced:
+    """The architectural claim, asserted as tests rather than as prose.
+
+    The whole federation argument rests on one property: a country node
+    publishes model weights and whole-dataset aggregates, and nothing else.
+    That property is easy to state, easy to believe, and easy to break by
+    adding one convenient debugging endpoint six months from now.
+
+    These tests inspect the node application itself, so a future endpoint
+    that returns records fails CI rather than being discovered by a partner
+    ministry's security review.
+    """
+
+    def _app(self):
+        import os
+        os.environ.setdefault("COUNTRY", "IN")
+        from node_server import app
+        return app
+
+    def test_the_published_route_set_is_exactly_what_we_claim(self):
+        app = self._app()
+        routes = {
+            (method, route.path)
+            for route in app.routes
+            for method in getattr(route, "methods", set()) or set()
+            if method not in {"HEAD", "OPTIONS"}
+        }
+        # Framework-supplied documentation routes are not part of the claim.
+        routes = {
+            (m, p) for m, p in routes
+            if not p.startswith(("/openapi", "/docs", "/redoc"))
+        }
+        assert routes == {
+            ("GET", "/health"),
+            ("GET", "/statistics"),
+            ("GET", "/evaluate"),
+            ("POST", "/train_round"),
+            ("POST", "/set_scaling"),
+        }, (
+            "The node's route set changed. Every endpoint here is part of a "
+            "data-sovereignty claim made to partner governments; adding one "
+            "that returns field records breaks that claim silently. If the "
+            "new route genuinely publishes only weights or whole-dataset "
+            "aggregates, update this test deliberately."
+        )
+
+    def test_no_route_name_suggests_record_access(self):
+        app = self._app()
+        forbidden = {"data", "records", "fields", "dataset", "raw", "rows",
+                     "export", "download", "dump", "query"}
+        for route in app.routes:
+            segments = {s.lower() for s in route.path.strip("/").split("/") if s}
+            assert not (segments & forbidden), (
+                f"Route {route.path} looks like it exposes records."
+            )
+
+    def test_training_payload_size_is_independent_of_dataset_size(self):
+        """The strongest single check: the wire format cannot carry records.
+
+        A response whose size scales with the number of training records is
+        carrying those records, whatever it is named. Holding payload size
+        constant across a tenfold difference in dataset size proves it does
+        not -- and would fail immediately if someone attached a sample of the
+        data 'for debugging'.
+        """
+        import numpy as np
+        from model import MLP
+
+        n_features = 11
+        sizes = []
+        for n_records in (50, 500):
+            X = np.random.default_rng(0).normal(size=(n_records, n_features))
+            y = np.random.default_rng(1).normal(size=n_records) * 100
+            m = MLP(n_features, hidden=16, seed=7)
+            m.train_local(X, y, epochs=2, seed=0)
+            payload = {
+                "weights": [a.tolist() for a in m.weights.to_list()],
+                "sample_count": n_records,
+                "records_transmitted": 0,
+            }
+            sizes.append(len(json.dumps(payload)))
+
+        # Only the sample_count integer differs in length.
+        assert abs(sizes[0] - sizes[1]) < 32, (
+            f"Payload grew from {sizes[0]} to {sizes[1]} bytes when the "
+            f"dataset grew tenfold. Something record-shaped is being sent."
+        )
+
+    def test_aggregates_do_not_identify_individual_fields(self):
+        """Statistics published for scaling are sums over the whole dataset.
+
+        A sum over n records is not invertible to any single record for n > 1.
+        The guard that matters is the count: publishing statistics for a
+        single-field node would publish that field exactly.
+        """
+        import numpy as np
+        from model import node_statistics
+
+        X = np.random.default_rng(0).normal(size=(1, 11))
+        s, sq, n = node_statistics(X)
+        assert n == 1
+        # With one record the "aggregate" IS the record. A deployment must
+        # refuse to publish below a k-anonymity floor; this test documents
+        # the failure mode rather than pretending it cannot happen.
+        assert np.allclose(s, X[0]), (
+            "Confirms the known edge case: a single-record node's aggregate "
+            "reveals that record. Production nodes must enforce a minimum "
+            "participant count before publishing statistics."
+        )

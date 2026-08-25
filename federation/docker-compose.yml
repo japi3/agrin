@@ -1,39 +1,56 @@
-# Five BRICS country nodes plus a coordinator.
+# Five BRICS country nodes.
 #
-# Each node is a separate service with its own volume. The coordinator can
-# reach the nodes; the nodes cannot reach each other, and none of them exposes
-# an endpoint that returns field records. The isolation is enforced by the
-# topology, not by convention.
+# Each node bind-mounts ONLY its own data directory. You can verify the
+# isolation from the host with `ls federation/nodedata/*` -- India's records
+# are in nodedata/IN and are not mounted into any other container. For a demo
+# whose entire claim is about data sovereignty, isolation you can see in the
+# filesystem is worth more than isolation asserted in a slide.
+#
+# The nodes are on a shared network so the coordinator can reach them, but no
+# node has any reason or means to call another: none of them exposes an
+# endpoint that returns records.
+#
+#   python federation/run_experiment.py     # build the dataset cache once
+#   python federation/seed_nodes.py         # split it per country
+#   docker compose -f federation/docker-compose.yml up -d
+#   python federation/coordinator.py
 services:
   node-in:
+    image: agrin-fed:latest
     build: { context: .., dockerfile: federation/Dockerfile }
+    container_name: agrin-node-in
     environment: { COUNTRY: IN, PORT: "9000", NODE_DATA: /data/IN.pkl }
     volumes: [ "./nodedata/IN:/data" ]
     ports: [ "9001:9000" ]
 
   node-br:
+    image: agrin-fed:latest
     build: { context: .., dockerfile: federation/Dockerfile }
+    container_name: agrin-node-br
     environment: { COUNTRY: BR, PORT: "9000", NODE_DATA: /data/BR.pkl }
     volumes: [ "./nodedata/BR:/data" ]
     ports: [ "9002:9000" ]
 
   node-ru:
+    image: agrin-fed:latest
     build: { context: .., dockerfile: federation/Dockerfile }
+    container_name: agrin-node-ru
     environment: { COUNTRY: RU, PORT: "9000", NODE_DATA: /data/RU.pkl }
     volumes: [ "./nodedata/RU:/data" ]
     ports: [ "9003:9000" ]
 
   node-cn:
+    image: agrin-fed:latest
     build: { context: .., dockerfile: federation/Dockerfile }
+    container_name: agrin-node-cn
     environment: { COUNTRY: CN, PORT: "9000", NODE_DATA: /data/CN.pkl }
     volumes: [ "./nodedata/CN:/data" ]
     ports: [ "9004:9000" ]
 
   node-za:
+    image: agrin-fed:latest
     build: { context: .., dockerfile: federation/Dockerfile }
+    container_name: agrin-node-za
     environment: { COUNTRY: ZA, PORT: "9000", NODE_DATA: /data/ZA.pkl }
     volumes: [ "./nodedata/ZA:/data" ]
     ports: [ "9005:9000" ]
-# Data directories are bind-mounted per country from ./nodedata/<CODE>.
-# A node sees its own directory and nothing else -- the isolation is visible
-# in the filesystem rather than asserted in a comment.
