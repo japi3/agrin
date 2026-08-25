@@ -158,7 +158,7 @@ def _forcing(
                 carbon_input_t_ha=carbon_input / max(vegetated_months, 1)
                 if i < vegetated_months else 0.0,
                 is_vegetated=i < vegetated_months,
-                farmyard_manure_t_ha=fym / 12.0,
+                farmyard_manure_c_t_ha=fym / 12.0,
             )
         )
     return months
@@ -259,3 +259,62 @@ class TestPracticeComparison:
         ranking = [baseline.final_soc, residue.final_soc, cover.final_soc,
                    cover_manure.final_soc]
         assert ranking == sorted(ranking)
+
+
+class TestManureUnits:
+    """Guards a unit error that inflated sequestration eightfold.
+
+    RothC consumes manure as tonnes of CARBON. Farmers, invoices, transport
+    and every extension leaflet use tonnes of MANURE. Passing one where the
+    other is expected produced 2.4 t C/ha/yr from an 8 t/ha application --
+    roughly five times anything in the literature, and a figure that would
+    make a carbon-credit claim built on it indefensible.
+    """
+
+    def test_fresh_weight_converts_to_a_fraction_of_carbon(self):
+        from agronomy.carbon import manure_carbon_from_fresh_weight
+        # 8 t/ha of fresh FYM is about 1 t C/ha, not 8.
+        assert manure_carbon_from_fresh_weight(8.0) == pytest.approx(1.0, abs=0.05)
+
+    def test_conversion_is_linear_and_non_negative(self):
+        from agronomy.carbon import manure_carbon_from_fresh_weight
+        assert manure_carbon_from_fresh_weight(0.0) == 0.0
+        assert manure_carbon_from_fresh_weight(-5.0) == 0.0
+        assert manure_carbon_from_fresh_weight(20.0) == pytest.approx(
+            2 * manure_carbon_from_fresh_weight(10.0)
+        )
+
+    def test_realistic_manure_rate_gives_a_literature_plausible_gain(self):
+        """A heavy but real application must not exceed published rates.
+
+        Long-term manured trials (Rothamsted Broadbalk, ICAR LTFEs) report
+        SOC gains on the order of 0.2-0.6 t C/ha/yr. Anything approaching
+        2 t C/ha/yr indicates a unit error rather than good management.
+        """
+        from agronomy.carbon import manure_carbon_from_fresh_weight
+        fym_carbon = manure_carbon_from_fresh_weight(8.0)
+        p = project(
+            40.0, 25.0,
+            _forcing(carbon_input=5.5, vegetated_months=11, fym=fym_carbon),
+            years=20,
+        )
+        annual = p.delta_soc / 20.0
+        assert 0.0 < annual < 1.0, (
+            f"{annual:.2f} t C/ha/yr from 8 t/ha of fresh manure is outside "
+            f"the range long-term trials support; check the carbon conversion."
+        )
+
+    def test_passing_fresh_weight_directly_would_be_caught(self):
+        """The bug itself, asserted as a test.
+
+        Feeding fresh weight straight in produces a rate no field achieves.
+        This documents the failure so a future refactor that reintroduces it
+        fails here rather than in a carbon audit.
+        """
+        wrong = project(40.0, 25.0,
+                        _forcing(5.5, vegetated_months=11, fym=8.0), years=20)
+        right = project(40.0, 25.0,
+                        _forcing(5.5, vegetated_months=11, fym=1.0), years=20)
+        assert wrong.delta_soc > 3 * right.delta_soc
+        assert (wrong.delta_soc / 20.0) > 1.5   # implausible
+        assert (right.delta_soc / 20.0) < 1.0   # plausible

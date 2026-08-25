@@ -120,9 +120,12 @@ class MandiReport:
     district: str | None
     quotes: list[MandiQuote] = field(default_factory=list)
     as_of: date | None = None
-    # "state" when the farmer's own state had arrivals, "national" when the
-    # search had to widen, "none" when nothing traded anywhere today.
+    # "state"       the farmer's own state had arrivals
+    # "national"    the search widened; usually out of season locally
+    # "none"        the service answered, and nothing traded anywhere today
+    # "unavailable" the service could not be reached at all
     scope: str = "state"
+    failure_reason: str | None = None
 
     @property
     def best(self) -> MandiQuote | None:
@@ -160,7 +163,15 @@ class MandiReport:
 
 
 class MandiError(RuntimeError):
-    pass
+    """A mandi lookup failed for a reason that is not 'no arrivals today'."""
+
+    def __init__(self, message: str, transient: bool = False):
+        super().__init__(message)
+        # Transient means the service was busy or broken, NOT that the market
+        # had no trade. Conflating those two is the bug this flag exists to
+        # prevent: telling a farmer their crop is out of season when in fact
+        # we were rate limited is a confident falsehood about their livelihood.
+        self.transient = transient
 
 
 def _parse_price(raw: Any) -> float | None:
@@ -272,18 +283,43 @@ async def fetch_prices(
             response = await client.get(
                 DATA_GOV_URL, params=params, headers=HTTP_HEADERS
             )
+            if response.status_code == 429:
+                raise MandiError(
+                    "data.gov.in rate limit reached. The shared demonstration "
+                    "key is throttled across everyone using it; register a "
+                    "free key at https://data.gov.in/user/register and set "
+                    "DATA_GOV_IN_KEY.",
+                    transient=True,
+                )
+            if response.status_code >= 500:
+                raise MandiError(
+                    f"data.gov.in returned {response.status_code}",
+                    transient=True,
+                )
             if response.status_code != 200:
                 raise MandiError(
                     f"data.gov.in returned {response.status_code}: "
                     f"{response.text[:200]}"
                 )
             cached = response.json()
+        except httpx.TimeoutException as exc:
+            raise MandiError(
+                f"data.gov.in did not respond in time: {exc}", transient=True
+            ) from exc
         except (httpx.HTTPError, ValueError) as exc:
-            raise MandiError(f"Mandi price request failed: {exc}") from exc
+            raise MandiError(
+                f"Mandi price request failed: {exc}", transient=True
+            ) from exc
         finally:
             if owns:
                 await client.aclose()
-        cache.set("mandi", key, cached)
+
+        # Only cache responses that actually carried records. Caching an
+        # empty body would pin "no arrivals" for six hours -- so a single
+        # rate-limited moment would tell every farmer for the rest of the
+        # afternoon that their crop is out of season.
+        if (cached.get("records") or []):
+            cache.set("mandi", key, cached)
 
     quotes: list[MandiQuote] = []
     for record in cached.get("records", []) or []:
@@ -338,13 +374,16 @@ async def prices_for_crop(
 
     quotes: list[MandiQuote] = []
     scope = "state"
+    transient_failure: str | None = None
 
     async with httpx.AsyncClient(timeout=25.0) as client:
         # Search the farmer's own state first.
         for commodity in commodities:
             try:
                 found = await fetch_prices(commodity, state=state, client=client)
-            except MandiError:
+            except MandiError as exc:
+                if getattr(exc, "transient", False):
+                    transient_failure = str(exc)
                 continue
             if found:
                 quotes = found
@@ -362,14 +401,18 @@ async def prices_for_crop(
             for commodity in commodities:
                 try:
                     found = await fetch_prices(commodity, client=client)
-                except MandiError:
+                except MandiError as exc:
+                    if getattr(exc, "transient", False):
+                        transient_failure = str(exc)
                     continue
                 if found:
                     quotes = found
                     break
 
     if not quotes:
-        scope = "none"
+        # "The service was unavailable" and "no market traded this crop
+        # today" are completely different answers and must never be merged.
+        scope = "unavailable" if transient_failure else "none"
 
     dates = [q.arrival_date for q in quotes if q.arrival_date]
     return MandiReport(
@@ -378,6 +421,7 @@ async def prices_for_crop(
         quotes=quotes,
         as_of=max(dates) if dates else None,
         scope=scope,
+        failure_reason=transient_failure,
     )
 
 

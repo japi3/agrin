@@ -35,7 +35,7 @@ for pkg in ("packages/agronomy", "packages/geo"):
         sys.path.insert(0, p)
 
 from agronomy.carbon import (  # noqa: E402
-    MonthlyInput, project, soc_percent_to_t_ha,
+    MonthlyInput, manure_carbon_from_fresh_weight, project, soc_percent_to_t_ha,
 )
 from agronomy.crops import (  # noqa: E402
     CROPS, soil_from_texture, total_available_water,
@@ -371,7 +371,12 @@ async def compare_regenerative_practices(
     initial_soc = soc_percent_to_t_ha(soc_g_kg / 10.0, bulk_density, 30.0)
     normals = await fetch_climate_normals(latitude, longitude, years=20)
 
-    def forcing(carbon_input: float, vegetated_months: int, fym: float = 0.0):
+    def forcing(carbon_input: float, vegetated_months: int,
+                fym_fresh_t_ha: float = 0.0):
+        # Manure is quoted, carted and applied by fresh weight, but RothC
+        # consumes carbon. Converting here rather than at the call site keeps
+        # the scenario definitions readable in the units a farmer uses.
+        fym_carbon = manure_carbon_from_fresh_weight(fym_fresh_t_ha)
         months = []
         for m in range(1, 13):
             n = normals[m]
@@ -387,7 +392,7 @@ async def compare_regenerative_practices(
                     carbon_input / max(vegetated_months, 1) if vegetated else 0.0
                 ),
                 is_vegetated=vegetated,
-                farmyard_manure_t_ha=fym / 12.0,
+                farmyard_manure_c_t_ha=fym_carbon / 12.0,
             ))
         return months
 
@@ -874,6 +879,21 @@ async def get_mandi_prices(
         }
 
     if not report.quotes:
+        if report.scope == "unavailable":
+            # Never dress a service outage as market information. Telling a
+            # farmer their crop is out of season when we simply could not ask
+            # is a confident falsehood about their income.
+            return {
+                "ok": False,
+                "abstain_reason": (
+                    "I could not reach the government mandi price service just "
+                    "now, so I do not know today's rate. This is a problem at "
+                    "our end, not a sign that no one is buying. Please check "
+                    "with your mandi directly, or ask me again shortly."
+                ),
+                "operator_detail": report.failure_reason,
+                "evidence": report.evidence(),
+            }
         return {
             "ok": False,
             "abstain_reason": (

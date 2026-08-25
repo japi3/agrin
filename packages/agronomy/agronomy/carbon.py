@@ -156,15 +156,54 @@ def co2_to_biohum_ratio(clay_percent: float) -> float:
     return 1.67 * (1.85 + 1.60 * math.exp(-0.0786 * clay_percent))
 
 
+# Carbon content of fresh farmyard manure, as a fraction of fresh weight.
+#
+# This constant exists because getting it wrong is a five-fold error in a
+# number farmers are paid for. RothC takes manure input in tonnes of CARBON
+# per hectare, but manure is bought, carted and quoted in tonnes of MANURE.
+# Fresh FYM is roughly 70 percent water, and its dry matter is roughly 42
+# percent carbon, so:
+#
+#     1 t of fresh FYM  ~=  0.30 t dry matter  ~=  0.125 t C
+#
+# Feeding tonnes of manure straight into RothC as tonnes of carbon inflates
+# sequestration by about eight times, which turns a credible 0.3 t C/ha/yr
+# into an absurd 2.4 and would make any carbon-credit claim built on it
+# indefensible.
+#
+# Ranges vary with species, bedding and storage; FAO and ICAR figures put
+# well-rotted cattle FYM at 10-15 percent carbon on a fresh-weight basis.
+FYM_CARBON_FRACTION_FRESH = 0.125
+
+
+def manure_carbon_from_fresh_weight(
+    fresh_tonnes_per_ha: float,
+    carbon_fraction: float = FYM_CARBON_FRACTION_FRESH,
+) -> float:
+    """Convert tonnes of fresh farmyard manure to tonnes of carbon.
+
+    Always use this at the boundary between what a farmer says ("I apply
+    eight trolleys of gobar") and what RothC consumes (t C/ha). Passing
+    fresh weight directly is the single most likely unit error in this module.
+    """
+    return max(0.0, fresh_tonnes_per_ha) * carbon_fraction
+
+
 @dataclass(frozen=True)
 class MonthlyInput:
-    """One month of forcing data for RothC."""
+    """One month of forcing data for RothC.
+
+    Note that BOTH `carbon_input_t_ha` and `farmyard_manure_c_t_ha` are in
+    tonnes of CARBON per hectare, not tonnes of material. Use
+    `manure_carbon_from_fresh_weight` to convert.
+    """
     mean_temp_c: float
     rainfall_mm: float
     open_pan_evaporation_mm: float
     carbon_input_t_ha: float
     is_vegetated: bool
-    farmyard_manure_t_ha: float = 0.0
+    # Tonnes of CARBON from manure, not tonnes of manure.
+    farmyard_manure_c_t_ha: float = 0.0
 
 
 def step_month(
@@ -221,7 +260,7 @@ def step_month(
     input_dpm = forcing.carbon_input_t_ha * (dpm_rpm_ratio / (1.0 + dpm_rpm_ratio))
     input_rpm = forcing.carbon_input_t_ha * (1.0 / (1.0 + dpm_rpm_ratio))
 
-    fym = forcing.farmyard_manure_t_ha
+    fym = forcing.farmyard_manure_c_t_ha
     input_dpm += 0.49 * fym
     input_rpm += 0.49 * fym
     fym_hum = 0.02 * fym
@@ -320,7 +359,9 @@ def project(
         year_list.append(year)
         soc_list.append(pools.total)
 
-    annual_input = sum(m.carbon_input_t_ha + m.farmyard_manure_t_ha for m in monthly_forcing)
+    annual_input = sum(
+        m.carbon_input_t_ha + m.farmyard_manure_c_t_ha for m in monthly_forcing
+    )
 
     return CarbonProjection(
         years=year_list,
