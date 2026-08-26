@@ -1110,3 +1110,251 @@ async def find_government_schemes(
             ),
         },
     }
+
+
+# --------------------------------------------------------------------------
+# Tool: remember what the farmer says about their farm
+# --------------------------------------------------------------------------
+
+async def remember_about_my_farm(
+    field_id: str | None = None,
+    area_acres: float | None = None,
+    field_name: str | None = None,
+    crop: str | None = None,
+    crops: list[str] | None = None,
+    sowing_date: str | None = None,
+    harvested: bool = False,
+    irrigated_on: str | None = None,
+    hours_pumped: float | None = None,
+    irrigation_method: str | None = None,
+    soil_observation: str | None = None,
+    water_source: str | None = None,
+    general_note: str | None = None,
+) -> dict[str, Any]:
+    """Record durable facts a farmer states about their own land.
+
+    This is what makes the second conversation different from the first. A
+    farmer who says "five acres, maize and paddy, watered on Tuesday" has
+    just told us more about their farm than any satellite will, and an
+    assistant that forgets it by the next session is asking them to repeat
+    themselves forever.
+
+    Everything stored here is attributed to the farmer rather than merged
+    into the model outputs. Where their account of the soil disagrees with
+    the 250 m raster, the interface shows both and says which is which --
+    they have dug that field and the raster has not.
+
+    `field_id` is injected by the orchestrator from the active conversation,
+    not chosen by the model, so a mistaken identifier cannot write one
+    farmer's details onto another's land.
+    """
+    from . import storage
+
+    if not field_id:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                "I do not know which field this is about yet. Ask the farmer "
+                "where their land is, or have them use the 'Set field' button."
+            ),
+        }
+
+    recorded: list[str] = []
+
+    # Acreage. Farmers in India speak in acres, bighas and kanals; the
+    # database stores hectares because every agronomic model does.
+    if area_acres is not None and area_acres > 0:
+        storage.update_field(field_id, area_hectares=round(area_acres * 0.404686, 4))
+        recorded.append(f"{area_acres} acres")
+
+    if field_name:
+        storage.update_field(field_id, name=field_name)
+        recorded.append(f"field name '{field_name}'")
+
+    # Crops. A five-acre holding commonly carries two or three at once, and
+    # accepting only one per call meant "I have sown maize and paddy" was
+    # recorded as a general note with no crop attached to either -- so no
+    # irrigation or stage advice was possible for a farm that had just told
+    # us exactly what was in the ground.
+    wanted = list(crops or [])
+    if crop and crop not in wanted:
+        wanted.append(crop)
+
+    unknown = [c for c in wanted if c not in CROPS]
+    if unknown:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                f"I do not have agronomic parameters for {', '.join(unknown)}, "
+                f"so I cannot give calculated advice on those. I can note them "
+                f"as a general remark instead."
+            ),
+        }
+
+    if wanted:
+        existing = {s["crop"] for s in storage.active_seasons(field_id)}
+        for c in wanted:
+            if c in existing:
+                continue
+            storage.record_season(field_id, c, sowing_date)
+            recorded.append(
+                f"{CROPS[c].name_en}"
+                + (f" sown {sowing_date}" if sowing_date else "")
+            )
+
+    # A date far from today is a resolution error, not a farmer's memory.
+    # Silently storing it would corrupt the water balance without failing.
+    for label, value in (("sowing_date", sowing_date), ("irrigated_on", irrigated_on)):
+        if not value:
+            continue
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError:
+            return {
+                "ok": False,
+                "abstain_reason": f"'{value}' is not a date I can read for {label}.",
+            }
+        days_off = (date.today() - parsed).days
+        if days_off < -30 or days_off > 400:
+            return {
+                "ok": False,
+                "abstain_reason": (
+                    f"{value} is {abs(days_off)} days from today, which is "
+                    f"almost certainly a mistake in working out the year. "
+                    f"Today is {date.today().isoformat()}. Resolve the "
+                    f"farmer's date against today and try again."
+                ),
+            }
+
+    if irrigated_on:
+        storage.log_irrigation(
+            field_id, irrigated_on,
+            hours_pumped=hours_pumped, method=irrigation_method,
+        )
+        recorded.append(
+            f"irrigated {irrigated_on}"
+            + (f" for {hours_pumped} hours" if hours_pumped else "")
+        )
+
+    if soil_observation:
+        storage.add_field_note(field_id, "soil_texture", soil_observation)
+        recorded.append("what you said about the soil")
+
+    if water_source:
+        storage.add_field_note(field_id, "water_source", water_source)
+        recorded.append(f"water source: {water_source}")
+
+    if general_note:
+        storage.add_field_note(field_id, "general", general_note)
+        recorded.append("your note")
+
+    if not recorded:
+        return {"ok": False, "abstain_reason": "Nothing new to record."}
+
+    return {
+        "ok": True,
+        "recorded": recorded,
+        # The model is told not to make a performance of this. Confirming
+        # every stored fact aloud turns a conversation into a form.
+        "guidance": (
+            "Saved. Acknowledge briefly and naturally in passing, or not at "
+            "all if it would interrupt the answer. Do not list back what was "
+            "stored."
+        ),
+    }
+
+
+async def get_my_farm(field_id: str | None = None) -> dict[str, Any]:
+    """Everything known about this farm, for a returning farmer.
+
+    Deliberately separates three kinds of knowledge, because conflating them
+    is how a farmer ends up unable to tell what the system actually knows
+    from what it inferred:
+
+      * what the farmer told us,
+      * what the models computed,
+      * what has not been established yet.
+    """
+    from . import storage
+
+    if not field_id:
+        return {
+            "ok": False,
+            "abstain_reason": "No field is set up yet for this farmer.",
+        }
+
+    field = storage.get_field(field_id)
+    if not field:
+        return {"ok": False, "abstain_reason": "That field is not on record."}
+
+    seasons = storage.active_seasons(field_id)
+    past = [s for s in storage.list_seasons(field_id) if s.get("harvest_date")]
+    notes = storage.list_field_notes(field_id)
+    irrigation = storage.list_irrigation(field_id, limit=5)
+    photos = storage.list_crop_photos(field_id, limit=6)
+
+    crops = []
+    for s in seasons:
+        entry = {"crop": s["crop"], "sowing_date": s.get("sowing_date")}
+        params = CROPS.get(s["crop"])
+        if params:
+            entry["name"] = params.name_en
+        if s.get("sowing_date"):
+            try:
+                das = (date.today() - date.fromisoformat(s["sowing_date"])).days
+                entry["days_after_sowing"] = das
+                if params:
+                    from agronomy.crops import crop_coefficient
+                    _, stage = crop_coefficient(params, das)
+                    entry["growth_stage"] = stage.value.replace("_", " ")
+                    entry["days_to_harvest"] = max(0, params.total_days - das)
+            except ValueError:
+                pass
+        crops.append(entry)
+
+    last = irrigation[0] if irrigation else None
+    days_since_water = None
+    if last:
+        try:
+            days_since_water = (
+                date.today() - date.fromisoformat(last["applied_on"])
+            ).days
+        except ValueError:
+            pass
+
+    area_ha = field.get("area_hectares")
+    return {
+        "ok": True,
+        "field": {
+            "name": field.get("name"),
+            "latitude": field["latitude"],
+            "longitude": field["longitude"],
+            "area_hectares": area_ha,
+            "area_acres": round(area_ha / 0.404686, 2) if area_ha else None,
+        },
+        "crops_growing": crops,
+        "past_seasons": [
+            {"crop": s["crop"], "sowing_date": s.get("sowing_date"),
+             "harvest_date": s.get("harvest_date"), "notes": s.get("notes")}
+            for s in past[:6]
+        ],
+        "last_irrigation": (
+            {"date": last["applied_on"], "days_ago": days_since_water,
+             "hours_pumped": last.get("hours_pumped"),
+             "method": last.get("method")}
+            if last else None
+        ),
+        "farmer_said": [
+            {"about": n["kind"], "said": n["value"], "on": n["stated_on"]}
+            for n in notes[:8]
+        ],
+        "photos_on_record": len(photos),
+        "missing": [
+            label for label, present in [
+                ("field size", area_ha is not None),
+                ("what is planted", bool(crops)),
+                ("when it was sown", any(c.get("sowing_date") for c in crops)),
+                ("when it was last watered", last is not None),
+            ] if not present
+        ],
+    }

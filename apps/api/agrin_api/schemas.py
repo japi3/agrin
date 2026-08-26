@@ -29,6 +29,91 @@ _LOCATION_PROPS = {
 
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
+        "name": "remember_about_my_farm",
+        "description": (
+            "Record durable facts the farmer states about their own land, so "
+            "the next conversation does not start from nothing.\n\n"
+            "Call this whenever a farmer volunteers something lasting: how "
+            "big the holding is, what is planted and roughly when, when they "
+            "last watered and for how many hours, what the soil is like in "
+            "their own words, where their water comes from.\n\n"
+            "Call it in passing, as part of answering. Do NOT interrogate "
+            "them to fill fields, do not ask for details they have not "
+            "offered, and do not read the saved list back to them. A "
+            "conversation that turns into a form is the thing this interface "
+            "exists to avoid.\n\n"
+            "Acreage is recorded in acres, as farmers state it. Sowing dates "
+            "may be approximate — 'just after the rains' is worth recording "
+            "as a best-guess date, since a rough date beats none.\n\n"
+            "A farmer's account of their own soil is valuable even where it "
+            "disagrees with the soil map: they have dug that field. Record "
+            "it and let both stand."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "area_acres": {"type": "number", "description": "Holding size in acres."},
+                "field_name": {"type": "string", "description": "What they call this field."},
+                "crops": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "Crop keys currently in the ground, e.g. "
+                        "[\"maize_grain\", \"rice_paddy\"]. Pass ALL of them "
+                        "in one call — a holding often carries two or three "
+                        "crops at once."
+                    ),
+                },
+                "crop": {
+                    "type": "string",
+                    "description": "A single crop key. Prefer `crops` when there are several.",
+                },
+                "sowing_date": {"type": "string", "description": "YYYY-MM-DD, approximate is fine."},
+                "irrigated_on": {"type": "string", "description": "YYYY-MM-DD they last watered."},
+                "hours_pumped": {
+                    "type": "number",
+                    "description": "Hours of pumping — how farmers usually measure irrigation.",
+                },
+                "irrigation_method": {
+                    "type": "string",
+                    "description": "flood, furrow, drip, sprinkler.",
+                },
+                "soil_observation": {
+                    "type": "string",
+                    "description": "Their own description of the soil, in their words.",
+                },
+                "water_source": {
+                    "type": "string",
+                    "description": "borewell, canal, tubewell, rain-fed, pond.",
+                },
+                "general_note": {
+                    "type": "string",
+                    "description": "Anything else lasting and worth remembering.",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_my_farm",
+        "description": (
+            "Everything on record about this farmer's land: size, which "
+            "crops are growing and at what stage, when they last watered, "
+            "what they have told us about the soil, and what is still "
+            "unknown.\n\n"
+            "Use this at the start of a returning conversation to ground "
+            "yourself before answering, and whenever the farmer asks about "
+            "their farm generally. It costs nothing and it is what lets you "
+            "avoid asking for the third time what they already told you.\n\n"
+            "The result separates what the FARMER said from what the MODELS "
+            "computed. Keep that distinction when you speak: 'you told me the "
+            "soil is sandy' is a different claim from 'the soil map says clay "
+            "loam', and where they disagree the farmer is usually right about "
+            "their own field."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
         "name": "find_place",
         "description": (
             "Turn a place name into coordinates: a village, town, tehsil or "

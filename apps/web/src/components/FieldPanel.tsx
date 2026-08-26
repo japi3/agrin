@@ -12,9 +12,30 @@
 
 import { useEffect, useState } from 'react'
 
+interface CropEntry {
+  crop: string
+  name?: string
+  sowing_date?: string | null
+  days_after_sowing?: number
+  growth_stage?: string
+  days_to_harvest?: number
+}
+
 interface Summary {
-  field: { id: string; name: string | null; latitude: number; longitude: number }
+  field: {
+    id: string; name: string | null; latitude: number; longitude: number
+    area_hectares?: number | null; area_acres?: number | null
+  }
   season: { crop: string; sowing_date: string | null } | null
+  crops_growing?: CropEntry[]
+  last_irrigation?: {
+    date: string; days_ago: number | null
+    hours_pumped?: number | null; method?: string | null
+  } | null
+  farmer_said?: { about: string; said: string; on: string }[]
+  missing?: string[]
+  photos_on_record?: number
+  irrigation_by_crop?: any[]
   soil: {
     texture: string; ph: number | null; ph_class: string | null
     organic_carbon_g_per_kg: number | null
@@ -155,23 +176,64 @@ export function FieldPanel({
 
           {data && !loading && (
             <div className="space-y-4">
-              {/* Location and crop */}
+              {/* The farm itself */}
               <div>
                 <div className="text-[15px] font-medium">
                   {data.field.name || 'My field'}
                 </div>
                 <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                  {data.field.area_acres
+                    ? `${data.field.area_acres} acres · `
+                    : ''}
                   {data.field.latitude.toFixed(3)}, {data.field.longitude.toFixed(3)}
                 </div>
-                {data.season?.crop && (
-                  <div className="text-[13px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                    Growing {data.season.crop.replace(/_/g, ' ')}
-                    {data.irrigation
-                      ? ` · day ${data.irrigation.days_after_sowing}`
+              </div>
+
+              {/* Every crop in the ground, each with its own stage. A holding
+                  carrying maize and paddy has two different answers, and
+                  showing one of them would be worse than showing neither. */}
+              {(data.crops_growing?.length ?? 0) > 0 && (
+                <div>
+                  <div className="text-[13px] font-medium mb-1.5">Growing now</div>
+                  <div className="space-y-1.5">
+                    {data.crops_growing!.map((c, i) => (
+                      <div key={i} className="rounded-lg px-2 py-1.5"
+                           style={{ background: 'var(--bg-sunken)' }}>
+                        <div className="text-[14px] font-medium">
+                          {c.name || c.crop.replace(/_/g, ' ')}
+                        </div>
+                        <div className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                          {c.days_after_sowing != null
+                            ? `day ${c.days_after_sowing}`
+                            : 'sowing date unknown'}
+                          {c.growth_stage ? ` · ${c.growth_stage}` : ''}
+                          {c.days_to_harvest != null
+                            ? ` · ~${c.days_to_harvest}d to harvest`
+                            : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* When they last watered, in their own units. */}
+              {data.last_irrigation && (
+                <div>
+                  <div className="text-[13px] font-medium mb-1">Last watered</div>
+                  <div className="text-[15px]">
+                    {data.last_irrigation.days_ago === 0
+                      ? 'Today'
+                      : `${data.last_irrigation.days_ago} days ago`}
+                  </div>
+                  <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                    {data.last_irrigation.date}
+                    {data.last_irrigation.hours_pumped
+                      ? ` · ${data.last_irrigation.hours_pumped} hours of pumping`
                       : ''}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Water: the reason most farmers open the app */}
               {irrigationLoading && !data.irrigation && (
@@ -259,6 +321,41 @@ export function FieldPanel({
                       Soil map uncertain here — a KVK soil test would be firmer.
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* What the farmer told us, labelled as theirs. Where their
+                  account of the soil disagrees with the raster, both are
+                  shown -- they have dug that field and the raster has not. */}
+              {(data.farmer_said?.length ?? 0) > 0 && (
+                <div>
+                  <div className="text-[13px] font-medium mb-1.5">You told me</div>
+                  <div className="space-y-1">
+                    {data.farmer_said!.map((n, i) => (
+                      <div key={i} className="text-[13px]"
+                           style={{ color: 'var(--text-muted)' }}>
+                        “{n.said}”
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* What is still unknown, phrased as an invitation rather than
+                  a form. Tapping one asks the question conversationally. */}
+              {(data.missing?.length ?? 0) > 0 && (
+                <div>
+                  <div className="text-[13px] font-medium mb-1.5">
+                    Tell me and I can help more
+                  </div>
+                  <div className="space-y-1">
+                    {data.missing!.map((m, i) => (
+                      <div key={i} className="text-[13px]"
+                           style={{ color: '#c2703d' }}>
+                        · {m}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

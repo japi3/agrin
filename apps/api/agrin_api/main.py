@@ -270,6 +270,7 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
                 language=req.language,
                 field_context=field_context,
                 season_memory=season_memory,
+                field_id=field_id,
             ):
                 if event.type == "text":
                     collected_text.append(event.data.get("delta", ""))
@@ -344,15 +345,27 @@ async def field_summary(
     results = await asyncio.gather(soil_task, weather_task, return_exceptions=True)
     soil, weather = [None if isinstance(r, BaseException) else r for r in results]
 
+    # Everything the farmer told us, kept distinct from what the models
+    # computed. A returning farmer should be able to see at a glance what the
+    # system actually knows versus what it inferred.
+    farm = await tool_impl.get_my_farm(field_id)
+    area_ha = field.get("area_hectares")
+
     summary: dict[str, Any] = {
         "field": {
             "id": field_id,
             "name": field.get("name"),
             "latitude": lat,
             "longitude": lon,
-            "area_hectares": field.get("area_hectares"),
+            "area_hectares": area_ha,
+            "area_acres": round(area_ha / 0.404686, 2) if area_ha else None,
         },
         "season": season,
+        "crops_growing": farm.get("crops_growing", []) if farm.get("ok") else [],
+        "last_irrigation": farm.get("last_irrigation") if farm.get("ok") else None,
+        "farmer_said": farm.get("farmer_said", []) if farm.get("ok") else [],
+        "missing": farm.get("missing", []) if farm.get("ok") else [],
+        "photos_on_record": farm.get("photos_on_record", 0) if farm.get("ok") else 0,
         "soil": None,
         "weather": None,
     }
@@ -381,22 +394,40 @@ async def field_summary(
     # and weather paint immediately; the panel requests it separately and
     # fills it in when it arrives. Blocking the whole panel on it made the
     # app look broken for thirteen seconds on every open.
-    if include_irrigation and season and season.get("crop") and season.get("sowing_date"):
-        try:
-            advice = await tool_impl.get_irrigation_advice(
-                lat, lon, season["crop"], season["sowing_date"]
-            )
-            if advice.get("ok"):
-                summary["irrigation"] = {
+    if include_irrigation:
+        growing = [
+            c for c in summary["crops_growing"]
+            if c.get("crop") and c.get("sowing_date")
+        ]
+        if growing:
+            advices = await asyncio.gather(*[
+                tool_impl.get_irrigation_advice(lat, lon, c["crop"], c["sowing_date"])
+                for c in growing
+            ], return_exceptions=True)
+
+            per_crop = []
+            for crop_entry, advice in zip(growing, advices):
+                if isinstance(advice, BaseException) or not advice.get("ok"):
+                    continue
+                per_crop.append({
+                    "crop": crop_entry["crop"],
+                    "name": crop_entry.get("name", crop_entry["crop"]),
                     "verdict": advice.get("verdict"),
                     "soil_moisture_percent": advice.get("soil_moisture_percent"),
                     "days_until_stress": advice.get("days_until_stress"),
                     "gross_depth_mm": advice.get("gross_depth_mm"),
                     "growth_stage": advice.get("growth_stage"),
                     "days_after_sowing": advice.get("days_after_sowing"),
-                }
-        except Exception:  # noqa: BLE001
-            pass
+                })
+            summary["irrigation_by_crop"] = per_crop
+            # The most urgent crop drives the headline, since that is the one
+            # that needs a decision today.
+            urgency = {"irrigate_now": 3, "irrigate_in_days": 2,
+                       "wait_for_rain": 1, "no_irrigation_needed": 0}
+            if per_crop:
+                summary["irrigation"] = max(
+                    per_crop, key=lambda c: urgency.get(c["verdict"], 0)
+                )
 
     return summary
 

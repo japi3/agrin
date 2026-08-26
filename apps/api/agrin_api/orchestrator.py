@@ -57,11 +57,21 @@ MAX_TOOL_ROUNDS = 6
 # is still holding the phone at three.
 MODEL_ATTEMPT_BUDGET_S = float(os.environ.get("AGRIN_MODEL_BUDGET_S", "70"))
 
+# Tools whose field identifier is supplied by the server, never by the model.
+#
+# The model has no business choosing which farm to read or write. Injecting
+# the identifier from the active conversation means a hallucinated or
+# mistaken id cannot reach another farmer's land, and the model does not have
+# to be trusted with something it cannot verify.
+FIELD_SCOPED_TOOLS = {"remember_about_my_farm", "get_my_farm"}
+
 # Maps tool names to implementations. Kept explicit rather than resolved by
 # getattr so that a model hallucinating a plausible tool name gets a clean
 # error instead of reaching an arbitrary module attribute.
 TOOL_REGISTRY: dict[str, Callable[..., Awaitable[dict[str, Any]]]] = {
     "find_place": tool_impl.find_place,
+    "remember_about_my_farm": tool_impl.remember_about_my_farm,
+    "get_my_farm": tool_impl.get_my_farm,
     "get_soil_profile": tool_impl.get_soil_profile,
     "get_weather": tool_impl.get_weather,
     "get_irrigation_advice": tool_impl.get_irrigation_advice,
@@ -91,7 +101,9 @@ class TurnState:
     started_at: float = field(default_factory=time.time)
 
 
-async def _run_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
+async def _run_tool(
+    name: str, args: dict[str, Any], field_id: str | None = None
+) -> dict[str, Any]:
     """Execute one tool, converting any failure into a structured result.
 
     Exceptions are caught and returned as data rather than propagated. The
@@ -110,6 +122,11 @@ async def _run_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
                 "field-specific numbers."
             ),
         }
+    if name in FIELD_SCOPED_TOOLS:
+        # Overwrite rather than default: whatever the model supplied is
+        # discarded in favour of the server's own view of the conversation.
+        args = {**args, "field_id": field_id}
+
     try:
         return await asyncio.wait_for(impl(**args), timeout=90.0)
     except asyncio.TimeoutError:
@@ -231,6 +248,7 @@ async def stream_turn(
     field_context: str | None = None,
     season_memory: str | None = None,
     model: str | None = None,
+    field_id: str | None = None,
 ) -> AsyncIterator[Event]:
     """Run one assistant turn, yielding events as they occur."""
     state = TurnState()
@@ -378,7 +396,8 @@ async def stream_turn(
             )
 
         results = await asyncio.gather(
-            *(_run_tool(fc.name, dict(fc.args or {})) for fc in function_calls)
+            *(_run_tool(fc.name, dict(fc.args or {}), field_id)
+              for fc in function_calls)
         )
         state.tool_calls += len(function_calls)
 
