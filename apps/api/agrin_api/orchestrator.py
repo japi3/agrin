@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Awaitable, Callable
@@ -43,6 +44,18 @@ from .prompts import build_system_prompt
 from .schemas import TOOL_DEFINITIONS
 
 MAX_TOOL_ROUNDS = 6
+
+# Total seconds to spend trying models before giving up on a round.
+#
+# Per-request timeouts alone are not enough: with four models in the fallback
+# chain and a 45-second timeout each, a broadly degraded endpoint costs three
+# minutes before the farmer is told anything. The chain exists to survive one
+# model being busy, not to multiply one outage by four.
+#
+# Past this budget the round stops trying and reports honestly. Better a
+# clear failure at one minute than a correct answer at three, because nobody
+# is still holding the phone at three.
+MODEL_ATTEMPT_BUDGET_S = float(os.environ.get("AGRIN_MODEL_BUDGET_S", "70"))
 
 # Maps tool names to implementations. Kept explicit rather than resolved by
 # getattr so that a model hallucinating a plausible tool name gets a clean
@@ -229,7 +242,7 @@ async def stream_turn(
         return
 
     system = build_system_prompt(language, field_context, season_memory)
-    config = llm.build_config(system, TOOL_DEFINITIONS)
+    config = llm.build_config(system, TOOL_DEFINITIONS, streaming=True)
     contents = llm.to_contents(messages)
     model_id = model or llm.DEFAULT_MODEL
 
@@ -254,7 +267,13 @@ async def stream_turn(
         succeeded = False
         last_error: Exception | None = None
 
+        round_started = time.time()
         for attempt, candidate in enumerate(llm.model_candidates(model_id)):
+            # Stop starting new attempts once the budget is spent. Checked
+            # before the attempt rather than after, so we never begin a
+            # request we already know we cannot afford to finish.
+            if attempt > 0 and (time.time() - round_started) > MODEL_ATTEMPT_BUDGET_S:
+                break
             model_parts = []
             collected_text = []
             function_calls = []
@@ -309,9 +328,12 @@ async def stream_turn(
             except Exception as exc:  # noqa: BLE001
                 last_error = exc
                 if llm.is_retryable(exc) and not emitted_this_round:
-                    # Brief backoff before the next model; capacity spikes
-                    # are usually short.
-                    await asyncio.sleep(0.6 * (attempt + 1))
+                    # Brief backoff before the next model; capacity spikes are
+                    # usually short. Skipped entirely once the budget is gone,
+                    # since sleeping only delays the failure the farmer is
+                    # already waiting on.
+                    if (time.time() - round_started) < MODEL_ATTEMPT_BUDGET_S:
+                        await asyncio.sleep(0.6 * (attempt + 1))
                     continue
                 break
 

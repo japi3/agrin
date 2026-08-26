@@ -205,6 +205,35 @@ be told the model is busy.
 
 ---
 
+## It costs nothing to run
+
+Every service the platform depends on is free, and that is a design
+constraint rather than an accident. The realistic first deployment is a state
+agriculture department or a farmer producer organisation, and anything
+requiring a procurement cycle before it answers one question does not get
+deployed.
+
+| Service | Cost | Key needed |
+|---|---|---|
+| Gemini API (AI Studio) | Free tier | Yes, free, no card |
+| ISRIC SoilGrids | Free | No |
+| Open-Meteo (forecast + ERA5) | Free | No |
+| Microsoft Planetary Computer (Sentinel-2) | Free | No |
+| OpenStreetMap Nominatim | Free | No |
+| data.gov.in (Agmarknet) | Free | Yes, free, no card |
+
+No billing account. No credit card. Nothing that requires a purchase order.
+
+The one limit worth knowing is that the Gemini free tier allows **20 requests
+per minute**, and a single conversation turn costs several. That is fine for
+a farmer and tight for a live demo where someone clicks quickly, so the model
+chain degrades to a slightly older Flash model rather than failing.
+
+**Vertex AI is opt-in and off by default.** It is the right production
+posture at national scale — IAM, VPC-SC, audit logging, regional data
+residency — and `deploy/cloudrun.sh` is written and ready for it, but nothing
+requires it and the platform is fully functional without ever enabling it.
+
 ## Data sources
 
 All open-licensed, all globally available, none requiring a per-country

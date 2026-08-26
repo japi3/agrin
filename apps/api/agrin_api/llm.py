@@ -64,6 +64,27 @@ MODEL_FALLBACK_CHAIN = [
 ]
 
 # Status codes worth retrying on a different model rather than failing.
+# Request timeouts in milliseconds.
+#
+# The SDK sets none by default, so a hanging model request hangs forever.
+# Observed during a Gemini slowdown: a 150-second wait before the fallback
+# chain gave up, because each of four models sat there with nothing to cut it
+# short.
+#
+# The important detail is that this value reaches httpx, where it is a
+# **per-read** timeout -- the maximum gap between bytes -- not a total budget
+# for the response. That inverts the intuition for streaming: a long answer
+# is safe because every token resets the clock, while a dead stream is caught
+# after one quiet interval.
+#
+# So streaming gets the SHORTER value, not the longer one. A stream silent
+# for twenty-five seconds is not slow, it is dead, and waiting ninety seconds
+# to conclude that is ninety seconds a farmer spends looking at nothing.
+# One-shot calls (speech, vision, transcription) get longer, because there
+# the whole response arrives in a single read and genuinely can take a while.
+REQUEST_TIMEOUT_MS = int(os.environ.get("AGRIN_LLM_TIMEOUT_MS", "45000"))
+STREAM_TIMEOUT_MS = int(os.environ.get("AGRIN_LLM_STREAM_TIMEOUT_MS", "25000"))
+
 _RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 
 # A 404 means the model does not exist for this key -- usually a retired
@@ -93,7 +114,13 @@ def is_retryable(exc: Exception) -> bool:
     codes = _RETRYABLE_STATUS + _TRY_NEXT_MODEL_STATUS
     if isinstance(status, int):
         return status in codes
+    # Timeouts are transient by definition and should advance the chain: a
+    # different model may be served by healthier capacity.
+    if isinstance(exc, (TimeoutError,)) or "timeout" in type(exc).__name__.lower():
+        return True
     text = str(exc)
+    if "timeout" in text.lower() or "timed out" in text.lower():
+        return True
     return any(str(code) in text for code in codes)
 
 _JSON_TYPE_TO_GENAI = {
@@ -140,7 +167,10 @@ def build_client() -> genai.Client:
                 "Credentials are available (`gcloud auth application-default "
                 "login`), and enable the Vertex AI API."
             )
-        return genai.Client(vertexai=True, project=project, location=location)
+        return genai.Client(
+            vertexai=True, project=project, location=location,
+            http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS),
+        )
 
     api_key = (
         os.environ.get("GEMINI_API_KEY", "").strip()
@@ -154,7 +184,10 @@ def build_client() -> genai.Client:
             "GOOGLE_GENAI_USE_VERTEXAI=true with GOOGLE_CLOUD_PROJECT to use "
             "Vertex AI instead."
         )
-    return genai.Client(api_key=api_key)
+    return genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS),
+    )
 
 
 def json_schema_to_genai(schema: dict[str, Any]) -> types.Schema:
@@ -222,6 +255,7 @@ def build_config(
     tool_definitions: list[dict[str, Any]] | None = None,
     temperature: float = 0.4,
     max_output_tokens: int = 2048,
+    streaming: bool = False,
 ) -> types.GenerateContentConfig:
     """Assemble the generation config.
 
@@ -241,6 +275,13 @@ def build_config(
         # to defer to label instructions and local extension advice rather
         # than improvising a rate.
     }
+    if streaming:
+        # Deliberately shorter than the client default. This is a per-read
+        # timeout, so it bounds the silence between tokens rather than the
+        # length of the answer: a genuinely long reply keeps resetting it,
+        # and a stalled one fails in twenty-five seconds instead of ninety.
+        kwargs["http_options"] = types.HttpOptions(timeout=STREAM_TIMEOUT_MS)
+
     if tool_definitions:
         kwargs["tools"] = build_tools(tool_definitions)
         # Let the model decide when to call a tool. Forcing ANY would make it
@@ -352,6 +393,19 @@ def friendly_error(exc: Exception) -> tuple[str, str]:
         chain.append(cursor)
 
     text = " ".join(str(e) for e in chain)
+    # A timeout carries no HTTP status, so it must be matched on type or text
+    # or it falls through to the generic "something went wrong" -- which is
+    # exactly what a farmer saw during a Gemini slowdown.
+    if any(
+        type(e).__name__ in {"ReadTimeout", "ConnectTimeout", "TimeoutException",
+                             "PoolTimeout", "WriteTimeout", "TimeoutError"}
+        for e in chain
+    ):
+        return (
+            "The AI service is not responding right now. Please try again in "
+            "a moment — your field details are saved.",
+            "timeout",
+        )
     status = None
     for e in chain:
         status = getattr(e, "code", None) or getattr(e, "status_code", None)
