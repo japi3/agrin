@@ -61,6 +61,8 @@ const TOOL_LABEL: Record<string, string> = {
   diagnose: 'Looking at your photo and checking disease pressure',
   get_crop_health: 'Reading the satellite view of your field',
   get_mandi_prices: 'Checking today\'s mandi rates',
+  find_government_schemes: 'Looking up government schemes',
+  find_place: 'Finding your village',
 }
 
 export default function App() {

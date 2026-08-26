@@ -50,8 +50,14 @@ DATA_GOV_URL = f"https://api.data.gov.in/resource/{AGMARKNET_RESOURCE}"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 
 # data.gov.in publishes a shared demonstration key in its own API docs. It is
-# rate-limited and intended for exactly this: getting a project working before
-# registering. Deployments should set DATA_GOV_IN_KEY to their own key.
+# rate-limited across every project using it, so it is fine for getting
+# started and unfit for a demo, let alone production. Set DATA_GOV_IN_KEY.
+#
+# Getting a key: https://data.gov.in/apis, then LOGIN | REGISTER. The portal
+# was rebuilt and now authenticates through JanParichay (the Government of
+# India national single sign-on); the older /user/register and /user/login
+# paths return 404, which is worth recording because they are still what most
+# tutorials and search results point at.
 DEMO_API_KEY = "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b"
 
 # data.gov.in does not answer requests carrying httpx's default User-Agent.
@@ -286,9 +292,10 @@ async def fetch_prices(
             if response.status_code == 429:
                 raise MandiError(
                     "data.gov.in rate limit reached. The shared demonstration "
-                    "key is throttled across everyone using it; register a "
-                    "free key at https://data.gov.in/user/register and set "
-                    "DATA_GOV_IN_KEY.",
+                    "key is throttled across everyone using it. Get your own "
+                    "free key from https://data.gov.in/apis (sign in via the "
+                    "LOGIN | REGISTER link, which uses JanParichay national "
+                    "single sign-on) and set DATA_GOV_IN_KEY.",
                     transient=True,
                 )
             if response.status_code >= 500:

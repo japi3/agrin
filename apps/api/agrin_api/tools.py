@@ -45,6 +45,7 @@ from agronomy.canopy import (  # noqa: E402
     reconcile_sowing_date, representative_ndvi,
 )
 from agronomy.fao56 import et0_from_daily_weather  # noqa: E402
+from agronomy.schemes import SCHEMES, schemes_for_situation  # noqa: E402
 from agronomy.waterbalance import (  # noqa: E402
     DailyWeather, next_irrigation_advice, simulate,
 )
@@ -1023,5 +1024,87 @@ async def find_place(query: str) -> dict[str, Any]:
             "source": "OpenStreetMap Nominatim",
             "licence": "ODbL",
             "matches_found": len(matches),
+        },
+    }
+
+
+# --------------------------------------------------------------------------
+# Tool: government schemes
+# --------------------------------------------------------------------------
+
+async def find_government_schemes(
+    concern: str = "",
+    owns_land: bool | None = None,
+    has_water_source: bool | None = None,
+    scheme_key: str | None = None,
+) -> dict[str, Any]:
+    """Find Indian government schemes relevant to a farmer's situation.
+
+    Returns navigation, not entitlement. Whether this particular farmer
+    qualifies is decided by their state agriculture department and by nobody
+    else, least of all by an assistant reasoning from a description. So the
+    result gives screening questions they can answer themselves, the things
+    that most commonly disqualify people, and the official portal and
+    helpline where the authoritative answer lives.
+
+    Every record carries the date it was last checked, and stale records say
+    so, because scheme rules change each financial year and a confidently
+    quoted obsolete figure sends someone to an office for nothing.
+    """
+    if scheme_key:
+        scheme = SCHEMES.get(scheme_key)
+        if scheme is None:
+            return {
+                "ok": False,
+                "abstain_reason": (
+                    f"I do not have a record for '{scheme_key}'. I only cover "
+                    f"{', '.join(s.short_name for s in SCHEMES.values())}. For "
+                    f"anything else, myscheme.gov.in lists every central and "
+                    f"state scheme."
+                ),
+            }
+        ranked = [scheme]
+    else:
+        ranked = schemes_for_situation(
+            owns_land=owns_land,
+            has_water_source=has_water_source,
+            concern=concern,
+        )[:3]
+
+    def render(s) -> dict[str, Any]:
+        return {
+            "name": s.name,
+            "short_name": s.short_name,
+            "what_it_does": s.what_it_does,
+            "check_yourself": list(s.screening_questions),
+            "commonly_disqualifies": list(s.common_exclusions),
+            "key_facts": list(s.key_facts),
+            "apply_through": s.apply_through,
+            "documents": list(s.documents_usually_needed),
+            "official_website": s.official_url,
+            "helpline": s.helpline,
+            "information_last_checked": s.last_verified.isoformat(),
+            "may_be_out_of_date": s.is_stale(),
+        }
+
+    return {
+        "ok": True,
+        "schemes": [render(s) for s in ranked],
+        "evidence": {
+            "source": "Official scheme portals of the Government of India",
+            "method": (
+                "Curated scheme registry with screening criteria. This is "
+                "navigation, not an eligibility determination."
+            ),
+            "authoritative_source": (
+                "myscheme.gov.in lists every central and state scheme and is "
+                "the place to check anything not covered here."
+            ),
+            "caveat": (
+                "Scheme rules, amounts and cut-off dates change each "
+                "financial year and differ by state. Always confirm on the "
+                "official portal or with the village agriculture officer "
+                "before acting."
+            ),
         },
     }

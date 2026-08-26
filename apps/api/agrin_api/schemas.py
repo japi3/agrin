@@ -219,6 +219,59 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "find_government_schemes",
+        "description": (
+            "Find Indian government schemes relevant to a farmer's "
+            "situation: income support, crop insurance, credit, soil "
+            "testing, micro-irrigation subsidy, and online mandi selling.\n\n"
+            "Use this whenever money, loss, risk, subsidy, insurance, a soil "
+            "test or credit comes up — and proactively when a farmer "
+            "describes crop damage, water shortage or trouble affording "
+            "inputs, because most farmers do not know which schemes exist.\n\n"
+            "This returns navigation, NOT an eligibility ruling. Never tell "
+            "a farmer they qualify or do not qualify: that is decided by "
+            "their state agriculture department. Give them the screening "
+            "questions to check themselves, the common disqualifiers, and "
+            "the official portal and helpline.\n\n"
+            "Never invent a scheme name, an amount, an office address or a "
+            "helpline number. If a scheme is not in the result, say you do "
+            "not have it and point to myscheme.gov.in. If a record is marked "
+            "may_be_out_of_date, say so."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "concern": {
+                    "type": "string",
+                    "description": (
+                        "What the farmer is dealing with, in their words: "
+                        "'crop damaged by hail', 'cannot afford fertiliser', "
+                        "'borewell running dry', 'want a soil test'."
+                    ),
+                },
+                "owns_land": {
+                    "type": "boolean",
+                    "description": (
+                        "Whether the farmer owns land in their own name, if "
+                        "known. Do not ask directly just to fill this in."
+                    ),
+                },
+                "has_water_source": {
+                    "type": "boolean",
+                    "description": "Whether an assured water source exists, if known.",
+                },
+                "scheme_key": {
+                    "type": "string",
+                    "description": (
+                        "Look up one scheme by key: pm_kisan, pmfby, "
+                        "soil_health_card, kcc, pmksy, enam."
+                    ),
+                },
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "get_mandi_prices",
         "description": (
             "Today's prices for a crop at Indian regulated markets (APMC "

@@ -623,6 +623,110 @@ export function MandiCard({ d }: { d: any }) {
   )
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Government schemes                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Scheme cards are navigation, never entitlement.
+ *
+ * The card never says "you qualify". It gives the farmer questions they can
+ * answer themselves, the things that most commonly disqualify people, and a
+ * phone number and website that outrank anything we said. That ordering is
+ * deliberate: the helpline is the most valuable thing on the card, because
+ * it is the only part that is authoritative.
+ */
+export function SchemesCard({ d }: { d: any }) {
+  const schemes: any[] = d.schemes || []
+  if (!schemes.length) return null
+
+  return (
+    <Card tone="neutral">
+      <Headline>Schemes worth checking</Headline>
+      <div className="text-[13px] mb-3" style={{ color: 'var(--text-muted)' }}>
+        Whether you qualify is decided by your agriculture department, not by
+        me. Use the questions below to see if it is worth the trip.
+      </div>
+
+      <div className="space-y-3">
+        {schemes.map((s, i) => (
+          <div key={i} className="rounded-xl p-3" style={{ background: 'var(--bg-sunken)' }}>
+            <div className="font-medium text-[16px]">{s.short_name}</div>
+            <div className="text-[14px] mt-0.5">{s.what_it_does}</div>
+
+            {s.check_yourself?.length > 0 && (
+              <div className="mt-2">
+                <div className="text-[13px] font-medium mb-1">Check yourself</div>
+                <ul className="space-y-0.5">
+                  {s.check_yourself.map((q: string, j: number) => (
+                    <li key={j} className="text-[14px] flex gap-2">
+                      <span style={{ color: 'var(--accent)' }}>·</span>{q}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <details className="mt-2">
+              <summary className="text-[13px] cursor-pointer"
+                       style={{ color: 'var(--text-muted)' }}>
+                What usually stops people, and what to carry
+              </summary>
+              <div className="mt-2 text-[13px] space-y-2"
+                   style={{ color: 'var(--text-muted)' }}>
+                {s.commonly_disqualifies?.length > 0 && (
+                  <div>
+                    <span className="font-medium">Commonly disqualifies: </span>
+                    {s.commonly_disqualifies.join('; ')}
+                  </div>
+                )}
+                {s.documents?.length > 0 && (
+                  <div>
+                    <span className="font-medium">Documents: </span>
+                    {s.documents.join(', ')}
+                  </div>
+                )}
+                {s.key_facts?.length > 0 && (
+                  <ul className="list-disc ml-4">
+                    {s.key_facts.map((f: string, j: number) => <li key={j}>{f}</li>)}
+                  </ul>
+                )}
+              </div>
+            </details>
+
+            {/* The authoritative route out. Rendered as a tel: link because
+                on a phone this should be one tap, not a number to copy. */}
+            <div className="mt-2 flex flex-wrap gap-3 items-center text-[14px]">
+              {/^[\d\s\-/]+$/.test(s.helpline) ? (
+                <a href={`tel:${s.helpline.split('/')[0].trim()}`}
+                   className="underline underline-offset-2"
+                   style={{ color: 'var(--accent)' }}>
+                  📞 {s.helpline}
+                </a>
+              ) : (
+                <span style={{ color: 'var(--text-muted)' }}>📞 {s.helpline}</span>
+              )}
+              <a href={s.official_website} target="_blank" rel="noreferrer"
+                 className="underline underline-offset-2"
+                 style={{ color: 'var(--accent)' }}>
+                Official website
+              </a>
+            </div>
+
+            {s.may_be_out_of_date && (
+              <div className="mt-2 text-[12px]" style={{ color: '#c2703d' }}>
+                This information was last checked on {s.information_last_checked}
+                {' '}and scheme rules change every year. Confirm before acting.
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 /** Dispatch a card payload to its renderer. */
 export function RenderCard({ card }: { card: any }) {
   switch (card.card) {
@@ -633,6 +737,7 @@ export function RenderCard({ card }: { card: any }) {
     case 'carbon':      return <CarbonCard d={card} />
     case 'diagnosis':   return <DiagnosisCard d={card} imageUrl={card.imageUrl} />
     case 'mandi':       return <MandiCard d={card} />
+    case 'schemes':     return <SchemesCard d={card} />
     default: return null
   }
 }
