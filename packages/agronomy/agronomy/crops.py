@@ -123,6 +123,32 @@ CROPS: dict[str, CropParameters] = {
         sowing_months_north=(10, 11),
         sowing_months_south=(4, 5),
     ),
+    # South Asian rabi wheat, kept separate from the generic spring wheat
+    # entry rather than overwriting it.
+    #
+    # FAO-56 Table 11 lists spring wheat at 20/25/60/30 = 135 days for
+    # Mediterranean conditions, and that is what the generic entry carries.
+    # North Indian rabi wheat is a materially longer crop: sown 10-25
+    # November and harvested 10-20 April is about 150 days, and ICAR
+    # recommendations for the Indo-Gangetic plain put popular varieties at
+    # 145-155 days to maturity.
+    #
+    # Using the 135-day figure for India made the model believe the crop had
+    # entered senescence around day 110, when Punjab wheat is still at full
+    # canopy filling grain. A regional survey of 22 real fields found 77
+    # percent reading "ahead of expected" purely from this offset -- not a
+    # dangerous error in the false-alarm direction, but one that drained the
+    # verdict of information, since a judgement that says "ahead" for three
+    # fields in four distinguishes nothing.
+    "wheat_rabi": CropParameters(
+        key="wheat_rabi", name_en="Wheat (rabi, South Asia)",
+        kc_ini=0.40, kc_mid=1.15, kc_end=0.30,
+        stage_days=(20, 35, 60, 35),
+        root_depth_m=1.50, depletion_fraction=0.55,
+        yield_response_factor=1.00, base_temp_c=4.5, gdd_to_maturity=2000.0,
+        sowing_months_north=(11, 12),
+        sowing_months_south=(5, 6),
+    ),
     "wheat_spring": CropParameters(
         key="wheat_spring", name_en="Wheat (spring)",
         kc_ini=0.40, kc_mid=1.15, kc_end=0.30,

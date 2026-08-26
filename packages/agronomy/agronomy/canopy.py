@@ -291,6 +291,7 @@ def assess_canopy(
     trend_per_day: float | None = None,
     ndvi_soil: float = NDVI_BARE_SOIL,
     ndvi_veg: float = NDVI_FULL_CANOPY,
+    locally_calibrated: bool = False,
 ) -> CanopyAssessment | None:
     """Compare an observed NDVI against expected development for the crop.
 
@@ -303,6 +304,27 @@ def assess_canopy(
 
     observed = fractional_cover_from_ndvi(ndvi, ndvi_soil, ndvi_veg)
     expected = expected_fractional_cover(crop, days_after_sowing)
+
+    # Reconcile the two scales when endpoints came from the field's own
+    # history.
+    #
+    # Local calibration sets the full-canopy endpoint to this field's own 95th
+    # percentile NDVI, so a field sitting at its seasonal peak scores a cover
+    # near 1.0 *by construction*. The expected curve, by contrast, is an
+    # absolute agronomic value -- 0.85 of the ground covered for wheat. Those
+    # are different quantities, and comparing them directly makes almost every
+    # healthy field look ahead of schedule: a survey of 22 real Punjab fields
+    # returned 77 percent "ahead of expected", which told the farmer nothing.
+    #
+    # So when the scale is local, the expectation is expressed in the same
+    # terms: what fraction of this field's own achievable peak the crop should
+    # have reached by this stage. The question becomes "is this field where it
+    # should be relative to what it can do", which is both answerable from
+    # satellite and the thing a farmer actually wants to know.
+    if locally_calibrated:
+        peak = PEAK_COVER.get(crop.key, 0.85)
+        if peak > 0:
+            expected = min(1.0, expected / peak)
     _, stage = crop_coefficient(crop, days_after_sowing)
 
     # Very early in the season NDVI reflects the soil, not the crop, so no

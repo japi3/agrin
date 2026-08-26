@@ -506,7 +506,7 @@ async def assess_crop_suitability(
     # pH tolerance ranges, ICAR / FAO EcoCrop.
     PH_RANGE = {
         "rice_paddy": (5.0, 8.0), "wheat_winter": (6.0, 8.0),
-        "wheat_spring": (6.0, 8.0), "maize_grain": (5.5, 8.0),
+        "wheat_spring": (6.0, 8.0), "wheat_rabi": (6.0, 8.5), "maize_grain": (5.5, 8.0),
         "soybean": (6.0, 7.5), "cotton": (6.0, 8.5),
         "sugarcane": (5.5, 8.0), "chickpea": (6.0, 8.5),
         "mustard": (6.0, 8.0), "groundnut": (5.5, 7.5),
@@ -767,12 +767,17 @@ async def get_crop_health(
             ) or latest.ndvi_mean
 
             is_cropland = looks_like_annual_cropland(history_values)
+            calibrated = (
+                len(series.observations) >= 8
+                and (ndvi_veg - ndvi_soil) >= 0.25
+            )
             result["looks_like_annual_cropland"] = is_cropland
 
             assessment = assess_canopy(
                 crop, das, judged_ndvi,
                 uniformity=latest.uniformity, trend_per_day=trend,
                 ndvi_soil=ndvi_soil, ndvi_veg=ndvi_veg,
+                locally_calibrated=calibrated,
             ) if is_cropland else None
 
             if not is_cropland:
@@ -817,10 +822,7 @@ async def get_crop_health(
                 result["calibration"] = {
                     "ndvi_bare_soil": round(ndvi_soil, 3),
                     "ndvi_full_canopy": round(ndvi_veg, 3),
-                    "calibrated_from_field_history": (
-                        len(series.observations) >= 8
-                        and (ndvi_veg - ndvi_soil) >= 0.25
-                    ),
+                    "calibrated_from_field_history": calibrated,
                 }
                 result["evidence"]["interpretation_method"] = (
                     "NDVI converted to fractional canopy cover (Carlson & "

@@ -125,10 +125,16 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "crop": {
                     "type": "string",
                     "description": (
-                        "Crop key. One of: rice_paddy, wheat_winter, "
-                        "wheat_spring, maize_grain, soybean, cotton, "
-                        "sugarcane, chickpea, mustard, groundnut, "
-                        "pearl_millet, sorghum, potato, sunflower, barley."
+                        "Crop key. One of: rice_paddy, wheat_rabi, "
+                        "wheat_winter, wheat_spring, maize_grain, soybean, "
+                        "cotton, sugarcane, chickpea, mustard, groundnut, "
+                        "pearl_millet, sorghum, potato, sunflower, barley.\n"
+                        "For wheat in India, Pakistan, Bangladesh or Nepal "
+                        "use wheat_rabi: the South Asian rabi crop runs about "
+                        "150 days, materially longer than the generic spring "
+                        "wheat entry, and using the wrong one makes the model "
+                        "think the crop is senescing while it is still "
+                        "filling grain."
                     ),
                 },
                 "sowing_date": {

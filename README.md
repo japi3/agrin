@@ -71,7 +71,7 @@ season**, under irrigation and rainfed, on soils from sand to clay.
 | Soil carbon | RothC-26.3 (Coleman & Jenkinson) | Published rate-modifier equations; normalisation check *a* ≈ 1 at 9.25 °C |
 | Disease pressure | Smith (1956), Analytis (1977), Magarey (2005) | Seasonal realism per Indian cropping calendar |
 | Soil texture | USDA Handbook 18 | Nine reference points on the textural triangle |
-| Canopy from NDVI | Carlson & Ripley (1997) | Per-field local scaling (Gutman & Ignatov 1998) |
+| Canopy from NDVI | Carlson & Ripley (1997) | Per-field local scaling (Gutman & Ignatov 1998); verdict distribution checked against 22 real Punjab–Haryana wheat fields |
 | Federation | McMahan et al. (2017) | Measured transfer experiment; sovereignty asserted as tests |
 
 **197 unit tests, no network required. 19 federation tests. 18 end-to-end checks.**
@@ -88,6 +88,7 @@ season**, under irrigation and rainfed, on soils from sand to clay.
 | **Disease** — ranked diagnosis from a photograph | Gemini vision, conditioned on weather-driven infection pressure |
 | **Soil carbon** — what practice changes are worth | RothC-26.3, the IPCC Tier 3 accepted method |
 | **Prices** — today's mandi rates and where to sell | Agmarknet, ~3,000 regulated markets |
+| **Government schemes** | PM-KISAN, PMFBY, KCC, Soil Health Card, PMKSY, e-NAM — navigation, never an eligibility ruling |
 | **Anything else** | It is a capable assistant, not a crop bot |
 
 ---
@@ -131,9 +132,12 @@ say no:
 
 ### Known limitations, stated plainly
 
-- The satellite **interpretation thresholds** have not been validated against
-  a field with a known sowing date and observed outcome. The data pipeline is
-  verified; the verdict layer is not.
+- The satellite **verdict thresholds** are validated at the population level
+  but not per field. Sampling 22 real fields across the Punjab–Haryana wheat
+  belt gives 77% on track, 9% behind and 9% severely behind — the shape a
+  productive region should have. That shows the thresholds are calibrated; it
+  does not show that any individual verdict is right. Per-field accuracy still
+  needs ground truth this project does not have.
 - Federation training data is **generated, not collected** — from real soil,
   real climate and a validated water balance, but generated. There is no
   shared BRICS farm dataset, which is the problem it exists to address.

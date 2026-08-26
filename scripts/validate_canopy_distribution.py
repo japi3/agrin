@@ -100,8 +100,9 @@ async def sample_field(lat: float, lon: float) -> dict | None:
     soil_ndvi, veg_ndvi = calibrate_endpoints(history)
     das = (ASSESS_ON - WHEAT_SOWING).days
     assessment = assess_canopy(
-        "wheat_spring", das, judged,
+        "wheat_rabi", das, judged,
         ndvi_soil=soil_ndvi, ndvi_veg=veg_ndvi,
+        locally_calibrated=True,
     )
     if assessment is None:
         return None
@@ -203,6 +204,21 @@ async def main(n: int, seed: int) -> int:
         print("  MARGINAL: fewer than 55% of fields read as healthy. Plausible")
         print("  in a bad season, but suspicious in this region. Worth")
         print("  re-running against another season before trusting verdicts.")
+        return 1
+
+    # The opposite skew is not dangerous but it is still a calibration
+    # failure. A verdict that reads "ahead of expected" for three fields in
+    # four is not distinguishing anything -- an average field and a genuinely
+    # vigorous one get the same answer, and the farmer learns nothing. This
+    # is exactly what an under-length season curve produces, and it is how
+    # the wheat_rabi entry came to exist.
+    ahead = counts.get("ahead_of_expected", 0)
+    if ahead / total > 0.60:
+        print(f"  MISCALIBRATED: {ahead / total * 100:.0f}% of fields read as")
+        print("  ahead of expected. Not a false-alarm risk, but the verdict is")
+        print("  carrying almost no information -- the expected-cover curve is")
+        print("  running low, usually because the crop's season length is set")
+        print("  shorter than the local variety actually takes.")
         return 1
     print("  PASS: the distribution is consistent with a productive region.")
     print("  This validates that the thresholds are calibrated, NOT that any")
