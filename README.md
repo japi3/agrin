@@ -95,7 +95,12 @@ season**, under irrigation and rainfed, on soils from sand to clay.
 
 ## Built for people who may not read
 
-- **Voice in and out** in 24 languages, with the assistant named in each —
+- **Voice in and out** in 24 languages, synthesised and transcribed
+  server-side through Gemini. The browser's own speech is used only where it
+  genuinely has a voice for the language: on most devices it has none for
+  most Indian languages and silently substitutes an English voice, so spoken
+  Punjabi came out as an English speaker reading Gurmukhi phonetically.
+- The assistant is named in each language —
   Saathi, ਸਾਥੀ, 农友, Parceiro, Umngane. The Punjabi greeting is
   *ਸਤ ਸ੍ਰੀ ਅਕਾਲ*, not a translated "hello".
 - **A pictogram grammar** with fixed slot order — state → duration → action →
@@ -186,6 +191,8 @@ python federation/coordinator.py             # over the network
 |---|---|
 | **Gemini 3.7 Flash** | Conversation, tool orchestration, 24-language generation |
 | **Gemini multimodal** | Crop disease diagnosis from photographs, structured output |
+| **Gemini TTS** | Reading advice aloud in the farmer's language |
+| **Gemini audio understanding** | Transcribing spoken questions |
 | **Vertex AI** | Production path — IAM, VPC-SC, audit logging, `asia-south1` residency |
 | **Cloud Run** | Deployment target, scale-to-zero |
 

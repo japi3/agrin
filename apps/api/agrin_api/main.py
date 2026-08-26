@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from . import storage
 from .orchestrator import stream_turn
 from .prompts import OPENING_SUGGESTIONS, SUPPORTED_LANGUAGES, ASSISTANT_NAMES
+from .speech import synthesise, transcribe
 from .vision import diagnose_crop_photo
 
 # Load .env from the repository root before anything reads the environment.
@@ -467,6 +468,63 @@ async def diagnose(
             evidence=result.get("evidence"),
         )
 
+    return result
+
+
+# --------------------------------------------------------------------------
+# Speech
+# --------------------------------------------------------------------------
+
+class SpeakRequest(BaseModel):
+    text: str
+    language: str = "en"
+    voice: str = "Kore"
+
+
+@app.post("/api/speak")
+async def speak(req: SpeakRequest):
+    """Read a reply aloud.
+
+    Returns WAV audio rather than JSON, so the browser can play it directly
+    from the response. Deliberately a separate endpoint invoked by the Listen
+    button rather than audio streamed alongside every reply: synthesised
+    speech is orders of magnitude larger than the text, and a farmer paying
+    per megabyte should choose when to spend it.
+    """
+    from fastapi.responses import Response
+
+    result = await synthesise(
+        req.text,
+        voice=req.voice,
+        language_name=SUPPORTED_LANGUAGES.get(req.language, ""),
+    )
+    if not result.get("ok"):
+        raise HTTPException(503, result.get("abstain_reason", "Speech unavailable"))
+    return Response(
+        content=result["audio"],
+        media_type="audio/wav",
+        headers={
+            "X-Speech-Model": result.get("model_used", ""),
+            # Identical advisory text recurs constantly across farmers, so
+            # letting the browser and any CDN cache it is worth real money on
+            # a metered connection.
+            "Cache-Control": "public, max-age=3600",
+        },
+    )
+
+
+@app.post("/api/transcribe")
+async def transcribe_audio(
+    audio: UploadFile = File(...),
+    language: str = Form("en"),
+) -> dict[str, Any]:
+    """Transcribe a recording of the farmer speaking."""
+    data = await audio.read()
+    result = await transcribe(
+        data,
+        mime_type=(audio.content_type or "audio/webm").split(";")[0].strip(),
+        language_name=SUPPORTED_LANGUAGES.get(language, ""),
+    )
     return result
 
 

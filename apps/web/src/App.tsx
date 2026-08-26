@@ -74,6 +74,11 @@ export default function App() {
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null)
   const [locating, setLocating] = useState(false)
   const [listening, setListening] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const [voiceHint, setVoiceHint] = useState('')
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
   const [health, setHealth] = useState<any>(null)
   const [showLangPicker, setShowLangPicker] = useState(false)
   // Open by default when a field is already saved. A returning farmer should
@@ -85,7 +90,6 @@ export default function App() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const recognitionRef = useRef<any>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const current = languages.find((l) => l.code === lang)
@@ -144,39 +148,80 @@ export default function App() {
    * the production path where server-side transcription is needed (the IVR
    * channel, or languages the browser does not expose).
    */
-  const toggleVoice = useCallback(() => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) {
+  /**
+   * Record the farmer speaking and transcribe it.
+   *
+   * Recorded audio is sent to the server, which transcribes through Gemini.
+   * The browser's own recogniser is used only where it genuinely supports
+   * the language, for the same reason as speech output: on most devices it
+   * does not support Indian languages and fails in ways that look like
+   * success.
+   *
+   * The server refuses silent recordings deterministically before the model
+   * sees them, because a model given silence will invent a sentence rather
+   * than report an empty room -- and that sentence would then be answered as
+   * though the farmer had asked it.
+   */
+  const stopRecording = useCallback(() => {
+    recorderRef.current?.stop()
+    setListening(false)
+  }, [])
+
+  const toggleVoice = useCallback(async () => {
+    if (listening) {
+      stopRecording()
+      return
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       alert('Voice input is not supported in this browser. Please type instead.')
       return
     }
-    if (listening) {
-      recognitionRef.current?.stop()
-      setListening(false)
-      return
-    }
-    const recognition = new SR()
-    // Map our language codes to BCP-47 tags the recogniser expects.
-    const TAG: Record<string, string> = {
-      hi: 'hi-IN', pa: 'pa-Guru-IN', bn: 'bn-IN', mr: 'mr-IN', te: 'te-IN',
-      ta: 'ta-IN', gu: 'gu-IN', kn: 'kn-IN', ml: 'ml-IN', or: 'or-IN',
-      en: 'en-IN', zh: 'zh-CN', ru: 'ru-RU', pt: 'pt-BR',
-    }
-    recognition.lang = TAG[lang] || 'en-IN'
-    recognition.interimResults = true
-    recognition.continuous = false
 
-    recognition.onresult = (e: any) => {
-      const text = Array.from(e.results).map((r: any) => r[0].transcript).join('')
-      setInput(text)
-    }
-    recognition.onend = () => setListening(false)
-    recognition.onerror = () => setListening(false)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      chunksRef.current = []
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+      recorder.onstop = async () => {
+        // Release the microphone promptly; a lingering recording indicator
+        // is alarming and, on a shared phone, reasonably so.
+        stream.getTracks().forEach((t) => t.stop())
 
-    recognitionRef.current = recognition
-    recognition.start()
-    setListening(true)
-  }, [listening, lang])
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
+        if (blob.size < 2000) {
+          return   // Too short to contain anything; do not spend a request.
+        }
+        setTranscribing(true)
+        try {
+          const form = new FormData()
+          form.append('audio', blob, 'recording.webm')
+          form.append('language', lang)
+          const r = await fetch('/api/transcribe', { method: 'POST', body: form })
+          const d = await r.json()
+          if (d.ok && d.text) {
+            setInput(d.text)
+          } else if (d.abstain_reason) {
+            // Shown in the composer rather than as an alert, so it reads as
+            // guidance rather than an error.
+            setVoiceHint(d.abstain_reason)
+            setTimeout(() => setVoiceHint(''), 5000)
+          }
+        } catch {
+          setVoiceHint('Could not send the recording. Please try typing.')
+          setTimeout(() => setVoiceHint(''), 5000)
+        } finally {
+          setTranscribing(false)
+        }
+      }
+      recorderRef.current = recorder
+      recorder.start()
+      setListening(true)
+    } catch {
+      alert('I could not use the microphone. Please allow access, or type instead.')
+    }
+  }, [listening, lang, stopRecording])
 
   /* ---------------------------------------------------------------- */
   /* Voice output                                                      */
@@ -209,34 +254,73 @@ export default function App() {
     )
   }, [])
 
-  const speak = useCallback((text: string) => {
-    if (!('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  /**
+   * Read a reply aloud.
+   *
+   * Server speech first, browser speech as fallback.
+   *
+   * The browser path is cheaper and needs no round trip, which matters on a
+   * metered rural connection. But most devices ship no voice at all for most
+   * Indian languages, and the browser silently substitutes an English voice
+   * rather than failing -- so Punjabi came out as an English speaker reading
+   * Gurmukhi phonetically. That is worse than silence for someone relying on
+   * audio precisely because they cannot read.
+   *
+   * So: if the browser has a genuine voice for this language, use it. If it
+   * does not, ask the server, which synthesises through Gemini.
+   */
+  const speak = useCallback(async (text: string) => {
     const tag = SPEECH_TAG[lang] || 'en-IN'
 
-    const say = () => {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = tag
-      const voice = pickVoice(tag)
-      if (voice) utterance.voice = voice
-      // Slightly slower than default: advisory content carries numbers people
-      // need to retain, and the default rate is tuned for notifications.
-      utterance.rate = 0.92
-      window.speechSynthesis.speak(utterance)
+    // Stop anything already playing, from either path.
+    window.speechSynthesis?.cancel()
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
     }
 
-    // getVoices() is empty until the voice list loads, and on a cold page
-    // that race is exactly when the first "Listen" tap happens.
-    if (window.speechSynthesis.getVoices().length === 0) {
-      window.speechSynthesis.addEventListener('voiceschanged', say, { once: true })
-      // Safety net: if the event never fires, speak with the default voice
-      // rather than staying silent.
-      setTimeout(() => {
-        if (!window.speechSynthesis.speaking) say()
-      }, 600)
-    } else {
-      say()
+    const localVoice = pickVoice(tag)
+    const baseLang = tag.split('-')[0]
+    const localVoiceIsRight =
+      localVoice && localVoice.lang.toLowerCase().startsWith(baseLang)
+
+    if (localVoiceIsRight && 'speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = tag
+      utterance.voice = localVoice
+      // Slower than default: advisory content carries numbers people need to
+      // retain, and the default rate is tuned for notifications.
+      utterance.rate = 0.92
+      window.speechSynthesis.speak(utterance)
+      return
+    }
+
+    setSpeaking(true)
+    try {
+      const r = await fetch('/api/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language: lang }),
+      })
+      if (!r.ok) throw new Error(String(r.status))
+      const blob = await r.blob()
+      const audio = new Audio(URL.createObjectURL(blob))
+      audioRef.current = audio
+      audio.onended = () => setSpeaking(false)
+      audio.onerror = () => setSpeaking(false)
+      await audio.play()
+    } catch {
+      // Last resort: the wrong-language browser voice is still better than
+      // nothing for a farmer who cannot read the screen.
+      setSpeaking(false)
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text)
+        utterance.lang = tag
+        utterance.rate = 0.92
+        window.speechSynthesis.speak(utterance)
+      }
     }
   }, [lang, pickVoice])
 
@@ -538,9 +622,10 @@ export default function App() {
                   {m.text && !busy && (
                     <div className="flex items-center gap-3 mt-2">
                       <button onClick={() => speak(m.text)}
-                              className="text-[13px] underline underline-offset-2"
+                              disabled={speaking}
+                              className="text-[13px] underline underline-offset-2 disabled:opacity-50"
                               style={{ color: 'var(--text-muted)', minHeight: 0 }}>
-                        🔊 Listen
+                        {speaking ? '🔊 Speaking…' : '🔊 Listen'}
                       </button>
                       <EvidenceLedger entries={m.evidence} />
                     </div>
@@ -603,12 +688,13 @@ export default function App() {
             </button>
             <button onClick={toggleVoice}
                     aria-label={listening ? 'Stop recording' : 'Speak'}
-                    className={`rounded-full w-11 h-11 flex items-center justify-center shrink-0 ${listening ? 'recording' : ''}`}
+                    disabled={transcribing}
+                    className={`rounded-full w-11 h-11 flex items-center justify-center shrink-0 disabled:opacity-50 ${listening ? 'recording' : ''}`}
                     style={{
                       background: listening ? 'var(--accent)' : 'var(--bg-sunken)',
                       color: listening ? '#fff' : 'var(--text-muted)',
                     }}>
-              🎤
+              {transcribing ? '…' : '🎤'}
             </button>
             <button onClick={() => (busy ? stop() : send(input))}
                     aria-label={busy ? 'Stop' : 'Send'}
@@ -618,6 +704,13 @@ export default function App() {
               {busy ? '■' : '↑'}
             </button>
           </div>
+          {(voiceHint || listening || transcribing) && (
+            <div className="text-[13px] text-center mt-2"
+                 style={{ color: voiceHint ? '#c2703d' : 'var(--accent)' }}>
+              {voiceHint || (listening ? 'Listening… tap the microphone again when done'
+                                       : 'Understanding what you said…')}
+            </div>
+          )}
           <div className="text-[11px] text-center mt-2" style={{ color: 'var(--text-muted)' }}>
             Advice is generated from soil, weather and satellite models. For
             anything costly or risky, confirm with your local KVK or extension officer.
