@@ -1,0 +1,16 @@
+{
+  "name": "AgriN — Saathi",
+  "short_name": "Saathi",
+  "description": "Farming advice for your field, in your language.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf7f2",
+  "theme_color": "#3c7031",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "lang": "en",
+  "categories": ["productivity", "utilities"]
+}

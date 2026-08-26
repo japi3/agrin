@@ -232,7 +232,12 @@ docker compose -f deploy/docker-compose.yml up --build
 
 Open http://localhost:8080. Only `GEMINI_API_KEY` is required — free from
 [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Soil,
-weather, satellite and mandi prices all work without keys.
+weather and satellite need no key at all.
+
+Mandi prices work without a key too, but fall back to data.gov.in's shared
+demonstration key, which is throttled across every project using it. Set
+`DATA_GOV_IN_KEY` to your own (free, from data.gov.in → My Account) and the
+rate limiting disappears.
 
 Deploy to Cloud Run:
 

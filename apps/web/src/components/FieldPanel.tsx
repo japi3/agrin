@@ -62,6 +62,11 @@ export function FieldPanel({
   const [data, setData] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
+  // Set when the service worker served this from cache because the network
+  // was unavailable. Showing yesterday's soil moisture as though it were
+  // today's is precisely the kind of quiet wrongness this project exists to
+  // avoid, so staleness is surfaced rather than hidden.
+  const [stale, setStale] = useState(false)
 
   const [irrigationLoading, setIrrigationLoading] = useState(false)
 
@@ -75,7 +80,11 @@ export function FieldPanel({
     // for both made the panel show "Checking your field…" long enough to look
     // broken, so the fast half paints first and irrigation fills in after.
     fetch(`/api/field/${fieldId}/summary`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((r) => {
+        if (!r.ok) return Promise.reject(r.status)
+        setStale(r.headers.get('X-Agrin-Stale') === 'true')
+        return r.json()
+      })
       .then((d) => {
         setData(d)
         if (d.season?.crop && d.season?.sowing_date) {
@@ -133,6 +142,14 @@ export function FieldPanel({
           {failed && (
             <div className="text-[14px]" style={{ color: 'var(--text-muted)' }}>
               Could not load your field just now. Ask me directly instead.
+            </div>
+          )}
+
+          {stale && (
+            <div className="mb-3 text-[13px] rounded-lg p-2"
+                 style={{ background: 'var(--bg-sunken)', color: '#c2703d' }}>
+              You are offline. This is what your field looked like the last
+              time there was a signal, not right now.
             </div>
           )}
 

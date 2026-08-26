@@ -77,6 +77,7 @@ export default function App() {
   const [speaking, setSpeaking] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const [voiceHint, setVoiceHint] = useState('')
+  const [online, setOnline] = useState(() => navigator.onLine)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const [health, setHealth] = useState<any>(null)
@@ -96,6 +97,20 @@ export default function App() {
   const assistantName = current?.assistant_name || 'Saathi'
 
   useEffect(() => { fetchLanguages().then(setLanguages).catch(() => {}) }, [])
+
+  // Connection state is shown rather than inferred from a failed request.
+  // A farmer who knows the phone has no signal reads a failure as "wait",
+  // not as "this tool is broken".
+  useEffect(() => {
+    const up = () => setOnline(true)
+    const down = () => setOnline(false)
+    window.addEventListener('online', up)
+    window.addEventListener('offline', down)
+    return () => {
+      window.removeEventListener('online', up)
+      window.removeEventListener('offline', down)
+    }
+  }, [])
   useEffect(() => { fetchHealth().then(setHealth).catch(() => {}) }, [])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) },
             [messages, busy])
@@ -332,6 +347,23 @@ export default function App() {
     const trimmed = text.trim()
     if (!trimmed || busy) return
 
+    // Fail before sending rather than after a timeout. Every answer needs
+    // soil, weather, satellite or a model, so there is nothing honest to
+    // return offline -- but saying so immediately, and keeping what they
+    // typed, is very different from a spinner that dies silently.
+    if (!navigator.onLine) {
+      setMessages((m) => [
+        ...m,
+        { role: 'user', text: trimmed, cards: [], evidence: [], tools: [] },
+        { role: 'assistant', text: '', cards: [], evidence: [], tools: [],
+          error: 'Your phone has no signal right now. I need to check the '
+               + 'weather and your soil to answer this. Your question is '
+               + 'saved — send it again once you have a connection.' },
+      ])
+      setInput(trimmed)
+      return
+    }
+
     setInput('')
     setBusy(true)
     setMessages((m) => [
@@ -493,6 +525,12 @@ export default function App() {
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden>🌾</span>
           <span className="font-semibold">{assistantName}</span>
+          {!online && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full"
+                  style={{ background: 'var(--bg-sunken)', color: '#c2703d' }}>
+              No signal
+            </span>
+          )}
           {health && !health.google_ai?.configured && (
             <span className="text-[11px] px-2 py-0.5 rounded-full"
                   style={{ background: '#fdf0ea', color: '#c2703d' }}>
