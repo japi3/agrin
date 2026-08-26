@@ -337,8 +337,26 @@ def friendly_error(exc: Exception) -> tuple[str, str]:
 
     Each case says what happened in plain words and what to do next.
     """
-    text = str(exc)
-    status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    # Inspect the chained causes too. httpx and the SDK both wrap errors, and
+    # a 429 raised inside a stream can surface as a transport error whose own
+    # string carries no status -- which is exactly how a rate limit ended up
+    # reported to farmers as the generic "something went wrong".
+    chain = [exc]
+    seen = {id(exc)}
+    cursor = exc
+    for _ in range(5):
+        cursor = getattr(cursor, "__cause__", None) or getattr(cursor, "__context__", None)
+        if cursor is None or id(cursor) in seen:
+            break
+        seen.add(id(cursor))
+        chain.append(cursor)
+
+    text = " ".join(str(e) for e in chain)
+    status = None
+    for e in chain:
+        status = getattr(e, "code", None) or getattr(e, "status_code", None)
+        if isinstance(status, int):
+            break
 
     def has(code: int) -> bool:
         return status == code or str(code) in text
@@ -381,6 +399,16 @@ def friendly_error(exc: Exception) -> tuple[str, str]:
             "Something in that request could not be processed. Please try "
             "rephrasing your question.",
             "bad_request",
+        )
+    # Timeouts and connection resets are common on rural links and are worth
+    # distinguishing from a genuine service failure, because the advice
+    # differs: wait and retry versus report it to whoever runs the service.
+    lowered = text.lower()
+    if any(w in lowered for w in ("timeout", "timed out", "connect", "reset")):
+        return (
+            "The connection to the AI service dropped. Please try again — "
+            "your field details are saved.",
+            "network",
         )
     return (
         "Something went wrong reaching the AI service. Please try again.",

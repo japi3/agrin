@@ -307,8 +307,12 @@ async def fetch_prices(
                 f"data.gov.in did not respond in time: {exc}", transient=True
             ) from exc
         except (httpx.HTTPError, ValueError) as exc:
+            # httpx transport errors frequently stringify to nothing at all,
+            # so an operator reading the log sees "request failed: " and
+            # learns less than nothing. Fall back to the exception type.
+            reason = str(exc).strip() or type(exc).__name__
             raise MandiError(
-                f"Mandi price request failed: {exc}", transient=True
+                f"Mandi price request failed: {reason}", transient=True
             ) from exc
         finally:
             if owns:
