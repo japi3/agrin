@@ -24,6 +24,7 @@ Same code, same tools, same prompts. Only the credentials differ.
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 from google import genai
@@ -94,11 +95,71 @@ _RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 _TRY_NEXT_MODEL_STATUS = (404,)
 
 
+# Models known to be rate limited, with the time their cooldown expires.
+#
+# Without this every turn re-discovers the same exhausted quota from scratch.
+# Measured on a rate-limited key: ten seconds of a farmer looking at a blank
+# screen before the chain reached a model with quota left, repeated on every
+# single message, because nothing remembered what had just happened.
+#
+# The free tier meters per model, so a 429 on one says nothing about the
+# others -- which is exactly why skipping it and moving on is correct rather
+# than backing off globally.
+_cooldowns: dict[str, float] = {}
+
+# Fallback when the API does not tell us how long to wait.
+DEFAULT_COOLDOWN_S = 45.0
+
+
+def note_rate_limited(model: str, exc: Exception) -> None:
+    """Record that a model is out of quota, and for how long.
+
+    The API supplies a retry delay in the error body; using it rather than a
+    fixed guess means quota that frees up in eight seconds is not written off
+    for a minute.
+    """
+    import re
+    seconds = DEFAULT_COOLDOWN_S
+    match = re.search(r"retry in ([\d.]+)s", str(exc), re.IGNORECASE)
+    if match:
+        try:
+            seconds = min(300.0, float(match.group(1)) + 1.0)
+        except ValueError:
+            pass
+    _cooldowns[model] = time.time() + seconds
+
+
+def is_cooling_down(model: str) -> bool:
+    expiry = _cooldowns.get(model)
+    if expiry is None:
+        return False
+    if time.time() >= expiry:
+        del _cooldowns[model]
+        return False
+    return True
+
+
+def cooldown_status() -> dict[str, float]:
+    """Remaining cooldown per model, for the health endpoint."""
+    now = time.time()
+    return {
+        m: round(expiry - now, 1)
+        for m, expiry in _cooldowns.items() if expiry > now
+    }
+
+
 def model_candidates(preferred: str | None = None) -> list[str]:
-    """The ordered list of models to try for one request."""
+    """The ordered list of models to try for one request.
+
+    Models still cooling down are moved to the back rather than dropped: if
+    every model is rate limited we must still attempt something, and the
+    freshest cooldown is the likeliest to have expired.
+    """
     first = preferred or DEFAULT_MODEL
     chain = [first] + [m for m in MODEL_FALLBACK_CHAIN if m != first]
-    return chain
+    ready = [m for m in chain if not is_cooling_down(m)]
+    cooling = [m for m in chain if is_cooling_down(m)]
+    return ready + cooling
 
 
 def is_retryable(exc: Exception) -> bool:

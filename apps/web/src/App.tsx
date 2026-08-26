@@ -628,6 +628,22 @@ export default function App() {
                 </div>
               ) : (
                 <div className="animate-in">
+                  {/* Before any server event arrives there is nothing to
+                      report, and on a rate-limited or slow model that gap ran
+                      to ten seconds of blank screen. An immediate indicator
+                      is not decoration: it is the difference between "this is
+                      working" and "this is broken", and the farmer decides
+                      which within about two seconds. */}
+                  {busy && i === messages.length - 1
+                    && m.tools.length === 0 && !m.text && !m.error && (
+                    <div className="flex items-center gap-2 text-[14px]"
+                         style={{ color: 'var(--text-muted)' }}>
+                      <span className="inline-block w-2 h-2 rounded-full animate-pulse"
+                            style={{ background: 'var(--accent)' }} />
+                      <span>Thinking about your field…</span>
+                    </div>
+                  )}
+
                   {/* Progress strip: names the data source being consulted. */}
                   {m.tools.length > 0 && !m.text && (
                     <div className="space-y-1 mb-2">

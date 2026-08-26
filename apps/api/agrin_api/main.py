@@ -128,6 +128,10 @@ async def health() -> dict[str, Any]:
             "mode": "vertex_ai" if use_vertex else "ai_studio",
             "model": llm.DEFAULT_MODEL,
             "vision_model": llm.VISION_MODEL,
+            # Models currently rate limited, and for how many more seconds.
+            # The commonest cause of "why is it slow" is an exhausted free
+            # tier, and that should be visible without reading logs.
+            "rate_limited": llm.cooldown_status(),
             "project": os.environ.get("GOOGLE_CLOUD_PROJECT") if use_vertex else None,
         },
         "data_sources": {
