@@ -212,7 +212,9 @@ async def synthesise(
     )
 
     last_error: Exception | None = None
-    for model in TTS_MODELS:
+    ordered = [m for m in TTS_MODELS if not llm.is_cooling_down(m)] + \
+              [m for m in TTS_MODELS if llm.is_cooling_down(m)]
+    for model in ordered:
         try:
             response = await client.aio.models.generate_content(
                 model=model, contents=instruction, config=config
@@ -231,6 +233,8 @@ async def synthesise(
             last_error = SpeechError("Model returned no audio")
         except Exception as exc:  # noqa: BLE001
             last_error = exc
+            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
+                llm.note_rate_limited(model, exc)
             if llm.is_retryable(exc):
                 continue
             break

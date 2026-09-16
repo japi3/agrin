@@ -90,6 +90,15 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "type": "string",
                     "description": "Anything else lasting and worth remembering.",
                 },
+                "field_is_at_named_place": {
+                    "type": "boolean",
+                    "description": (
+                        "True when the farmer says their field is at the place "
+                        "just looked up with find_place, and it differs from the "
+                        "saved field. Moves the field there. Coordinates come "
+                        "from the lookup automatically."
+                    ),
+                },
             },
             "required": [],
         },

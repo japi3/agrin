@@ -211,11 +211,38 @@ def set_language(farmer_id: str, language: str) -> None:
         )
 
 
+# Two field pins closer than this are the same field.
+SAME_FIELD_KM = 1.0
+
+
+def _km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    import math
+    dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1))
+         * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2)
+    return 2 * 6371.0 * math.asin(math.sqrt(a))
+
+
 def add_field(
     farmer_id: str, latitude: float, longitude: float,
     name: str | None = None, area_hectares: float | None = None,
     boundary: dict | None = None,
 ) -> str:
+    """Return the farmer's field at this spot, creating it only if new.
+
+    Reuses an existing field within a kilometre instead of inserting another.
+    Before this, pressing "Set field", sending a message with coordinates and
+    reloading the page each created a separate field at the same spot: one
+    real farmer ended up with four identical fields, their details split
+    across two of them, and the panel showing an empty one.
+    """
+    for existing in list_fields(farmer_id):
+        if _km(latitude, longitude, existing["latitude"], existing["longitude"]) <= SAME_FIELD_KM:
+            if name and not existing.get("name"):
+                update_field(existing["id"], name=name)
+            if area_hectares and not existing.get("area_hectares"):
+                update_field(existing["id"], area_hectares=area_hectares)
+            return existing["id"]
     fid = _uid()
     with connect() as conn:
         conn.execute(
@@ -412,9 +439,35 @@ def list_field_notes(field_id: str) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def move_field(field_id: str, latitude: float, longitude: float,
+               name: str | None = None) -> None:
+    """Move a field to where the farmer says it actually is."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE field SET latitude = ?, longitude = ?, name = COALESCE(?, name) "
+            "WHERE id = ?", (latitude, longitude, name, field_id))
+
+
 def log_irrigation(field_id: str, applied_on: str, hours_pumped: float | None = None,
                    depth_mm: float | None = None, method: str | None = None,
                    note: str | None = None) -> str:
+    """Record an irrigation, once per field per day.
+
+    The same message is often re-sent or restated, and each repetition was
+    logging the watering again -- two "12 September" entries for one event.
+    A second report for the same day updates the first instead.
+    """
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT id FROM irrigation_log WHERE field_id = ? AND applied_on = ?",
+            (field_id, applied_on)).fetchone()
+        if row:
+            conn.execute(
+                "UPDATE irrigation_log SET hours_pumped = COALESCE(?, hours_pumped), "
+                "depth_mm = COALESCE(?, depth_mm), method = COALESCE(?, method), "
+                "note = COALESCE(?, note) WHERE id = ?",
+                (hours_pumped, depth_mm, method, note, row["id"]))
+            return row["id"]
     iid = _uid()
     with connect() as conn:
         conn.execute(

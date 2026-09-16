@@ -1130,6 +1130,8 @@ async def remember_about_my_farm(
     soil_observation: str | None = None,
     water_source: str | None = None,
     general_note: str | None = None,
+    field_is_at_named_place: bool = False,
+    named_place: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Record durable facts a farmer states about their own land.
 
@@ -1160,6 +1162,18 @@ async def remember_about_my_farm(
         }
 
     recorded: list[str] = []
+    moved_to: dict[str, Any] | None = None
+
+    # The farmer said where the field is; that beats wherever the phone was.
+    # Coordinates are injected by the orchestrator from the place lookup.
+    if field_is_at_named_place:
+        if not named_place:
+            return {"ok": False, "abstain_reason":
+                    "Look the place up with find_place first, then move the field."}
+        storage.move_field(field_id, named_place["latitude"], named_place["longitude"],
+                           name=named_place.get("label"))
+        moved_to = named_place
+        recorded.append(f"field is near {named_place.get('label') or 'the named place'}")
 
     # Acreage. Farmers in India speak in acres, bighas and kanals; the
     # database stores hectares because every agronomic model does.
@@ -1254,6 +1268,7 @@ async def remember_about_my_farm(
     return {
         "ok": True,
         "recorded": recorded,
+        "moved_to": moved_to,
         # The model is told not to make a performance of this. Confirming
         # every stored fact aloud turns a conversation into a form.
         "guidance": (

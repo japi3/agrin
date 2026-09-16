@@ -86,6 +86,18 @@ MODEL_FALLBACK_CHAIN = [
 REQUEST_TIMEOUT_MS = int(os.environ.get("AGRIN_LLM_TIMEOUT_MS", "45000"))
 STREAM_TIMEOUT_MS = int(os.environ.get("AGRIN_LLM_STREAM_TIMEOUT_MS", "25000"))
 
+# The SDK retries failed requests on its own, with exponential backoff,
+# before an error ever reaches this code. Measured: a rate-limited speech
+# request took 34.8 seconds to come back, against 3.4 for the same request
+# with quota available -- nearly all of it spent in hidden SDK backoff. Chat
+# requests paid the same hidden delay, and because the 429 surfaced so late
+# the fallback chain and the cooldown tracking could not react to it.
+#
+# One attempt at the SDK level; this module decides what happens next, which
+# is usually trying a different model immediately rather than waiting on the
+# exhausted one.
+NO_SDK_RETRY = types.HttpRetryOptions(attempts=1)
+
 _RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 
 # A 404 means the model does not exist for this key -- usually a retired
@@ -230,7 +242,7 @@ def build_client() -> genai.Client:
             )
         return genai.Client(
             vertexai=True, project=project, location=location,
-            http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS),
+            http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS, retry_options=NO_SDK_RETRY),
         )
 
     api_key = (
@@ -247,7 +259,7 @@ def build_client() -> genai.Client:
         )
     return genai.Client(
         api_key=api_key,
-        http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS),
+        http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS, retry_options=NO_SDK_RETRY),
     )
 
 
@@ -341,7 +353,7 @@ def build_config(
         # timeout, so it bounds the silence between tokens rather than the
         # length of the answer: a genuinely long reply keeps resetting it,
         # and a stalled one fails in twenty-five seconds instead of ninety.
-        kwargs["http_options"] = types.HttpOptions(timeout=STREAM_TIMEOUT_MS)
+        kwargs["http_options"] = types.HttpOptions(timeout=STREAM_TIMEOUT_MS, retry_options=NO_SDK_RETRY)
 
     if tool_definitions:
         kwargs["tools"] = build_tools(tool_definitions)

@@ -288,6 +288,7 @@ def next_irrigation_advice(
     projected_depletion = depletion
     days_until_stress: int | None = None
     forecast_rain_total = 0.0
+    forecast_rain_7d = 0.0
 
     for offset, w in enumerate(forecast, start=1):
         das = (w.day - sowing_date).days
@@ -306,6 +307,8 @@ def next_irrigation_advice(
         runoff = curve_number_runoff(w.rain_mm)
         effective_rain = w.rain_mm - runoff
         forecast_rain_total += effective_rain
+        if offset <= 7:
+            forecast_rain_7d += effective_rain
 
         projected_depletion = max(0.0, projected_depletion - effective_rain + etc)
         if projected_depletion >= raw and days_until_stress is None:
@@ -332,7 +335,13 @@ def next_irrigation_advice(
         "soil_moisture_percent": round(today.soil_moisture_percent, 1),
         "net_depth_mm": round(net_depth, 1),
         "gross_depth_mm": round(gross_depth, 1),
+        # The projection runs over the whole forecast (up to two weeks), but
+        # people read "rain expected" as this week. Labelling the two-week
+        # total as seven days showed 9.7 mm beside a weather card that said
+        # 2.5 mm for the same week.
         "forecast_effective_rain_mm": round(forecast_rain_total, 1),
+        "forecast_effective_rain_7d_mm": round(forecast_rain_7d, 1),
+        "forecast_days": len(forecast),
         "growth_stage": today.stage.value,
         "kc": round(today.kc, 2),
         "crop": crop.key,

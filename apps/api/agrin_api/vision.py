@@ -214,7 +214,7 @@ Prefer non-chemical action first where it is genuinely effective: roguing
 infected plants, improving drainage, stopping nitrogen, widening spacing,
 removing crop debris.
 
-Write farmer_summary in {language_name}, in short plain sentences, leading
+Write farmer_summary, why, farmer_check, immediate_actions and image_problem in {language_name}, in its native script, in short plain sentences, leading
 with what to do today. It will be read aloud, so use no markdown, no bullet
 characters and no technical vocabulary the farmer would not use.
 """

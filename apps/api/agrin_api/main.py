@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from . import storage
 from .orchestrator import stream_turn
 from .prompts import OPENING_SUGGESTIONS, SUPPORTED_LANGUAGES, ASSISTANT_NAMES
+from .i18n import translate_strings
 from .speech import synthesise, transcribe
 from .vision import diagnose_crop_photo
 
@@ -523,6 +524,17 @@ async def diagnose(
 # --------------------------------------------------------------------------
 # Speech
 # --------------------------------------------------------------------------
+
+class UiStringsRequest(BaseModel):
+    language: str
+    strings: list[str]
+
+
+@app.post("/api/ui-strings")
+async def ui_strings(req: UiStringsRequest) -> dict[str, Any]:
+    """Interface labels in the farmer's chosen language, generated once and cached."""
+    return await translate_strings(req.language, req.strings)
+
 
 class SpeakRequest(BaseModel):
     text: str

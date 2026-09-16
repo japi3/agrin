@@ -93,11 +93,23 @@ class Event:
         return f"data: {json.dumps({'type': self.type, **self.data}, default=str)}\n\n"
 
 
+def _with_place(fc: Any, args: dict[str, Any], state: "TurnState") -> dict[str, Any]:
+    """Hand the looked-up place to a request to move the field there.
+
+    The model only says *that* the field is at the place the farmer named;
+    the coordinates come from the lookup, never from the model.
+    """
+    if fc.name == "remember_about_my_farm" and args.get("field_is_at_named_place"):
+        args = {**args, "named_place": state.last_place}
+    return args
+
+
 @dataclass
 class TurnState:
     evidence: list[dict[str, Any]] = field(default_factory=list)
     cards: list[dict[str, Any]] = field(default_factory=list)
     tool_calls: int = 0
+    last_place: dict[str, Any] | None = None
     started_at: float = field(default_factory=time.time)
 
 
@@ -184,7 +196,8 @@ def _card_for(name: str, result: dict[str, Any]) -> dict[str, Any] | None:
             "days_until_stress": result.get("days_until_stress"),
             "growth_stage": result.get("growth_stage"),
             "crop_name": result.get("crop_name"),
-            "forecast_effective_rain_mm": result.get("forecast_effective_rain_mm"),
+            "forecast_effective_rain_mm": result.get("forecast_effective_rain_7d_mm",
+                                                     result.get("forecast_effective_rain_mm")),
         }
     if name == "assess_crop_suitability":
         return {
@@ -403,10 +416,21 @@ async def stream_turn(
                 "tool_start", {"name": fc.name, "input": dict(fc.args or {})}
             )
 
-        results = await asyncio.gather(
-            *(_run_tool(fc.name, dict(fc.args or {}), field_id)
-              for fc in function_calls)
+        # Place lookups run before everything else in the round. They decide
+        # which field the farmer means, and a farm-details call running in
+        # parallel would otherwise save to the wrong field or to none.
+        place_calls = [fc for fc in function_calls if fc.name == "find_place"]
+        results_by_id: dict[int, dict[str, Any]] = {}
+        for fc in place_calls:
+            results_by_id[id(fc)] = await _run_tool(fc.name, dict(fc.args or {}), field_id)
+        other_calls = [fc for fc in function_calls if fc.name != "find_place"]
+        other_results = await asyncio.gather(
+            *(_run_tool(fc.name, _with_place(fc, dict(fc.args or {}), state), field_id)
+              for fc in other_calls)
         )
+        for fc, r in zip(other_calls, other_results):
+            results_by_id[id(fc)] = r
+        results = [results_by_id[id(fc)] for fc in function_calls]
         state.tool_calls += len(function_calls)
 
         response_parts: list[types.Part] = []
@@ -422,6 +446,11 @@ async def stream_turn(
                     }
                 )
 
+            if fc.name == "remember_about_my_farm" and result.get("moved_to"):
+                m = result["moved_to"]
+                yield Event("field", {"field_id": field_id, "latitude": m["latitude"],
+                                      "longitude": m["longitude"], "name": m.get("label")})
+
             card = _card_for(fc.name, result)
             if card:
                 state.cards.append(card)
@@ -436,6 +465,39 @@ async def stream_turn(
                     "error": result.get("error"),
                 },
             )
+
+            if fc.name == "find_place" and result.get("ok"):
+                best = result["best_match"]
+                asked_for = str(fc.args.get("query", "")).lower()
+                v = best.get("village")
+                place_label = ", ".join(
+                    x for x in ((v if v and v.lower() in asked_for else None),
+                                best.get("district")) if x) or None
+                state.last_place = {**best, "label": place_label}
+
+                # A field already exists but it is somewhere else -- usually
+                # the phone's GPS, set from wherever the farmer happened to be.
+                # A farmer who says "I'm near Taran Taran" while the phone
+                # reports Patiala was getting Patiala's soil and weather.
+                if field_id is not None:
+                    from . import storage as _storage
+                    current = _storage.get_field(field_id)
+                    if current:
+                        gap = _storage._km(current["latitude"], current["longitude"],
+                                           best["latitude"], best["longitude"])
+                        if gap > 15:
+                            payload = {**payload,
+                                "saved_field_is_elsewhere_km": round(gap),
+                                "note": (
+                                    f"The farmer's saved field is {round(gap)} km from "
+                                    f"this place (it was set from the phone's location). "
+                                    f"If the farmer said their field is here, call "
+                                    f"remember_about_my_farm with "
+                                    f"field_is_at_named_place=true to move it, before "
+                                    f"using any other tool, and pass this place's "
+                                    f"coordinates to the other tools. If it is unclear "
+                                    f"whether they meant their field or just mentioned "
+                                    f"the place, ask them once.")}
 
             # The farmer named their village and we have no field yet: make
             # that place their field, so the facts they give next are saved.

@@ -111,10 +111,13 @@ field in the sun does not want an essay. Offer more if they want it.
 
 ## Language
 
-Reply in whatever language the farmer wrote or spoke in, including mixed
-speech like Hinglish or Portuñol — match how they actually talk, do not
-correct them into formal register. If they switch languages, switch with
-them. Use the crop and practice names used locally: bajra, jowar, rabi,
+When the farmer has chosen a language in the app, always reply in that
+language and in its own script — Gurmukhi for Punjabi, Devanagari for Hindi
+— even if they typed in English or in Roman letters. Choosing Punjabi and
+getting an English answer reads as the button being broken. Only if no
+language was chosen, reply in the language they wrote in, including mixed
+speech like Hinglish — match how they actually talk and do not correct them
+into formal register. Use the crop and practice names used locally: bajra, jowar, rabi,
 kharif, safrinha, mielies. Do not translate a local term into an English one
 they may not recognise.
 
@@ -218,11 +221,16 @@ def build_system_prompt(
         f"explicitly.",
     ]
 
-    if language_hint and language_hint in SUPPORTED_LANGUAGES:
+    # English is the app's default rather than a choice anyone made, so it is
+    # not enforced: a farmer who never opened the picker and types Hinglish
+    # should be answered in Hinglish.
+    if language_hint and language_hint != "en" and language_hint in SUPPORTED_LANGUAGES:
         parts.append(
             f"\n## Language for this conversation\n\n"
-            f"This farmer has selected {SUPPORTED_LANGUAGES[language_hint]}. "
-            f"Open in that language. If they write in another, follow them."
+            f"This farmer has chosen {SUPPORTED_LANGUAGES[language_hint]} in the app. "
+            f"Write every reply in {SUPPORTED_LANGUAGES[language_hint]}, in its native "
+            f"script, even when their message is in English or Roman letters. "
+            f"Numbers may stay as digits. Keep local crop names as farmers say them."
         )
 
     if field_context:
