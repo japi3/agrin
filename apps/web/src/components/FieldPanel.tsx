@@ -73,10 +73,13 @@ const PH_WORD: Record<string, string> = {
 }
 
 export function FieldPanel({
-  fieldId, open, onClose, onAsk,
+  fieldId, open, onClose, onAsk, refreshKey = 0,
 }: {
   fieldId: string | null
   open: boolean
+  // Bumped when a reply finishes, so facts saved during that turn appear
+  // without the farmer reloading the page.
+  refreshKey?: number
   onClose: () => void
   onAsk: (q: string) => void
 }) {
@@ -119,7 +122,7 @@ export function FieldPanel({
       })
       .catch(() => setFailed(true))
       .finally(() => setLoading(false))
-  }, [fieldId, open])
+  }, [fieldId, open, refreshKey])
 
   if (!fieldId) return null
 

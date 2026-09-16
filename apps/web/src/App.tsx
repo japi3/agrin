@@ -87,6 +87,7 @@ export default function App() {
   // gets the blank conversation-first screen.
   const [panelOpen, setPanelOpen] = useState(() => Boolean(session.fieldId))
   const [fieldId, setFieldId] = useState<string | null>(session.fieldId)
+  const [panelRefresh, setPanelRefresh] = useState(0)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -404,6 +405,13 @@ export default function App() {
               setFieldId(ev.field_id)
             }
             break
+          case 'field':
+            // The farmer named their village and it became their field.
+            session.fieldId = ev.field_id
+            setFieldId(ev.field_id)
+            setCoords({ lat: ev.latitude, lon: ev.longitude })
+            setPanelOpen(true)
+            break
           case 'text':
             update((m) => ({ ...m, text: m.text + ev.delta }))
             break
@@ -422,6 +430,7 @@ export default function App() {
             break
           case 'done':
             update((m) => ({ ...m, evidence: ev.evidence || [] }))
+            setPanelRefresh((n) => n + 1)
             break
           case 'error':
             update((m) => ({ ...m, error: ev.message }))
@@ -697,6 +706,7 @@ export default function App() {
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
         onAsk={(q) => { setPanelOpen(false); send(q) }}
+        refreshKey={panelRefresh}
       />
       </div>
 

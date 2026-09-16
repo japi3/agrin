@@ -249,8 +249,16 @@ async def stream_turn(
     season_memory: str | None = None,
     model: str | None = None,
     field_id: str | None = None,
+    create_field: Callable[[float, float, str | None], str] | None = None,
 ) -> AsyncIterator[Event]:
-    """Run one assistant turn, yielding events as they occur."""
+    """Run one assistant turn, yielding events as they occur.
+
+    `create_field` lets a place the farmer *names* become their field. Without
+    it, a farmer who typed "near Taran Taran" instead of pressing the location
+    button had their village looked up and then discarded: no field was ever
+    created, so everything they said next had nowhere to be saved and the
+    farm panel never appeared.
+    """
     state = TurnState()
 
     try:
@@ -428,6 +436,34 @@ async def stream_turn(
                     "error": result.get("error"),
                 },
             )
+
+            # The farmer named their village and we have no field yet: make
+            # that place their field, so the facts they give next are saved.
+            if (
+                fc.name == "find_place" and result.get("ok")
+                and field_id is None and create_field is not None
+                and not result.get("ambiguous")
+            ):
+                best = result["best_match"]
+                # Name the field only with places the farmer actually said.
+                # The geocoder resolves "near Taran Taran" to some village
+                # inside the district, and labelling their farm "Rajoke" when
+                # they never mentioned Rajoke reads as the system getting
+                # their land wrong.
+                asked = str(fc.args.get("query", "")).lower()
+                village = best.get("village")
+                if village and village.lower() not in asked:
+                    village = None
+                label = ", ".join(
+                    x for x in (village, best.get("district")) if x
+                ) or None
+                field_id = create_field(best["latitude"], best["longitude"], label)
+                yield Event("field", {"field_id": field_id,
+                                      "latitude": best["latitude"],
+                                      "longitude": best["longitude"],
+                                      "name": label})
+                payload = {**payload, "field_saved": True,
+                           "note": "This place is now saved as the farmer's field."}
 
             response_parts.append(llm.function_response(fc.name, payload))
 

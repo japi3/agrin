@@ -222,6 +222,11 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
     # If a bare location came in with the message, persist it as a field so
     # the farmer is never asked twice.
     field_id = req.field_id
+    if not field_id:
+        with storage.connect() as conn:
+            row = conn.execute("SELECT field_id FROM conversation WHERE id = ?",
+                               (conversation_id,)).fetchone()
+        field_id = row["field_id"] if row and row["field_id"] else None
     if not field_id and req.latitude is not None and req.longitude is not None:
         field_id = storage.add_field(farmer_id, req.latitude, req.longitude)
 
@@ -247,6 +252,14 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
     field_context = storage.build_field_context(field_id) if field_id else None
     season_memory = storage.build_season_memory(field_id) if field_id else None
 
+    def make_field(lat: float, lon: float, name: str | None) -> str:
+        """Create the farmer's field from a place they named, once per conversation."""
+        new_id = storage.add_field(farmer_id, lat, lon, name=name)
+        with storage.connect() as conn:
+            conn.execute("UPDATE conversation SET field_id = ? WHERE id = ?",
+                         (new_id, conversation_id))
+        return new_id
+
     async def event_source():
         # Tell the client its identifiers up front so a brand-new session can
         # persist them before the first token arrives.
@@ -271,6 +284,7 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
                 field_context=field_context,
                 season_memory=season_memory,
                 field_id=field_id,
+                create_field=make_field,
             ):
                 if event.type == "text":
                     collected_text.append(event.data.get("delta", ""))

@@ -13,6 +13,7 @@ export type StreamEvent =
   | { type: 'tool_start'; name: string; input: Record<string, unknown> }
   | { type: 'tool_result'; name: string; ok: boolean; abstain_reason?: string; error?: string }
   | { type: 'card'; card: string; [k: string]: unknown }
+  | { type: 'field'; field_id: string; latitude: number; longitude: number; name: string | null }
   | { type: 'done'; evidence: EvidenceEntry[]; cards: unknown[]; tool_calls: number; elapsed_ms: number }
   | { type: 'error'; message: string; kind?: string }
 
