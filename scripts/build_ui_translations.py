@@ -57,7 +57,13 @@ def frontend_strings() -> set[str]:
 def server_strings() -> set[str]:
     from agronomy.crops import CROPS, TEXTURE_WATER
     from agronomy.schemes import SCHEMES
+    from agrin_api.prompts import OPENING_SUGGESTIONS
     found = {c.name_en for c in CROPS.values()}
+    # The four questions on the empty screen. Hand-written versions exist for
+    # six languages; every other language was falling back to the English set,
+    # so the first thing on screen -- for someone who may not read English at
+    # all -- was English. Translating them here covers the rest.
+    found |= set(OPENING_SUGGESTIONS["en"])
     found |= {"initial", "development", "mid season", "late season"}
     found |= {t.replace("_", " ") for t in TEXTURE_WATER}
     found |= {"high", "moderate", "low", "severe", "none", "leaf", "stem", "root", "fruit",
@@ -81,18 +87,65 @@ async def main(languages: list[str]) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     targets = [l for l in (languages or SUPPORTED_LANGUAGES) if l != "en"]
 
+    incomplete: list[str] = []
     for lang in targets:
+        path = OUT / f"{lang}.json"
+
+        # Resume rather than restart. A run can stop partway -- the free tier
+        # has a daily ceiling as well as a per-minute one, and the day's
+        # allowance ran out in the middle of Kannada. Re-running should pick
+        # up the languages that are still missing, not spend the next day's
+        # quota retranslating the ones already done.
         table: dict[str, str] = {}
+        if path.exists():
+            try:
+                table = json.loads(path.read_text())
+            except json.JSONDecodeError:
+                table = {}
+        if all(s in table for s in strings):
+            print(f"  {lang}: already complete, skipped", flush=True)
+            continue
+
+        exhausted = False
         for i in range(0, len(strings), BATCH):
-            chunk = strings[i:i + BATCH]
+            chunk = [s for s in strings[i:i + BATCH] if s not in table]
+            if not chunk:
+                continue
             for attempt in range(6):
                 result = await translate_strings(lang, chunk)
                 table.update(result.get("translations", {}))
                 if all(s in table for s in chunk):
                     break
                 await asyncio.sleep(15)   # free tier: wait out the minute window
-        (OUT / f"{lang}.json").write_text(json.dumps(table, ensure_ascii=False, indent=1))
-        print(f"  {lang}: {len(table)}/{len(strings)}", flush=True)
+            else:
+                # Six rounds of nothing is a wall, not congestion. Carrying on
+                # would write an empty file for every remaining language and
+                # report them as finished.
+                exhausted = True
+                break
+
+        # Written even when short: the app falls back to translating whatever
+        # the file does not cover, so a partial table is a head start rather
+        # than a broken language. What must not happen is calling it done.
+        path.write_text(json.dumps(table, ensure_ascii=False, indent=1))
+        done = sum(1 for s in strings if s in table)
+        print(f"  {lang}: {done}/{len(strings)}"
+              f"{'  INCOMPLETE' if done < len(strings) else ''}", flush=True)
+        if done < len(strings):
+            incomplete.append(lang)
+        if exhausted:
+            remaining = targets[targets.index(lang) + 1:]
+            print(f"\nStopped: the API is refusing further requests. "
+                  f"{len(remaining)} language(s) not started: {' '.join(remaining)}",
+                  file=sys.stderr)
+            print("The free tier's daily allowance resets at midnight "
+                  "Pacific time. Re-run this command then -- finished "
+                  "languages are skipped.", file=sys.stderr)
+            break
+
+    if incomplete:
+        print(f"\nIncomplete: {' '.join(incomplete)}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

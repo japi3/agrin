@@ -709,10 +709,15 @@ export default function App() {
               </p>
               <div className="flex flex-col gap-2 w-full max-w-md">
                 {(current?.suggestions || []).map((s, i) => (
-                  <button key={i} onClick={() => send(s)}
+                  // tr() on a hand-written localised suggestion finds no entry
+                  // and returns it unchanged; on the English fallback set it
+                  // finds the shipped translation. So the six languages with
+                  // hand-written questions keep them, and the rest stop
+                  // showing English.
+                  <button key={i} onClick={() => send(tr(s))}
                           className="text-left px-4 py-3 rounded-xl border text-[15px] transition-colors"
                           style={{ borderColor: 'var(--border)', background: 'var(--bg-raised)' }}>
-                    {s}
+                    {tr(s)}
                   </button>
                 ))}
               </div>
