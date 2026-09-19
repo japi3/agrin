@@ -15,6 +15,7 @@
  */
 
 import { useState } from 'react'
+import { useT, uiLocale } from '../lib/i18n'
 
 /* ------------------------------------------------------------------ */
 /* Pictograms                                                          */
@@ -129,33 +130,35 @@ const VERDICT_COPY: Record<string, { head: string; tone: 'good' | 'warn' | 'aler
 }
 
 export function IrrigationCard({ d }: { d: any }) {
+  const t = useT()
   const copy = VERDICT_COPY[d.verdict] ?? VERDICT_COPY.insufficient_data
   // Millimetres mean nothing to most farmers. An inch of water and an hour of
   // pumping do. Both are shown; the familiar unit leads.
   const inches = d.gross_depth_mm ? (d.gross_depth_mm / 25.4).toFixed(1) : null
 
   const steps = d.verdict === 'wait_for_rain' || d.verdict === 'no_irrigation_needed'
-    ? [{ kind: 'rain', label: 'Rain coming' }, { kind: 'no-water', label: 'No pump' }]
+    ? [{ kind: 'rain', label: t('Rain coming') }, { kind: 'no-water', label: t('No pump') }]
     : [
-        { kind: 'dry-soil', label: 'Soil drying' },
-        { kind: 'calendar', label: d.days_until_stress ? `${d.days_until_stress} days` : 'Now' },
-        { kind: 'water', label: 'Irrigate' },
-        { kind: 'sun', label: inches ? `${inches} inch` : `${d.gross_depth_mm} mm` },
+        { kind: 'dry-soil', label: t('Soil drying') },
+        { kind: 'calendar', label: !d.days_until_stress || d.days_until_stress <= 0 ? t('Now')
+            : d.days_until_stress === 1 ? t('1 day') : t('{n} days', { n: d.days_until_stress }) },
+        { kind: 'water', label: t('Irrigate') },
+        { kind: 'sun', label: inches ? t('{n} inch', { n: inches }) : `${d.gross_depth_mm} mm` },
       ]
 
   return (
     <Card tone={copy.tone}>
-      <Headline>{copy.head}</Headline>
+      <Headline>{t(copy.head)}</Headline>
       <PictoStrip steps={steps} />
       <div className="mt-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-        {d.crop_name && <Detail label="Crop" value={`${d.crop_name} · ${String(d.growth_stage || '').replace('_', ' ')}`} />}
-        <Detail label="Water in the soil now" value={`${d.soil_moisture_percent}%`} />
+        {d.crop_name && <Detail label={t('Crop')} value={`${t(d.crop_name)} · ${t(String(d.growth_stage || '').replace('_', ' '))}`} />}
+        <Detail label={t('Water in the soil now')} value={`${d.soil_moisture_percent}%`} />
         {d.gross_depth_mm > 0 && (
-          <Detail label="Water to apply"
-                  value={<>{inches} inch <span style={{ color: 'var(--text-muted)' }}>({d.gross_depth_mm} mm)</span></>} />
+          <Detail label={t('Water to apply')}
+                  value={<>{t('{n} inch', { n: inches ?? '' })} <span style={{ color: 'var(--text-muted)' }}>({d.gross_depth_mm} mm)</span></>} />
         )}
         {d.forecast_effective_rain_mm > 0 && (
-          <Detail label="Rain expected (7 days)" value={`${d.forecast_effective_rain_mm} mm`} />
+          <Detail label={t('Rain expected (7 days)')} value={`${d.forecast_effective_rain_mm} mm`} />
         )}
       </div>
     </Card>
@@ -167,17 +170,18 @@ export function IrrigationCard({ d }: { d: any }) {
 /* ------------------------------------------------------------------ */
 
 export function WeatherCard({ d }: { d: any }) {
+  const t = useT()
   const days: any[] = d.days || []
   const maxRain = Math.max(1, ...days.map((x) => x.rain_mm || 0))
   const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { weekday: 'short' })
+    new Date(iso).toLocaleDateString(uiLocale(), { weekday: 'short' })
 
   return (
     <Card tone={d.rain_next_7_days_mm > 10 ? 'good' : 'neutral'}>
       <Headline>
         {d.rain_next_7_days_mm > 0
-          ? `${d.rain_next_7_days_mm} mm rain expected this week`
-          : 'No rain expected this week'}
+          ? t('{n} mm rain expected this week', { n: d.rain_next_7_days_mm })
+          : t('No rain expected this week')}
       </Headline>
       <div className="flex gap-1 items-end mt-3 overflow-x-auto pb-1">
         {days.map((day, i) => (
@@ -214,33 +218,33 @@ const PH_WORD: Record<string, string> = {
 }
 
 export function SoilCard({ d }: { d: any }) {
-  const t = d.texture || {}, c = d.chemistry || {}, w = d.water_holding || {}
+  const t = useT()
+  const tex = d.texture || {}, c = d.chemistry || {}, w = d.water_holding || {}
   return (
     <Card tone={d.confidence === 'low' ? 'warn' : 'neutral'}>
-      <Headline>Your soil is {String(t.usda_class || '').replace('_', ' ')}</Headline>
+      <Headline>{t('Your soil is {x}', { x: t(String(tex.usda_class || '').replace('_', ' ')) })}</Headline>
       {c.ph != null && (
         <div className="text-[15px] mb-2" style={{ color: 'var(--text-muted)' }}>
-          pH {c.ph} — {PH_WORD[c.ph_class] || c.ph_class}
+          pH {c.ph} — {t(PH_WORD[c.ph_class] || c.ph_class)}
         </div>
       )}
       {/* Texture bar: sand / silt / clay proportions, read at a glance. */}
       <div className="flex h-3 rounded-full overflow-hidden my-3">
-        <div style={{ width: `${t.sand_percent}%`, background: '#d0bc9c' }} title={`Sand ${t.sand_percent}%`} />
-        <div style={{ width: `${t.silt_percent}%`, background: '#a89070' }} title={`Silt ${t.silt_percent}%`} />
-        <div style={{ width: `${t.clay_percent}%`, background: '#7a6244' }} title={`Clay ${t.clay_percent}%`} />
+        <div style={{ width: `${tex.sand_percent}%`, background: '#d0bc9c' }} title={`Sand ${tex.sand_percent}%`} />
+        <div style={{ width: `${tex.silt_percent}%`, background: '#a89070' }} title={`Silt ${tex.silt_percent}%`} />
+        <div style={{ width: `${tex.clay_percent}%`, background: '#7a6244' }} title={`Clay ${tex.clay_percent}%`} />
       </div>
       <div className="flex justify-between text-[12px] mb-3" style={{ color: 'var(--text-muted)' }}>
-        <span>Sand {t.sand_percent}%</span><span>Silt {t.silt_percent}%</span><span>Clay {t.clay_percent}%</span>
+        <span>{t('Sand')} {tex.sand_percent}%</span><span>{t('Silt')} {tex.silt_percent}%</span><span>{t('Clay')} {tex.clay_percent}%</span>
       </div>
-      <Detail label="Water the soil can hold" value={`${w.available_water_mm_per_m} mm per metre`} />
+      <Detail label={t('Water the soil can hold')} value={t('{n} mm per metre', { n: w.available_water_mm_per_m })} />
       {c.organic_carbon_g_per_kg != null && (
-        <Detail label="Organic carbon" value={`${c.organic_carbon_g_per_kg} g/kg`} />
+        <Detail label={t('Organic carbon')} value={`${c.organic_carbon_g_per_kg} g/kg`} />
       )}
       {d.confidence === 'low' && (
         <div className="mt-3 text-[13px] rounded-lg p-2"
              style={{ background: 'var(--bg-sunken)', color: 'var(--text-muted)' }}>
-          The soil map is uncertain here. A soil test from your nearest KVK
-          would give you a firmer answer.
+          {t('The soil map is uncertain here. A soil test from your nearest KVK would give you a firmer answer.')}
         </div>
       )}
     </Card>
@@ -252,22 +256,23 @@ export function SoilCard({ d }: { d: any }) {
 /* ------------------------------------------------------------------ */
 
 export function SuitabilityCard({ d }: { d: any }) {
+  const t = useT()
   const list: any[] = d.assessments || []
   return (
     <Card>
-      <Headline>Crops that suit your land</Headline>
+      <Headline>{t('Crops that suit your land')}</Headline>
       <div className="mt-2 space-y-2">
         {list.map((a, i) => (
           <div key={i} className="rounded-xl p-3" style={{ background: 'var(--bg-sunken)' }}>
             <div className="flex items-center justify-between gap-3">
-              <span className="font-medium">{a.name}</span>
+              <span className="font-medium">{t(a.name)}</span>
               <span className="text-[13px] px-2 py-0.5 rounded-full"
                     style={{
                       background: a.rainfed_viable ? 'var(--accent-soft)' : 'transparent',
                       color: a.rainfed_viable ? 'var(--accent)' : 'var(--text-muted)',
                       border: a.rainfed_viable ? 'none' : '1px solid var(--border)',
                     }}>
-                {a.rainfed_viable ? 'grows on rain alone' : 'needs irrigation'}
+                {a.rainfed_viable ? t('grows on rain alone') : t('needs irrigation')}
               </span>
             </div>
             {a.constraints?.[0] && (
@@ -287,6 +292,7 @@ export function SuitabilityCard({ d }: { d: any }) {
 /* ------------------------------------------------------------------ */
 
 export function CarbonCard({ d }: { d: any }) {
+  const t = useT()
   const scenarios = d.scenarios || {}
   const keys = Object.keys(scenarios)
   const values = keys.map((k) => scenarios[k].final_soc_t_per_ha)
@@ -295,10 +301,9 @@ export function CarbonCard({ d }: { d: any }) {
 
   return (
     <Card tone="good">
-      <Headline>What different practices do to your soil</Headline>
+      <Headline>{t('What different practices do to your soil')}</Headline>
       <div className="text-[14px] mb-3" style={{ color: 'var(--text-muted)' }}>
-        Over {d.years_projected} years, starting from {d.initial_soc_t_per_ha} tonnes
-        of carbon per hectare
+        {t('Over {y} years, starting from {c} tonnes of carbon per hectare', { y: d.years_projected, c: d.initial_soc_t_per_ha })}
       </div>
       <div className="space-y-2">
         {keys.map((k) => {
@@ -308,7 +313,7 @@ export function CarbonCard({ d }: { d: any }) {
           return (
             <div key={k}>
               <div className="flex justify-between text-[14px] mb-1">
-                <span style={{ fontWeight: best ? 600 : 400 }}>{s.label}</span>
+                <span style={{ fontWeight: best ? 600 : 400 }}>{t(s.label)}</span>
                 <span style={{ color: s.change_t_per_ha >= 0 ? 'var(--accent)' : '#c2452d' }}>
                   {s.change_t_per_ha >= 0 ? '+' : ''}{s.change_t_per_ha} t C/ha
                 </span>
@@ -325,8 +330,7 @@ export function CarbonCard({ d }: { d: any }) {
       {d.gain_over_burning_t_co2e_per_ha != null && (
         <div className="mt-3 text-[13px] rounded-lg p-2"
              style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-          Best practice holds {d.gain_over_burning_t_co2e_per_ha} tonnes more
-          CO₂ per hectare than burning the residue.
+          {t('Best practice holds {n} tonnes more CO₂ per hectare than burning the residue.', { n: d.gain_over_burning_t_co2e_per_ha })}
         </div>
       )}
     </Card>
@@ -347,6 +351,7 @@ export function CarbonCard({ d }: { d: any }) {
  * because the pin fell on a village, that is disclosed rather than hidden.
  */
 export function EvidenceLedger({ entries }: { entries: any[] }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   if (!entries?.length) return null
 
@@ -355,7 +360,7 @@ export function EvidenceLedger({ entries }: { entries: any[] }) {
       <button onClick={() => setOpen(!open)}
               className="text-[13px] underline underline-offset-2 px-0"
               style={{ color: 'var(--text-muted)', minHeight: 0 }}>
-        {open ? 'Hide' : 'Where did this come from?'}
+        {open ? t('Hide') : t('Where did this come from?')}
       </button>
       {open && (
         <div className="mt-2 rounded-xl p-3 text-[13px] space-y-3"
@@ -379,7 +384,7 @@ export function EvidenceLedger({ entries }: { entries: any[] }) {
                 )}
                 {ev.assumptions?.length > 0 && (
                   <details className="mt-1">
-                    <summary className="cursor-pointer">Assumptions made</summary>
+                    <summary className="cursor-pointer">{t('Assumptions made')}</summary>
                     <ul className="list-disc ml-4 mt-1">
                       {ev.assumptions.map((a: string, j: number) => <li key={j}>{a}</li>)}
                     </ul>
@@ -413,13 +418,14 @@ const URGENCY_COPY: Record<string, { text: string; tone: Tone }> = {
 }
 
 export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
+  const t = useT()
   // An unusable photo is not a failure to hide -- it is the most useful
   // thing we can say, because it tells the farmer exactly how to get an
   // answer on the next try.
   if (!d.image_usable) {
     return (
       <Card tone="warn">
-        <Headline>I can't read this photo</Headline>
+        <Headline>{t("I can't read this photo")}</Headline>
         <div className="text-[16px] mt-1">{d.image_problem}</div>
         {imageUrl && (
           <img src={imageUrl} alt="" className="mt-3 rounded-xl max-h-40 object-cover" />
@@ -439,10 +445,10 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
                className="w-20 h-20 rounded-xl object-cover shrink-0" />
         )}
         <div className="min-w-0">
-          <Headline>{top?.name || 'Unclear'}</Headline>
+          <Headline>{top?.name || t('Unclear')}</Headline>
           <div className="text-[14px]" style={{ color: 'var(--text-muted)' }}>
-            {urgency.text}
-            {d.affected_part ? ` · affects the ${d.affected_part}` : ''}
+            {t(urgency.text)}
+            {d.affected_part ? ` · ${t(d.affected_part)}` : ''}
           </div>
         </div>
       </div>
@@ -458,7 +464,7 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
               <span className="text-[12px] px-2 py-0.5 rounded-full shrink-0"
                     style={{ color: CONF_TONE[c.confidence] || 'var(--text-muted)',
                              border: `1px solid ${CONF_TONE[c.confidence] || 'var(--border)'}` }}>
-                {c.confidence}
+                {t(c.confidence)}
               </span>
             </div>
             {c.why && (
@@ -471,12 +477,12 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
             {c.farmer_check && (
               <div className="text-[14px] mt-2 rounded-lg p-2"
                    style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-                Check for yourself: {c.farmer_check}
+                {t('Check for yourself:')} {c.farmer_check}
               </div>
             )}
             {c.weather_consistent === false && (
               <div className="text-[12px] mt-1" style={{ color: '#c2703d' }}>
-                Recent weather was not favourable for this — less likely.
+                {t('Recent weather was not favourable for this — less likely.')}
               </div>
             )}
           </div>
@@ -485,7 +491,7 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
 
       {d.immediate_actions?.length > 0 && (
         <div className="mt-3">
-          <div className="font-medium text-[15px] mb-1">Do this now</div>
+          <div className="font-medium text-[15px] mb-1">{t('Do this now')}</div>
           <ul className="space-y-1">
             {d.immediate_actions.map((a: string, i: number) => (
               <li key={i} className="text-[15px] flex gap-2">
@@ -502,17 +508,15 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
       {d.active_ingredient_class && (
         <div className="mt-3 text-[14px] rounded-lg p-3"
              style={{ background: 'var(--bg-sunken)' }}>
-          <span className="font-medium">If you spray: </span>
-          {d.active_ingredient_class}. Follow the dose on the label — we do
-          not advise quantities. Confirm with your KVK or extension officer.
+          <span className="font-medium">{t('If you spray:')} </span>
+          {d.active_ingredient_class}. {t('Follow the dose on the label — we do not advise quantities. Confirm with your KVK or extension officer.')}
         </div>
       )}
 
       {d.refer_to_expert && (
         <div className="mt-3 text-[14px] rounded-lg p-3"
              style={{ background: '#fdf0ea', color: '#c2452d' }}>
-          This needs a real look. Please show it to your nearest KVK or
-          agriculture extension officer.
+          {t('This needs a real look. Please show it to your nearest KVK or agriculture extension officer.')}
         </div>
       )}
 
@@ -522,7 +526,7 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
         <details className="mt-3">
           <summary className="text-[13px] cursor-pointer"
                    style={{ color: 'var(--text-muted)' }}>
-            Disease pressure at your field over the last 3 weeks
+            {t('Disease pressure at your field over the last 3 weeks')}
           </summary>
           <div className="mt-2 space-y-1">
             {d.infection_pressure.map((p: any, i: number) => (
@@ -532,7 +536,7 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
                   color: ['severe', 'high'].includes(p.risk_level)
                     ? '#c2452d' : 'var(--text-muted)',
                 }}>
-                  {p.risk_level} · {p.favourable_days}/{p.days_assessed} days
+                  {t(p.risk_level)} · {t('{a} of {b} days', { a: p.favourable_days, b: p.days_assessed })}
                 </span>
               </div>
             ))}
@@ -549,6 +553,7 @@ export function DiagnosisCard({ d, imageUrl }: { d: any; imageUrl?: string }) {
 /* ------------------------------------------------------------------ */
 
 export function MandiCard({ d }: { d: any }) {
+  const t = useT()
   const median = d.median_rs_per_quintal
   const best = d.best_market
   const local = d.local_market
@@ -559,30 +564,27 @@ export function MandiCard({ d }: { d: any }) {
       {/* Rupees per quintal, always stated. A farmer hearing a per-kg figure
           when it is per-quintal is out by a hundredfold. */}
       <Headline>
-        ₹{median?.toLocaleString('en-IN')} per quintal
+        {t('₹{n} per quintal', { n: median?.toLocaleString('en-IN') ?? '' })}
       </Headline>
       <div className="text-[14px]" style={{ color: 'var(--text-muted)' }}>
-        {d.crop_name} · {d.markets_reporting} market
-        {d.markets_reporting === 1 ? '' : 's'} reporting
+        {t(d.crop_name)} · {t('{n} markets reporting', { n: d.markets_reporting })}
         {d.as_of ? ` · ${d.as_of}` : ''}
       </div>
 
       {national && (
         <div className="mt-2 text-[14px] rounded-lg p-2"
              style={{ background: 'var(--bg-sunken)', color: 'var(--text-muted)' }}>
-          No mandi in your state traded this crop today — it is likely out of
-          season locally. These are rates from elsewhere in India, a guide to
-          what to expect rather than what you would be paid today.
+          {t('No mandi in your state traded this crop today — it is likely out of season locally. These are rates from elsewhere in India, a guide to what to expect rather than what you would be paid today.')}
         </div>
       )}
 
       <div className="mt-3 space-y-1">
         {local && (
-          <Detail label={`Your district (${local.market})`}
+          <Detail label={`${t('Your district')} (${local.market})`}
                   value={`₹${local.modal_rs_per_quintal.toLocaleString('en-IN')}`} />
         )}
         {best && (
-          <Detail label={`Best rate (${best.market}, ${best.district})`}
+          <Detail label={`${t('Best rate')} (${best.market}, ${best.district})`}
                   value={`₹${best.modal_rs_per_quintal.toLocaleString('en-IN')}`} />
         )}
       </div>
@@ -592,9 +594,7 @@ export function MandiCard({ d }: { d: any }) {
       {d.premium_per_tonne_rs > 0 && (
         <div className="mt-3 text-[14px] rounded-lg p-3"
              style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-          {best.market} is paying about ₹
-          {d.premium_per_tonne_rs.toLocaleString('en-IN')} more per tonne than
-          your local mandi. Worth it only if transport costs less than that.
+          {t('{m} is paying about ₹{n} more per tonne than your local mandi. Worth it only if transport costs less than that.', { m: best.market, n: d.premium_per_tonne_rs.toLocaleString('en-IN') })}
         </div>
       )}
 
@@ -602,7 +602,7 @@ export function MandiCard({ d }: { d: any }) {
         <details className="mt-3">
           <summary className="text-[13px] cursor-pointer"
                    style={{ color: 'var(--text-muted)' }}>
-            All reporting markets
+            {t('All reporting markets')}
           </summary>
           <div className="mt-2 space-y-1">
             {d.top_markets.map((m: any, i: number) => (
@@ -638,30 +638,30 @@ export function MandiCard({ d }: { d: any }) {
  * it is the only part that is authoritative.
  */
 export function SchemesCard({ d }: { d: any }) {
+  const t = useT()
   const schemes: any[] = d.schemes || []
   if (!schemes.length) return null
 
   return (
     <Card tone="neutral">
-      <Headline>Schemes worth checking</Headline>
+      <Headline>{t('Schemes worth checking')}</Headline>
       <div className="text-[13px] mb-3" style={{ color: 'var(--text-muted)' }}>
-        Whether you qualify is decided by your agriculture department, not by
-        me. Use the questions below to see if it is worth the trip.
+        {t('Whether you qualify is decided by your agriculture department, not by me. Use the questions below to see if it is worth the trip.')}
       </div>
 
       <div className="space-y-3">
         {schemes.map((s, i) => (
           <div key={i} className="rounded-xl p-3" style={{ background: 'var(--bg-sunken)' }}>
             <div className="font-medium text-[16px]">{s.short_name}</div>
-            <div className="text-[14px] mt-0.5">{s.what_it_does}</div>
+            <div className="text-[14px] mt-0.5">{t(s.what_it_does)}</div>
 
             {s.check_yourself?.length > 0 && (
               <div className="mt-2">
-                <div className="text-[13px] font-medium mb-1">Check yourself</div>
+                <div className="text-[13px] font-medium mb-1">{t('Check yourself')}</div>
                 <ul className="space-y-0.5">
                   {s.check_yourself.map((q: string, j: number) => (
                     <li key={j} className="text-[14px] flex gap-2">
-                      <span style={{ color: 'var(--accent)' }}>·</span>{q}
+                      <span style={{ color: 'var(--accent)' }}>·</span>{t(q)}
                     </li>
                   ))}
                 </ul>
@@ -671,25 +671,25 @@ export function SchemesCard({ d }: { d: any }) {
             <details className="mt-2">
               <summary className="text-[13px] cursor-pointer"
                        style={{ color: 'var(--text-muted)' }}>
-                What usually stops people, and what to carry
+                {t('What usually stops people, and what to carry')}
               </summary>
               <div className="mt-2 text-[13px] space-y-2"
                    style={{ color: 'var(--text-muted)' }}>
                 {s.commonly_disqualifies?.length > 0 && (
                   <div>
-                    <span className="font-medium">Commonly disqualifies: </span>
-                    {s.commonly_disqualifies.join('; ')}
+                    <span className="font-medium">{t('Commonly disqualifies:')} </span>
+                    {s.commonly_disqualifies.map((x: string) => t(x)).join('; ')}
                   </div>
                 )}
                 {s.documents?.length > 0 && (
                   <div>
-                    <span className="font-medium">Documents: </span>
-                    {s.documents.join(', ')}
+                    <span className="font-medium">{t('Documents:')} </span>
+                    {s.documents.map((x: string) => t(x)).join(', ')}
                   </div>
                 )}
                 {s.key_facts?.length > 0 && (
                   <ul className="list-disc ml-4">
-                    {s.key_facts.map((f: string, j: number) => <li key={j}>{f}</li>)}
+                    {s.key_facts.map((f: string, j: number) => <li key={j}>{t(f)}</li>)}
                   </ul>
                 )}
               </div>
@@ -710,14 +710,13 @@ export function SchemesCard({ d }: { d: any }) {
               <a href={s.official_website} target="_blank" rel="noreferrer"
                  className="underline underline-offset-2"
                  style={{ color: 'var(--accent)' }}>
-                Official website
+                {t('Official website')}
               </a>
             </div>
 
             {s.may_be_out_of_date && (
               <div className="mt-2 text-[12px]" style={{ color: '#c2703d' }}>
-                This information was last checked on {s.information_last_checked}
-                {' '}and scheme rules change every year. Confirm before acting.
+                {t('This information was last checked on {d} and scheme rules change every year. Confirm before acting.', { d: s.information_last_checked })}
               </div>
             )}
           </div>

@@ -594,13 +594,38 @@ async def transcribe_audio(
 # --------------------------------------------------------------------------
 
 _WEB_DIST = _ROOT / "apps" / "web" / "dist"
+
+# Cache policy, which decides whether a deployed fix actually reaches anyone.
+#
+# Files under /assets carry a content hash in the name, so a given URL never
+# changes meaning and can be cached for a year. Everything else -- index.html,
+# the service worker, the manifest, the translation bundles -- keeps its name
+# across releases, so it must be revalidated. Served without an explicit
+# header, index.html only has a Last-Modified date, and browsers are then free
+# to guess how long it stays fresh: a browser here went on serving the previous
+# build after a rebuild, and no amount of reloading picked up the new one. For
+# an app whose users are on patchy rural connections and will never be told to
+# hard-refresh, the new build has to arrive on its own.
+_IMMUTABLE = "public, max-age=31536000, immutable"
+_REVALIDATE = "no-cache"
+
+
+class _HashedAssets(StaticFiles):
+    def file_response(self, *args, **kwargs):  # type: ignore[override]
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = _IMMUTABLE
+        return response
+
+
 if _WEB_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=_WEB_DIST / "assets"), name="assets")
+    app.mount("/assets", _HashedAssets(directory=_WEB_DIST / "assets"), name="assets")
 
     @app.get("/{full_path:path}")
     async def spa(full_path: str):
         """Serve the SPA, falling back to index.html for client-side routes."""
         candidate = _WEB_DIST / full_path
         if full_path and candidate.is_file():
-            return FileResponse(candidate)
-        return FileResponse(_WEB_DIST / "index.html")
+            return FileResponse(candidate, headers={"Cache-Control": _REVALIDATE})
+        return FileResponse(
+            _WEB_DIST / "index.html", headers={"Cache-Control": _REVALIDATE}
+        )

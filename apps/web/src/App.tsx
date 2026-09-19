@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RenderCard, EvidenceLedger } from './components/Cards'
 import { FieldPanel } from './components/FieldPanel'
+import { useT, setUiLanguage } from './lib/i18n'
 import { streamChat, fetchLanguages, fetchHealth, saveField, session,
          type LanguageInfo, type EvidenceEntry } from './lib/api'
 
@@ -27,6 +28,7 @@ interface Msg {
   evidence: EvidenceEntry[]
   tools: { name: string; done: boolean; ok?: boolean }[]
   error?: string
+  errorKind?: string
 }
 
 /* Human-readable labels for the "working on it" strip. Naming the actual
@@ -52,6 +54,22 @@ const SPEECH_TAG: Record<string, string> = {
 const INDIC = new Set(['hi', 'pa', 'bn', 'mr', 'te', 'ta', 'gu', 'kn', 'ml',
                        'or', 'as'])
 
+/**
+ * Error wording by kind, so it can be shown in the farmer's language.
+ *
+ * The server's messages carry changing details (seconds to wait), which makes
+ * each one a unique string that cannot be translated ahead of time. The kind
+ * is stable, so the interface picks fixed, pre-translated wording from it.
+ */
+const ERROR_TEXT: Record<string, string> = {
+  rate_limited: 'Too many questions have come in at once. Please try again in a minute.',
+  busy: 'The service is very busy right now. Please try again in a moment — your field details are saved.',
+  timeout: 'The AI service is not responding right now. Please try again in a moment — your field details are saved.',
+  network: 'The connection dropped. Please try again — your field details are saved.',
+  upstream: 'Something went wrong reaching the AI service. Please try again.',
+  not_configured: 'This installation is not set up correctly. Whoever runs this service needs to check it.',
+}
+
 const TOOL_LABEL: Record<string, string> = {
   get_soil_profile: 'Reading the soil survey for your field',
   get_weather: 'Checking the weather model',
@@ -71,10 +89,16 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [languages, setLanguages] = useState<LanguageInfo[]>([])
   const [lang, setLang] = useState(session.language || 'en')
+  useEffect(() => { setUiLanguage(lang) }, [lang])
+  const tr = useT()
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null)
   const [locating, setLocating] = useState(false)
   const [listening, setListening] = useState(false)
   const [speaking, setSpeaking] = useState(false)
+  // True between pressing Listen and the first sound actually coming out.
+  // Server speech takes several seconds; without a label of its own the
+  // button reads "Stop" in silence, which is what "it got stuck" was.
+  const [speechLoading, setSpeechLoading] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const [voiceHint, setVoiceHint] = useState('')
   const [online, setOnline] = useState(() => navigator.onLine)
@@ -189,7 +213,7 @@ export default function App() {
       return
     }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      alert('Voice input is not supported in this browser. Please type instead.')
+      alert(tr('Voice input is not supported in this browser. Please type instead.'))
       return
     }
 
@@ -235,7 +259,7 @@ export default function App() {
       recorder.start()
       setListening(true)
     } catch {
-      alert('I could not use the microphone. Please allow access, or type instead.')
+      alert(tr('I could not use the microphone. Please allow access, or type instead.'))
     }
   }, [listening, lang, stopRecording])
 
@@ -270,7 +294,34 @@ export default function App() {
     )
   }, [])
 
+  // Chrome and Safari build the voice list asynchronously: the very first
+  // getVoices() returns an empty array and only then starts loading. Because
+  // the list was first asked for at the moment Listen was pressed, it was
+  // always empty then, and every first press fell through to server speech --
+  // a ten second wait even on a phone that already had a perfectly good local
+  // voice installed. Asking on mount means the answer is ready by the time
+  // anyone presses anything.
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return
+    const warm = () => window.speechSynthesis.getVoices()
+    warm()
+    window.speechSynthesis.addEventListener('voiceschanged', warm)
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', warm)
+  }, [])
+
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const speechRunRef = useRef<{ cancelled: boolean; controller: AbortController } | null>(null)
+
+  const stopSpeaking = useCallback(() => {
+    const run = speechRunRef.current
+    if (run) { run.cancelled = true; run.controller.abort() }
+    speechRunRef.current = null
+    audioRef.current?.pause()
+    audioRef.current = null
+    window.speechSynthesis?.cancel()
+    setSpeaking(false)
+    setSpeechLoading(false)
+  }, [])
 
   /**
    * Read a reply aloud.
@@ -291,11 +342,7 @@ export default function App() {
     const tag = SPEECH_TAG[lang] || 'en-IN'
 
     // Stop anything already playing, from either path.
-    window.speechSynthesis?.cancel()
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
-    }
+    stopSpeaking()
 
     const localVoice = pickVoice(tag)
     const baseLang = tag.split('-')[0]
@@ -309,36 +356,90 @@ export default function App() {
       // Slower than default: advisory content carries numbers people need to
       // retain, and the default rate is tuned for notifications.
       utterance.rate = 0.92
+      // A local voice starts instantly, so it needs no preparing state — but
+      // it must still flip the button to Stop, or pressing it again restarts
+      // the reply instead of ending it.
+      utterance.onend = () => setSpeaking(false)
+      utterance.onerror = () => setSpeaking(false)
+      setSpeaking(true)
       window.speechSynthesis.speak(utterance)
       return
     }
 
+    // Server speech, one sentence at a time.
+    //
+    // Synthesising a whole reply as one clip took 27 seconds before any sound
+    // came out, and produced a 1.9 MB file. With no way to stop it the button
+    // simply looked stuck. Sentence by sentence, the first words play within
+    // a few seconds, the next sentence is fetched while the current one
+    // plays, and Stop works at any point.
+    const sentences = (text.match(/[^.!?।\n]+[.!?।]*/g) || [text])
+      .map((x) => x.trim()).filter(Boolean)
+    // Two requests, not one per sentence: a short opening so sound starts
+    // quickly, then everything else. The free speech quota allows only a
+    // handful of requests a minute, and a request per sentence ran out of it
+    // partway through a single reply.
+    const chunks: string[] = sentences.length > 1
+      ? [sentences[0], sentences.slice(1).join(' ')]
+      : sentences
+
+    const run = { cancelled: false, controller: new AbortController() }
+    speechRunRef.current = run
     setSpeaking(true)
-    try {
-      const r = await fetch('/api/speak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, language: lang }),
-      })
-      if (!r.ok) throw new Error(String(r.status))
-      const blob = await r.blob()
-      const audio = new Audio(URL.createObjectURL(blob))
-      audioRef.current = audio
-      audio.onended = () => setSpeaking(false)
-      audio.onerror = () => setSpeaking(false)
-      await audio.play()
-    } catch {
-      // Last resort: the wrong-language browser voice is still better than
-      // nothing for a farmer who cannot read the screen.
-      setSpeaking(false)
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text)
-        utterance.lang = tag
-        utterance.rate = 0.92
-        window.speechSynthesis.speak(utterance)
+    setSpeechLoading(true)
+
+    const fetchChunk = async (chunk: string): Promise<string> => {
+      const timeout = setTimeout(() => run.controller.abort(), 45000)
+      try {
+        const r = await fetch('/api/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: chunk, language: lang }),
+          signal: run.controller.signal,
+        })
+        if (!r.ok) throw new Error(String(r.status))
+        return URL.createObjectURL(await r.blob())
+      } finally {
+        clearTimeout(timeout)
       }
     }
-  }, [lang, pickVoice])
+
+    try {
+      let pending: Promise<string> | null = fetchChunk(chunks[0])
+      for (let i = 0; i < chunks.length; i++) {
+        if (run.cancelled) break
+        const url: string = await pending!
+        // Start fetching the next sentence while this one plays.
+        pending = i + 1 < chunks.length ? fetchChunk(chunks[i + 1]) : null
+        pending?.catch(() => undefined)
+        if (run.cancelled) break
+        const audio = new Audio(url)
+        audioRef.current = audio
+        await new Promise<void>((resolve, reject) => {
+          audio.onended = () => resolve()
+          audio.onerror = () => reject(new Error('playback'))
+          audio.play()
+            .then(() => { if (!run.cancelled) setSpeechLoading(false) })
+            .catch(reject)
+        })
+        URL.revokeObjectURL(url)
+      }
+    } catch {
+      if (!run.cancelled) {
+        // Deliberately no fallback to a wrong-language browser voice: an
+        // English voice sounding out Gurmukhi is gibberish, and worse than
+        // an honest message for someone who cannot read the screen.
+        setVoiceHint(tr('Could not read this aloud right now. Please try again in a moment.'))
+        setTimeout(() => setVoiceHint(''), 5000)
+      }
+    } finally {
+      if (speechRunRef.current === run) {
+        speechRunRef.current = null
+        setSpeaking(false)
+        setSpeechLoading(false)
+      }
+    }
+  }, [lang, pickVoice, stopSpeaking])
 
   /* ---------------------------------------------------------------- */
   /* Send                                                              */
@@ -357,9 +458,7 @@ export default function App() {
         ...m,
         { role: 'user', text: trimmed, cards: [], evidence: [], tools: [] },
         { role: 'assistant', text: '', cards: [], evidence: [], tools: [],
-          error: 'Your phone has no signal right now. I need to check the '
-               + 'weather and your soil to answer this. Your question is '
-               + 'saved — send it again once you have a connection.' },
+          error: tr('Your phone has no signal right now. I need to check the weather and your soil to answer this. Your question is saved — send it again once you have a connection.') },
       ])
       setInput(trimmed)
       return
@@ -433,7 +532,7 @@ export default function App() {
             setPanelRefresh((n) => n + 1)
             break
           case 'error':
-            update((m) => ({ ...m, error: ev.message }))
+            update((m) => ({ ...m, error: ev.message, errorKind: ev.kind }))
             break
         }
       }
@@ -537,7 +636,7 @@ export default function App() {
           {!online && (
             <span className="text-[11px] px-2 py-0.5 rounded-full"
                   style={{ background: 'var(--bg-sunken)', color: '#c2703d' }}>
-              No signal
+              {tr('No signal')}
             </span>
           )}
           {health && !health.google_ai?.configured && (
@@ -554,14 +653,14 @@ export default function App() {
                     borderColor: coords ? 'var(--accent)' : 'var(--border)',
                     color: coords ? 'var(--accent)' : 'var(--text-muted)',
                   }}>
-            {locating ? 'Finding…' : coords ? '📍 Field set' : '📍 Set field'}
+            {locating ? tr('Finding…') : coords ? `📍 ${tr('Field set')}` : `📍 ${tr('Set field')}`}
           </button>
           {fieldId && (
             <button onClick={() => setPanelOpen(!panelOpen)}
-                    aria-label="Show field details"
+                    aria-label={tr('Show field details')}
                     className="text-[13px] px-3 py-1.5 rounded-full border"
                     style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-              My field
+              {tr('My field')}
             </button>
           )}
           <button onClick={() => setShowLangPicker(!showLangPicker)}
@@ -601,12 +700,12 @@ export default function App() {
               <h1 className="text-2xl font-semibold mb-2">
                 {lang === 'hi' ? 'नमस्ते, मैं साथी हूँ'
                  : lang === 'pa' ? 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਮੈਂ ਸਾਥੀ ਹਾਂ'
-                 : `Hello, I'm ${assistantName}`}
+                 : tr("Hello, I'm {name}", { name: assistantName })}
               </h1>
               <p className="text-[15px] mb-8 max-w-md" style={{ color: 'var(--text-muted)' }}>
                 {lang === 'hi' ? 'अपने खेत के बारे में कुछ भी पूछिए — बोलकर या लिखकर।'
                  : lang === 'pa' ? 'ਆਪਣੇ ਖੇਤ ਬਾਰੇ ਕੁਝ ਵੀ ਪੁੱਛੋ — ਬੋਲ ਕੇ ਜਾਂ ਲਿਖ ਕੇ।'
-                 : 'Ask me anything about your field — speak or type.'}
+                 : tr('Ask me anything about your field — speak or type.')}
               </p>
               <div className="flex flex-col gap-2 w-full max-w-md">
                 {(current?.suggestions || []).map((s, i) => (
@@ -649,7 +748,7 @@ export default function App() {
                          style={{ color: 'var(--text-muted)' }}>
                       <span className="inline-block w-2 h-2 rounded-full animate-pulse"
                             style={{ background: 'var(--accent)' }} />
-                      <span>Thinking about your field…</span>
+                      <span>{tr('Thinking about your field…')}</span>
                     </div>
                   )}
 
@@ -660,7 +759,7 @@ export default function App() {
                         <div key={j} className="flex items-center gap-2 text-[14px]"
                              style={{ color: 'var(--text-muted)' }}>
                           <span>{t.done ? (t.ok ? '✓' : '⚠') : '◌'}</span>
-                          <span>{TOOL_LABEL[t.name] || t.name}</span>
+                          <span>{tr(TOOL_LABEL[t.name] || t.name)}</span>
                         </div>
                       ))}
                     </div>
@@ -678,17 +777,18 @@ export default function App() {
                   {m.error && (
                     <div className="rounded-xl p-3 text-[14px] mt-2"
                          style={{ background: '#fdf0ea', color: '#c2452d' }}>
-                      {m.error}
+                      {tr(ERROR_TEXT[m.errorKind || ''] ?? m.error)}
                     </div>
                   )}
 
                   {m.text && !busy && (
                     <div className="flex items-center gap-3 mt-2">
-                      <button onClick={() => speak(m.text)}
-                              disabled={speaking}
-                              className="text-[13px] underline underline-offset-2 disabled:opacity-50"
+                      <button onClick={() => (speaking ? stopSpeaking() : speak(m.text))}
+                              className="text-[13px] underline underline-offset-2"
                               style={{ color: 'var(--text-muted)', minHeight: 0 }}>
-                        {speaking ? '🔊 Speaking…' : '🔊 Listen'}
+                        {speechLoading
+                          ? `◌ ${tr('Getting the audio ready…')}`
+                          : speaking ? `■ ${tr('Stop')}` : `🔊 ${tr('Listen')}`}
                       </button>
                       <EvidenceLedger entries={m.evidence} />
                     </div>
@@ -726,7 +826,7 @@ export default function App() {
               placeholder={
                 lang === 'hi' ? 'अपने खेत के बारे में पूछिए…'
                 : lang === 'pa' ? 'ਆਪਣੇ ਖੇਤ ਬਾਰੇ ਪੁੱਛੋ…'
-                : 'Ask about your field…'
+                : tr('Ask about your field…')
               }
               className="flex-1 resize-none bg-transparent outline-none py-2 text-[16px]"
               style={{ color: 'var(--text)', maxHeight: 140 }}
@@ -744,7 +844,7 @@ export default function App() {
               }}
             />
             <button onClick={() => fileRef.current?.click()}
-                    aria-label="Photograph the crop"
+                    aria-label={tr('Photograph the crop')}
                     disabled={busy}
                     className="rounded-full w-11 h-11 flex items-center justify-center shrink-0 disabled:opacity-30"
                     style={{ background: 'var(--bg-sunken)', color: 'var(--text-muted)' }}>
@@ -771,13 +871,12 @@ export default function App() {
           {(voiceHint || listening || transcribing) && (
             <div className="text-[13px] text-center mt-2"
                  style={{ color: voiceHint ? '#c2703d' : 'var(--accent)' }}>
-              {voiceHint || (listening ? 'Listening… tap the microphone again when done'
-                                       : 'Understanding what you said…')}
+              {voiceHint || (listening ? tr('Listening… tap the microphone again when done')
+                                       : tr('Understanding what you said…'))}
             </div>
           )}
           <div className="text-[11px] text-center mt-2" style={{ color: 'var(--text-muted)' }}>
-            Advice is generated from soil, weather and satellite models. For
-            anything costly or risky, confirm with your local KVK or extension officer.
+            {tr('Advice is generated from soil, weather and satellite models. For anything costly or risky, confirm with your local KVK or extension officer.')}
           </div>
         </div>
       </footer>

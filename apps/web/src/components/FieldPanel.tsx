@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { useT } from '../lib/i18n'
 
 interface CropEntry {
   crop: string
@@ -83,6 +84,7 @@ export function FieldPanel({
   onClose: () => void
   onAsk: (q: string) => void
 }) {
+  const t = useT()
   const [data, setData] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -148,9 +150,9 @@ export function FieldPanel({
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-semibold">Your field</span>
+            <span className="font-semibold">{t('Your field')}</span>
             <button onClick={onClose}
-                    aria-label="Close field panel"
+                    aria-label={t('Close field panel')}
                     className="text-[20px] leading-none px-2"
                     style={{ color: 'var(--text-muted)', minHeight: 0 }}>
               ×
@@ -159,21 +161,20 @@ export function FieldPanel({
 
           {loading && (
             <div className="text-[14px]" style={{ color: 'var(--text-muted)' }}>
-              Checking your field…
+              {t('Checking your field…')}
             </div>
           )}
 
           {failed && (
             <div className="text-[14px]" style={{ color: 'var(--text-muted)' }}>
-              Could not load your field just now. Ask me directly instead.
+              {t('Could not load your field just now. Ask me directly instead.')}
             </div>
           )}
 
           {stale && (
             <div className="mb-3 text-[13px] rounded-lg p-2"
                  style={{ background: 'var(--bg-sunken)', color: '#c2703d' }}>
-              You are offline. This is what your field looked like the last
-              time there was a signal, not right now.
+              {t('You are offline. This is what your field looked like the last time there was a signal, not right now.')}
             </div>
           )}
 
@@ -182,11 +183,11 @@ export function FieldPanel({
               {/* The farm itself */}
               <div>
                 <div className="text-[15px] font-medium">
-                  {data.field.name || 'My field'}
+                  {data.field.name || t('My field')}
                 </div>
                 <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
                   {data.field.area_acres
-                    ? `${data.field.area_acres} acres · `
+                    ? `${t('{n} acres', { n: data.field.area_acres })} · `
                     : ''}
                   {data.field.latitude.toFixed(3)}, {data.field.longitude.toFixed(3)}
                 </div>
@@ -197,21 +198,21 @@ export function FieldPanel({
                   showing one of them would be worse than showing neither. */}
               {(data.crops_growing?.length ?? 0) > 0 && (
                 <div>
-                  <div className="text-[13px] font-medium mb-1.5">Growing now</div>
+                  <div className="text-[13px] font-medium mb-1.5">{t('Growing now')}</div>
                   <div className="space-y-1.5">
                     {data.crops_growing!.map((c, i) => (
                       <div key={i} className="rounded-lg px-2 py-1.5"
                            style={{ background: 'var(--bg-sunken)' }}>
                         <div className="text-[14px] font-medium">
-                          {c.name || c.crop.replace(/_/g, ' ')}
+                          {t(c.name || c.crop.replace(/_/g, ' '))}
                         </div>
                         <div className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
                           {c.days_after_sowing != null
-                            ? `day ${c.days_after_sowing}`
-                            : 'sowing date unknown'}
-                          {c.growth_stage ? ` · ${c.growth_stage}` : ''}
+                            ? t('day {n}', { n: c.days_after_sowing })
+                            : t('sowing date unknown')}
+                          {c.growth_stage ? ` · ${t(c.growth_stage)}` : ''}
                           {c.days_to_harvest != null
-                            ? ` · ~${c.days_to_harvest}d to harvest`
+                            ? ` · ${t('about {n} days to harvest', { n: c.days_to_harvest })}`
                             : ''}
                         </div>
                       </div>
@@ -223,16 +224,16 @@ export function FieldPanel({
               {/* When they last watered, in their own units. */}
               {data.last_irrigation && (
                 <div>
-                  <div className="text-[13px] font-medium mb-1">Last watered</div>
+                  <div className="text-[13px] font-medium mb-1">{t('Last watered')}</div>
                   <div className="text-[15px]">
-                    {data.last_irrigation.days_ago === 0
-                      ? 'Today'
-                      : `${data.last_irrigation.days_ago} days ago`}
+                    {data.last_irrigation.days_ago === 0 ? t('Today')
+                      : data.last_irrigation.days_ago === 1 ? t('Yesterday')
+                      : t('{n} days ago', { n: data.last_irrigation.days_ago ?? '' })}
                   </div>
                   <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
                     {data.last_irrigation.date}
                     {data.last_irrigation.hours_pumped
-                      ? ` · ${data.last_irrigation.hours_pumped} hours of pumping`
+                      ? ` · ${t('{n} hours of pumping', { n: data.last_irrigation.hours_pumped })}`
                       : ''}
                   </div>
                 </div>
@@ -243,24 +244,24 @@ export function FieldPanel({
                 <div className="rounded-xl p-3 border text-[14px]"
                      style={{ borderColor: 'var(--border)', background: 'var(--bg-sunken)',
                               color: 'var(--text-muted)' }}>
-                  Working out whether your field needs water…
+                  {t('Working out whether your field needs water…')}
                 </div>
               )}
               {verdict && data.irrigation && (
                 <button
-                  onClick={() => onAsk('Does my field need water this week?')}
+                  onClick={() => onAsk(t('Does my field need water this week?'))}
                   className="w-full text-left rounded-xl p-3 border"
                   style={{ borderColor: verdict.tone, background: 'var(--bg-sunken)' }}
                 >
                   <div className="text-[15px] font-medium" style={{ color: verdict.tone }}>
-                    {verdict.text}
+                    {t(verdict.text)}
                   </div>
                   <div className="text-[13px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Soil holding {data.irrigation.soil_moisture_percent}% of its water
+                    {t('Soil holding {n}% of its water', { n: data.irrigation.soil_moisture_percent })}
                     {data.irrigation.days_until_stress != null
-                      ? ` · ${data.irrigation.days_until_stress} day${
-                          data.irrigation.days_until_stress === 1 ? '' : 's'
-                        } to stress`
+                      ? ` · ${data.irrigation.days_until_stress === 1
+                          ? t('1 day until the crop is stressed')
+                          : t('{n} days until the crop is stressed', { n: data.irrigation.days_until_stress })}`
                       : ''}
                   </div>
                 </button>
@@ -269,7 +270,7 @@ export function FieldPanel({
               {/* Weather */}
               {data.weather && (
                 <div>
-                  <div className="text-[13px] font-medium mb-1.5">Weather</div>
+                  <div className="text-[13px] font-medium mb-1.5">{t('Weather')}</div>
                   {data.weather.today && (
                     <div className="text-[15px]">
                       {Math.round(data.weather.today.t_max_c)}° /{' '}
@@ -278,8 +279,8 @@ export function FieldPanel({
                   )}
                   <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
                     {data.weather.rain_next_7_days_mm
-                      ? `${data.weather.rain_next_7_days_mm} mm rain expected this week`
-                      : 'No rain expected this week'}
+                      ? t('{n} mm rain expected this week', { n: data.weather.rain_next_7_days_mm })
+                      : t('No rain expected this week')}
                   </div>
                   {/* Seven-day rain bars: small, glanceable, no legend needed. */}
                   <div className="flex gap-1 items-end mt-2 h-10">
@@ -304,24 +305,24 @@ export function FieldPanel({
               {/* Soil */}
               {data.soil && (
                 <div>
-                  <div className="text-[13px] font-medium mb-1.5">Soil</div>
+                  <div className="text-[13px] font-medium mb-1.5">{t('Soil')}</div>
                   <div className="text-[15px]">
-                    {data.soil.texture.replace(/_/g, ' ')}
+                    {t(data.soil.texture.replace(/_/g, ' '))}
                   </div>
                   <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
                     {data.soil.ph != null && (
                       <>pH {data.soil.ph}
                         {data.soil.ph_class
-                          ? ` — ${PH_WORD[data.soil.ph_class] || data.soil.ph_class}`
+                          ? ` — ${t(PH_WORD[data.soil.ph_class] || data.soil.ph_class)}`
                           : ''}<br /></>
                     )}
                     {data.soil.available_water_mm_per_m != null && (
-                      <>Holds {data.soil.available_water_mm_per_m} mm of water per metre</>
+                      <>{t('Holds {n} mm of water per metre', { n: data.soil.available_water_mm_per_m })}</>
                     )}
                   </div>
                   {data.soil.confidence === 'low' && (
                     <div className="text-[12px] mt-1" style={{ color: '#c2703d' }}>
-                      Soil map uncertain here — a KVK soil test would be firmer.
+                      {t('Soil map uncertain here — a KVK soil test would be firmer.')}
                     </div>
                   )}
                 </div>
@@ -332,7 +333,7 @@ export function FieldPanel({
                   shown -- they have dug that field and the raster has not. */}
               {(data.farmer_said?.length ?? 0) > 0 && (
                 <div>
-                  <div className="text-[13px] font-medium mb-1.5">You told me</div>
+                  <div className="text-[13px] font-medium mb-1.5">{t('You told me')}</div>
                   <div className="space-y-1">
                     {data.farmer_said!.map((n, i) => (
                       <div key={i} className="text-[13px]"
@@ -349,13 +350,13 @@ export function FieldPanel({
               {(data.missing?.length ?? 0) > 0 && (
                 <div>
                   <div className="text-[13px] font-medium mb-1.5">
-                    Tell me and I can help more
+                    {t('Tell me and I can help more')}
                   </div>
                   <div className="space-y-1">
                     {data.missing!.map((m, i) => (
                       <div key={i} className="text-[13px]"
                            style={{ color: '#c2703d' }}>
-                        · {m}
+                        · {t(m)}
                       </div>
                     ))}
                   </div>
@@ -365,13 +366,13 @@ export function FieldPanel({
               {/* Shortcuts phrased as questions, so tapping one teaches what
                   can be asked rather than hiding features behind buttons. */}
               <div>
-                <div className="text-[13px] font-medium mb-1.5">Ask about</div>
+                <div className="text-[13px] font-medium mb-1.5">{t('Ask about')}</div>
                 <div className="space-y-1">
                   {[
                     'How does my crop look from the satellite?',
                     'What is the rate at my mandi today?',
                     'How can I improve my soil?',
-                  ].map((q) => (
+                  ].map((english) => t(english)).map((q) => (
                     <button key={q} onClick={() => onAsk(q)}
                             className="w-full text-left text-[13px] rounded-lg px-2 py-2"
                             style={{ background: 'var(--bg-sunken)' }}>
