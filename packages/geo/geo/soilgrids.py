@@ -30,6 +30,7 @@ Two things this client takes seriously:
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -39,12 +40,44 @@ from .cache import cache_key, get_cache
 
 SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
 
-# ISRIC runs SoilGrids as a free public service and throttles aggressively:
-# nine simultaneous requests reliably produces read timeouts rather than a
-# 429. This semaphore is therefore a correctness measure, not politeness --
-# without it the ring search defeats itself, and it is also the right way to
-# treat a free scientific service we depend on.
-_ISRIC_CONCURRENCY = asyncio.Semaphore(4)
+# How long to let one ISRIC query run.
+#
+# Measured on 20 September 2026, asking for the real batch this module uses
+# (8 properties x 3 depths x 3 quantiles): 26s, 75s, and once a timeout past
+# 120s. The previous budget was 30 seconds, which meant a response that was
+# merely slow -- not lost -- was abandoned, the ring search read the timeout
+# as "no soil at this point", walked outward, and eventually returned an
+# empty profile for coordinates that were perfectly well mapped.
+#
+# Soil is cached for a year, so this is paid once per location ever. Waiting
+# two minutes once beats answering "no soil data" forever.
+SOILGRIDS_TIMEOUT_S = 120.0
+
+# How long the whole ring search may take before it gives up.
+#
+# The search is five rings of eight bearings, so the worst case is forty-one
+# queries. At two at a time and up to two minutes each that is beyond forty
+# minutes, which is not a wait -- it is a hang. A farmer who pinned a spot
+# SoilGrids cannot answer for is better served by being told so in a couple
+# of minutes than by a screen that never resolves, and the tool layer already
+# turns an empty profile into an honest abstention.
+#
+# Named places are warmed ahead of time by scripts/prewarm_soil.py, so this
+# budget is reached mainly by GPS pins in genuinely unmapped terrain.
+SOILGRIDS_SEARCH_BUDGET_S = 180.0
+
+# ISRIC runs SoilGrids as a free public service and throttles aggressively.
+# Nine simultaneous requests reliably produced read timeouts rather than a
+# 429, which is what first set this cap at four. On 20 September 2026 four
+# was not low enough either: a ring search returned nothing while sequential
+# queries for the same coordinates succeeded, and one request came back 503.
+# The service had slowed to 26-75 seconds per query by then, so a given
+# number of simultaneous requests keeps it busy far longer than before.
+#
+# This semaphore is a correctness measure, not politeness -- above it the
+# ring search defeats itself -- though it is also the right way to treat a
+# free scientific service we depend on.
+_ISRIC_CONCURRENCY = asyncio.Semaphore(2)
 
 # property -> (divisor to reach the stated unit, unit label, human label)
 # Source: https://www.isric.org/explore/soilgrids/faq-soilgrids  (units table)
@@ -206,7 +239,7 @@ async def fetch_soil_profile(
     properties: list[str] | None = None,
     depths: list[str] | None = None,
     client: httpx.AsyncClient | None = None,
-    timeout: float = 45.0,
+    timeout: float = SOILGRIDS_TIMEOUT_S,
 ) -> SoilProfile:
     """Fetch a soil profile for one point.
 
@@ -371,6 +404,7 @@ async def fetch_soil_profile_resilient(
     depths: list[str] | None = None,
     client: httpx.AsyncClient | None = None,
     max_search_km: float = 20.0,
+    budget_s: float = SOILGRIDS_SEARCH_BUDGET_S,
 ) -> SoilProfile:
     """Fetch a soil profile, searching outward if the point itself is masked.
 
@@ -386,77 +420,65 @@ async def fetch_soil_profile_resilient(
     without disclosing it would be the wrong trade.
     """
     owns_client = client is None
-    client = client or httpx.AsyncClient(timeout=30.0)
+    client = client or httpx.AsyncClient(timeout=SOILGRIDS_TIMEOUT_S)
+    started = time.monotonic()
     try:
-        # The exact point and the first ring are queried together rather than
-        # in sequence.
+        # Ask about the exact point on its own before searching around it.
         #
-        # Sequential is the obvious structure but it costs two full round
-        # trips whenever the pin is masked, and ISRIC round trips run 5-10
-        # seconds. Since a farmer naturally pins the landmark they know --
-        # their village, which is exactly what the urban mask covers -- the
-        # masked case is common rather than exceptional, and paying for it
-        # twice made a first question take nearly a minute.
+        # This used to fire the point and four ring bearings together, on the
+        # reasoning that a masked pin is common and two sequential round trips
+        # at 5-10 seconds each made a first question feel slow. That reasoning
+        # rested on 5-10 second round trips, and the service no longer
+        # behaves that way: the same query now takes 26-75 seconds, and five
+        # of them at once is enough load for ISRIC to start shedding requests.
+        # Measured at a point with perfectly good data, the speculative
+        # version returned an empty profile after 33-124 seconds while a
+        # single sequential query for the same coordinates succeeded.
         #
-        # Speculating on the first ring costs 8 extra requests only on a
-        # cache miss, and they are useful whenever the pin turns out to be
-        # masked. Results are cached, so this is paid once per location ever.
-        # Only the four cardinal bearings are speculated. Eight would find a
-        # hit marginally more often but doubles the load on a throttled
-        # service for a case the cache absorbs after the first query.
-        first_ring = [
-            (bearing, *_offset_point(latitude, longitude, _SEARCH_RING_KM[0], bearing))
-            for bearing in (0, 90, 180, 270)
-        ]
-        point_and_ring = await asyncio.gather(
-            fetch_soil_profile(latitude, longitude, properties, depths, client=client),
-            *(
-                fetch_soil_profile(lat2, lon2, properties, depths, client=client)
-                for _, lat2, lon2 in first_ring
-            ),
-            return_exceptions=True,
-        )
-
-        profile = point_and_ring[0]
-        point_failed = isinstance(profile, BaseException)
-        if not point_failed and profile.has_data:
+        # So the trade has flipped. One request first, and the extra round
+        # trip only in the masked case, where it is genuinely needed.
+        profile: SoilProfile | None = None
+        point_failed = False
+        try:
+            profile = await fetch_soil_profile(
+                latitude, longitude, properties, depths, client=client
+            )
+        except Exception:
+            point_failed = True
+        if profile is not None and profile.has_data:
             return profile
-
-        # The pin is masked. Take the nearest hit from the ring we already have.
-        best: tuple[float, SoilProfile, float] | None = None
-        for (bearing, lat2, lon2), candidate in zip(first_ring, point_and_ring[1:]):
-            if isinstance(candidate, BaseException) or not candidate.has_data:
-                continue
-            distance = haversine_km(latitude, longitude, lat2, lon2)
-            if best is None or distance < best[0]:
-                best = (distance, candidate, bearing)
-        if best is not None:
-            distance, candidate, bearing = best
-            candidate.displaced_km = distance
-            candidate.displaced_from = (latitude, longitude)
-            candidate.displacement_bearing = bearing
-            return candidate
 
         # Rings are searched nearest-first, but the eight bearings within a
         # ring are issued concurrently: a serial sweep costs up to 40 sequential
         # round-trips and pushes a farmer's first answer past ten seconds.
         # Concurrency is capped at one ring (8 requests) at a time to stay
         # within ISRIC's fair-use expectations for a free public service.
-        for radius in _SEARCH_RING_KM[1:]:
+        for radius in _SEARCH_RING_KM:
             if radius > max_search_km:
+                break
+            remaining = budget_s - (time.monotonic() - started)
+            if remaining <= 0:
                 break
 
             targets = [
                 (bearing, *_offset_point(latitude, longitude, radius, bearing))
                 for bearing in _SEARCH_BEARINGS
             ]
-            results = await asyncio.gather(
-                *(
-                    fetch_soil_profile(lat2, lon2, properties, depths, client=client)
-                    for _, lat2, lon2 in targets
-                ),
-                return_exceptions=True,
-            )
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(
+                        *(
+                            fetch_soil_profile(
+                                lat2, lon2, properties, depths, client=client
+                            )
+                            for _, lat2, lon2 in targets
+                        ),
+                        return_exceptions=True,
+                    ),
+                    timeout=remaining,
+                )
+            except (TimeoutError, asyncio.TimeoutError):
+                break
 
             # Prefer the closest hit in this ring; ties broken by bearing order.
             best: tuple[float, SoilProfile, float] | None = None
