@@ -375,12 +375,13 @@ async def stream_turn(
                 if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
                     llm.note_rate_limited(candidate, exc, key_index)
                 if llm.is_retryable(exc) and not emitted_this_round:
-                    # Brief backoff before the next model; capacity spikes are
-                    # usually short. Skipped entirely once the budget is gone,
-                    # since sleeping only delays the failure the farmer is
-                    # already waiting on.
-                    if (time.time() - round_started) < MODEL_ATTEMPT_BUDGET_S:
-                        await asyncio.sleep(0.6 * (attempt + 1))
+                    # Pause only where pausing can help -- none after a rate
+                    # limit, a short capped one after a capacity error -- and
+                    # never once the budget is gone, since sleeping then only
+                    # delays the failure the farmer is already waiting on.
+                    pause = llm.backoff_seconds(exc, attempt)
+                    if pause and (time.time() - round_started) < MODEL_ATTEMPT_BUDGET_S:
+                        await asyncio.sleep(pause)
                     continue
                 break
 

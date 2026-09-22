@@ -133,3 +133,36 @@ class TestASecondKeyIsASecondAllowance:
 
         assert llm.request_candidates(), "must still offer something to try"
         _clear()
+
+
+class TestBackoffOnlyWhereItHelps:
+    """Sleeping between candidates cost up to two minutes per turn."""
+
+    def test_no_pause_after_a_rate_limit(self):
+        """Pausing does not bring a spent allowance back."""
+        exc = Exception("429 RESOURCE_EXHAUSTED. Please retry in 13.9s.")
+        for attempt in range(20):
+            assert llm.backoff_seconds(exc, attempt) == 0.0
+
+    def test_a_capacity_error_gets_a_short_pause(self):
+        """A 503 clears within seconds, so a moment's wait is worth it."""
+        exc = Exception("503 UNAVAILABLE. The model is overloaded.")
+        assert 0 < llm.backoff_seconds(exc, 0) <= llm.BACKOFF_CAP_S
+
+    def test_the_pause_never_grows_past_the_cap(self):
+        """Uncapped, the pause grew with every attempt and the total grew
+        quadratically: harmless over four models, ruinous over twenty pairs."""
+        exc = Exception("503 UNAVAILABLE")
+        for attempt in range(50):
+            assert llm.backoff_seconds(exc, attempt) <= llm.BACKOFF_CAP_S
+
+    def test_walking_every_candidate_sleeps_for_bounded_time(self):
+        """The property that actually matters to a farmer."""
+        rate_limited = Exception("429 RESOURCE_EXHAUSTED")
+        overloaded = Exception("503 UNAVAILABLE")
+        # The realistic worst case: most candidates out of quota, a few busy.
+        total = sum(
+            llm.backoff_seconds(overloaded if i % 5 == 0 else rate_limited, i)
+            for i in range(20)
+        )
+        assert total <= 4 * llm.BACKOFF_CAP_S

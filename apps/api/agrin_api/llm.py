@@ -165,6 +165,32 @@ def note_rate_limited(model: str, exc: Exception, key_index: int = 0) -> None:
     _cooldowns[(key_index, model)] = time.time() + seconds
 
 
+def backoff_seconds(exc: Exception, attempt: int) -> float:
+    """How long to pause before trying the next candidate after `exc`.
+
+    Zero for a rate limit. A 429 means an allowance is spent -- usually the
+    daily one -- and pausing does not bring it back; the next candidate is on
+    a different model or key with its own allowance, so the right move is to
+    go straight to it.
+
+    A short, capped pause for anything else retryable. A 503 is a capacity
+    spike on the provider's side and does clear within seconds, so a moment's
+    wait is worth it -- but capped, because the uncapped version grew with
+    every attempt: 0.6s, 1.2s, 1.8s and on. Summed over a walk, that is
+    quadratic in the number of candidates, which was harmless across four
+    models and ruinous across twenty key-and-model pairs -- up to two minutes
+    of sleeping per turn, spent entirely on errors that sleeping cannot fix.
+    """
+    text = str(exc)
+    if "429" in text or "RESOURCE_EXHAUSTED" in text:
+        return 0.0
+    return min(BACKOFF_CAP_S, 0.6 * (attempt + 1))
+
+
+# Longest single pause between candidates. See backoff_seconds.
+BACKOFF_CAP_S = 2.0
+
+
 def is_cooling_down(model: str, key_index: int = 0) -> bool:
     expiry = _cooldowns.get((key_index, model))
     if expiry is None:
