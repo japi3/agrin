@@ -333,10 +333,19 @@ async def diagnose_crop_photo(
         temperature=0.2,
         response_mime_type="application/json",
         response_schema=DIAGNOSIS_SCHEMA,
-        max_output_tokens=2048,
+        # Room for the whole diagnosis, and then some.
+        #
+        # 2048 was not enough. Gemini 3.x models spend output tokens on
+        # reasoning before they write anything, so a detailed photograph --
+        # exactly the kind worth diagnosing -- ran out mid-JSON. The response
+        # came back with finish_reason MAX_TOKENS and seven characters of
+        # truncated object, which failed to parse, and the farmer was shown
+        # "JSONDecodeError" for photographing a damaged stem.
+        max_output_tokens=8192,
     )
 
     last_error: Exception | None = None
+    truncated = False
     for key_index, candidate_model in llm.request_candidates(llm.VISION_MODEL):
         try:
             client = llm.client_for(key_index)
@@ -346,7 +355,24 @@ async def diagnose_crop_photo(
             parsed = response.parsed
             if parsed is None:
                 import json
-                parsed = json.loads(response.text)
+                finish = (
+                    response.candidates[0].finish_reason
+                    if response.candidates else None
+                )
+                text = response.text or ""
+                try:
+                    parsed = json.loads(text)
+                except (json.JSONDecodeError, TypeError) as exc:
+                    # An answer we cannot read is a reason to ask a different
+                    # model, not to give up. Before this, one truncated reply
+                    # ended the whole attempt while other models and a second
+                    # key sat untried.
+                    truncated = (
+                        finish == types.FinishReason.MAX_TOKENS
+                        or not text.strip()
+                    )
+                    last_error = exc
+                    continue
 
             return {
                 "ok": True,
@@ -375,14 +401,26 @@ async def diagnose_crop_photo(
             }
         except Exception as exc:  # noqa: BLE001
             last_error = exc
+            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
+                # Vision was not recording this, so an exhausted model stayed
+                # first in line and was retried on every photograph.
+                llm.note_rate_limited(candidate_model, exc, key_index)
             if llm.is_retryable(exc):
                 continue
             break
 
-    return {
-        "ok": False,
-        "abstain_reason": (
-            f"The diagnosis service is unavailable right now "
-            f"({type(last_error).__name__}). Please try again shortly."
-        ),
-    }
+    # Say what happened in words a farmer can act on. The exception class
+    # name was reaching the screen: someone who photographed a damaged stem
+    # was told "JSONDecodeError", which is neither true nor useful to them.
+    if truncated:
+        reason = (
+            "The diagnosis came back incomplete. Please try again, and if it "
+            "keeps happening send a closer photograph of the affected part."
+        )
+    else:
+        reason = (
+            "The photo diagnosis service is not responding right now. Please "
+            "try again in a few minutes, or describe what you are seeing and "
+            "I will help from that."
+        )
+    return {"ok": False, "abstain_reason": reason}

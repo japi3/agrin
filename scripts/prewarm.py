@@ -1,5 +1,6 @@
 """
-Warm the geocoding and soil caches for places farmers are likely to name.
+Warm the slow caches: geocoding and soil for places farmers name, and the
+satellite read for fields already on record.
 
 SoilGrids is the slowest thing this system depends on, and on a bad day it is
 slow enough to matter. Measured on 20 September 2026, one query for the eight
@@ -24,10 +25,18 @@ This does not help a farmer whose location comes from their phone's GPS, which
 is an arbitrary point. Nothing can pre-warm that; it is what the timeout and
 the ring search are for.
 
+The satellite pass is the one that matters most on a demo day. A cold NDVI
+read takes about fifty-three seconds, measured, against a tenth of a second
+for the water balance beside it -- so "how is my field doing", which asks for
+both, spends essentially all of its time waiting on Sentinel-2. The result is
+cached, but the cache key carries today's date, so it expires every midnight
+however recently it was warmed. Run this in the morning of any day the app
+will be shown.
+
 Run it inside the container, so the cache lands in the mounted volume and
 survives an image rebuild:
 
-    docker exec -i agrin python - < scripts/prewarm_soil.py
+    docker exec -i agrin python - < scripts/prewarm.py
 
 Run it two or three times. A probe that fails is not cached -- only a real
 answer is, masked or not -- so a pass that hit a slow patch leaves gaps that
@@ -132,7 +141,49 @@ async def main() -> int:
     if failed:
         print(f"{failed} still cold -- re-running retries only those, "
               f"since warmed places are served from cache.")
+
+    failed += await _warm_satellite()
     return 1 if failed else 0
+
+
+async def _warm_satellite() -> int:
+    """Read the satellite view once for every field that has a crop on it.
+
+    Only fields with a crop, because that is what "how is my field doing"
+    needs, and only distinct coordinates, because the cache is keyed on
+    position rather than on which field record points at it.
+    """
+    from agrin_api import storage
+    from agrin_api.tools import get_crop_health
+
+    with storage.connect() as conn:
+        rows = conn.execute(
+            """SELECT DISTINCT ROUND(f.latitude, 4), ROUND(f.longitude, 4)
+               FROM field f JOIN season s ON s.field_id = f.id"""
+        ).fetchall()
+
+    if not rows:
+        print("\nNo fields with a crop on record; nothing to warm.")
+        return 0
+
+    print(f"\nSatellite, {len(rows)} field location(s):", flush=True)
+    failed = 0
+    for lat, lon in rows:
+        started = time.perf_counter()
+        try:
+            result = await get_crop_health(float(lat), float(lon))
+        except Exception as exc:                          # noqa: BLE001
+            print(f"  {lat}, {lon}  FAILED  {type(exc).__name__}", flush=True)
+            failed += 1
+            continue
+        elapsed = time.perf_counter() - started
+        if result.get("ok"):
+            print(f"  {lat}, {lon}  {elapsed:6.1f}s", flush=True)
+        else:
+            reason = str(result.get("abstain_reason", ""))[:60]
+            print(f"  {lat}, {lon}  {elapsed:6.1f}s  no reading ({reason})", flush=True)
+            failed += 1
+    return failed
 
 
 if __name__ == "__main__":
