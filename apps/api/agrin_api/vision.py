@@ -337,8 +337,9 @@ async def diagnose_crop_photo(
     )
 
     last_error: Exception | None = None
-    for candidate_model in llm.model_candidates(llm.VISION_MODEL):
+    for key_index, candidate_model in llm.request_candidates(llm.VISION_MODEL):
         try:
+            client = llm.client_for(key_index)
             response = await client.aio.models.generate_content(
                 model=candidate_model, contents=contents, config=config
             )

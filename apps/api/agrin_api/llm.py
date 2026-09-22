@@ -117,7 +117,7 @@ _TRY_NEXT_MODEL_STATUS = (404,)
 # The free tier meters per model, so a 429 on one says nothing about the
 # others -- which is exactly why skipping it and moving on is correct rather
 # than backing off globally.
-_cooldowns: dict[str, float] = {}
+_cooldowns: dict[tuple[int, str], float] = {}
 
 # Fallback when the API does not tell us how long to wait.
 DEFAULT_COOLDOWN_S = 45.0
@@ -138,7 +138,7 @@ DEFAULT_COOLDOWN_S = 45.0
 DAILY_QUOTA_COOLDOWN_S = 3600.0
 
 
-def note_rate_limited(model: str, exc: Exception) -> None:
+def note_rate_limited(model: str, exc: Exception, key_index: int = 0) -> None:
     """Record that a model is out of quota, and for how long.
 
     The API supplies a retry delay in the error body; using it rather than a
@@ -152,7 +152,7 @@ def note_rate_limited(model: str, exc: Exception) -> None:
     # model. Its retryDelay describes when the rate limiter will next accept
     # a request, not when the allowance returns, so it must not be believed.
     if "PerDay" in text or "per day" in text.lower():
-        _cooldowns[model] = time.time() + DAILY_QUOTA_COOLDOWN_S
+        _cooldowns[(key_index, model)] = time.time() + DAILY_QUOTA_COOLDOWN_S
         return
 
     seconds = DEFAULT_COOLDOWN_S
@@ -162,15 +162,15 @@ def note_rate_limited(model: str, exc: Exception) -> None:
             seconds = min(300.0, float(match.group(1)) + 1.0)
         except ValueError:
             pass
-    _cooldowns[model] = time.time() + seconds
+    _cooldowns[(key_index, model)] = time.time() + seconds
 
 
-def is_cooling_down(model: str) -> bool:
-    expiry = _cooldowns.get(model)
+def is_cooling_down(model: str, key_index: int = 0) -> bool:
+    expiry = _cooldowns.get((key_index, model))
     if expiry is None:
         return False
     if time.time() >= expiry:
-        del _cooldowns[model]
+        del _cooldowns[(key_index, model)]
         return False
     return True
 
@@ -184,6 +184,25 @@ def cooldown_status() -> dict[str, float]:
     }
 
 
+def api_keys() -> list[str]:
+    """Every AI Studio key available, in preference order.
+
+    The free tier meters per project, so a second key on a different account
+    is a second full allowance -- twenty requests a day per model again. That
+    is the cheapest way to make this service usable, and it is why more than
+    one is supported at all.
+
+    GEMINI_API_KEYS takes a comma-separated list; GEMINI_API_KEY stays valid
+    for the single-key case, which is what anyone following the README has.
+    """
+    raw = (
+        os.environ.get("GEMINI_API_KEYS", "").strip()
+        or os.environ.get("GEMINI_API_KEY", "").strip()
+        or os.environ.get("GOOGLE_API_KEY", "").strip()
+    )
+    return [k.strip() for k in raw.split(",") if k.strip()]
+
+
 def model_candidates(preferred: str | None = None) -> list[str]:
     """The ordered list of models to try for one request.
 
@@ -195,6 +214,28 @@ def model_candidates(preferred: str | None = None) -> list[str]:
     chain = [first] + [m for m in MODEL_FALLBACK_CHAIN if m != first]
     ready = [m for m in chain if not is_cooling_down(m)]
     cooling = [m for m in chain if is_cooling_down(m)]
+    return ready + cooling
+
+
+def request_candidates(preferred: str | None = None) -> list[tuple[int, str]]:
+    """Every (key, model) pair to try, best first.
+
+    Ordered model-major: the strongest model is tried on every key before
+    dropping to a weaker one. The alternative -- exhausting one key down the
+    whole chain first -- would answer a farmer on a lite model while a better
+    model sat unused on the second key, and the quality difference matters
+    more than which allowance gets spent.
+
+    As with models alone, exhausted pairs are moved to the back rather than
+    dropped. Everything we believe about quota is inference from an error
+    message, and being wrong must cost a slow answer, never no answer.
+    """
+    first = preferred or DEFAULT_MODEL
+    chain = [first] + [m for m in MODEL_FALLBACK_CHAIN if m != first]
+    keys = range(max(1, len(api_keys())))
+    pairs = [(k, m) for m in chain for k in keys]
+    ready = [p for p in pairs if not is_cooling_down(p[1], p[0])]
+    cooling = [p for p in pairs if is_cooling_down(p[1], p[0])]
     return ready + cooling
 
 
@@ -237,13 +278,22 @@ class LLMNotConfigured(RuntimeError):
 def is_configured() -> bool:
     if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in {"1", "true", "yes"}:
         return bool(os.environ.get("GOOGLE_CLOUD_PROJECT"))
-    return bool(
-        os.environ.get("GEMINI_API_KEY", "").strip()
-        or os.environ.get("GOOGLE_API_KEY", "").strip()
-    )
+    return bool(api_keys())
 
 
-def build_client() -> genai.Client:
+# Clients are stateless and cheap to hold, but not free to build, and a
+# request may switch keys mid-turn when one runs out.
+_clients: dict[int, genai.Client] = {}
+
+
+def client_for(key_index: int) -> genai.Client:
+    """The client for one key, built once and reused."""
+    if key_index not in _clients:
+        _clients[key_index] = build_client(key_index)
+    return _clients[key_index]
+
+
+def build_client(key_index: int = 0) -> genai.Client:
     """Construct a Gemini client for whichever path is configured.
 
     The error message names the exact variable to set and where to get it.
@@ -269,11 +319,8 @@ def build_client() -> genai.Client:
             http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS, retry_options=NO_SDK_RETRY),
         )
 
-    api_key = (
-        os.environ.get("GEMINI_API_KEY", "").strip()
-        or os.environ.get("GOOGLE_API_KEY", "").strip()
-    )
-    if not api_key:
+    keys = api_keys()
+    if not keys:
         raise LLMNotConfigured(
             "GEMINI_API_KEY is not set. Get a free key from "
             "https://aistudio.google.com/apikey and add it to the .env file "
@@ -282,7 +329,7 @@ def build_client() -> genai.Client:
             "Vertex AI instead."
         )
     return genai.Client(
-        api_key=api_key,
+        api_key=keys[min(key_index, len(keys) - 1)],
         http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS, retry_options=NO_SDK_RETRY),
     )
 

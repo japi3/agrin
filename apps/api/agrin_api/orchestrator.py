@@ -307,7 +307,10 @@ async def stream_turn(
         last_error: Exception | None = None
 
         round_started = time.time()
-        for attempt, candidate in enumerate(llm.model_candidates(model_id)):
+        # (key, model) rather than model alone: a second API key is a second
+        # full daily allowance, and running out on one is no reason to stop.
+        for attempt, (key_index, candidate) in enumerate(
+                llm.request_candidates(model_id)):
             # Stop starting new attempts once the budget is spent. Checked
             # before the attempt rather than after, so we never begin a
             # request we already know we cannot afford to finish.
@@ -319,6 +322,7 @@ async def stream_turn(
             emitted_this_round = False
 
             try:
+                client = llm.client_for(key_index)
                 stream = await client.aio.models.generate_content_stream(
                     model=candidate, contents=contents, config=config
                 )
@@ -369,7 +373,7 @@ async def stream_turn(
                 # Remember an exhausted quota so the next turn does not spend
                 # ten seconds rediscovering it.
                 if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
-                    llm.note_rate_limited(candidate, exc)
+                    llm.note_rate_limited(candidate, exc, key_index)
                 if llm.is_retryable(exc) and not emitted_this_round:
                     # Brief backoff before the next model; capacity spikes are
                     # usually short. Skipped entirely once the budget is gone,

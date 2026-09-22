@@ -34,7 +34,7 @@ class TestDailyQuotaIsNotATransientPause:
         )
         llm.note_rate_limited("gemini-3.8-flash", exc)
 
-        remaining = llm._cooldowns["gemini-3.8-flash"] - time.time()
+        remaining = llm._cooldowns[(0, "gemini-3.8-flash")] - time.time()
         # Emphatically not the 14 seconds the error suggests.
         assert remaining > 600
         assert llm.is_cooling_down("gemini-3.8-flash")
@@ -45,14 +45,14 @@ class TestDailyQuotaIsNotATransientPause:
         exc = Exception("429 RESOURCE_EXHAUSTED. Please retry in 8.0s.")
         llm.note_rate_limited("gemini-3.7-flash", exc)
 
-        remaining = llm._cooldowns["gemini-3.7-flash"] - time.time()
+        remaining = llm._cooldowns[(0, "gemini-3.7-flash")] - time.time()
         assert 5 < remaining < 30
 
     def test_an_error_with_no_delay_falls_back_to_the_default(self):
         _clear()
         llm.note_rate_limited("gemini-3.5-flash", Exception("429 RESOURCE_EXHAUSTED"))
 
-        remaining = llm._cooldowns["gemini-3.5-flash"] - time.time()
+        remaining = llm._cooldowns[(0, "gemini-3.5-flash")] - time.time()
         assert 0 < remaining <= llm.DEFAULT_COOLDOWN_S + 1
 
 
@@ -81,4 +81,55 @@ class TestCoolingModelsAreDeprioritised:
             llm.note_rate_limited(model, Exception("429. PerDay"))
 
         assert llm.model_candidates(), "chain must never be empty"
+        _clear()
+
+
+class TestASecondKeyIsASecondAllowance:
+    """The free tier meters per project, so another key is another 20/day."""
+
+    def test_running_out_on_one_key_does_not_write_off_the_model(self):
+        _clear()
+        llm.note_rate_limited("gemini-3.7-flash", Exception("429. PerDay"), key_index=0)
+
+        assert llm.is_cooling_down("gemini-3.7-flash", 0)
+        assert not llm.is_cooling_down("gemini-3.7-flash", 1)
+        _clear()
+
+    def test_the_best_model_is_tried_on_every_key_before_a_weaker_one(
+        self, monkeypatch
+    ):
+        """Quality first.
+
+        Exhausting one key down the whole chain would answer a farmer on a
+        lite model while a better model sat unused on the second key.
+        """
+        _clear()
+        monkeypatch.setenv("GEMINI_API_KEYS", "key-one,key-two")
+        pairs = llm.request_candidates()
+
+        best = pairs[0][1]
+        assert pairs[0] == (0, best)
+        assert pairs[1] == (1, best), "second key should be tried on the same model"
+        assert pairs[2][1] != best, "only then drop to a weaker model"
+        _clear()
+
+    def test_a_single_key_still_yields_candidates(self, monkeypatch):
+        """The common case -- one key, as the README describes -- must work."""
+        _clear()
+        monkeypatch.delenv("GEMINI_API_KEYS", raising=False)
+        monkeypatch.setenv("GEMINI_API_KEY", "only-key")
+        pairs = llm.request_candidates()
+
+        assert pairs, "chain must never be empty"
+        assert all(k == 0 for k, _ in pairs)
+        _clear()
+
+    def test_candidates_survive_no_key_at_all(self, monkeypatch):
+        """Misconfiguration should surface as a clear error, not an empty loop."""
+        _clear()
+        monkeypatch.delenv("GEMINI_API_KEYS", raising=False)
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+
+        assert llm.request_candidates(), "must still offer something to try"
         _clear()

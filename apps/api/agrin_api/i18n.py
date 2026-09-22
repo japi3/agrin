@@ -99,8 +99,9 @@ async def _translate_locked(language: str, strings: list[str]) -> dict[str, Any]
     except llm.LLMNotConfigured as exc:
         return {"ok": False, "translations": {}, "reason": str(exc)}
 
-    for model in llm.model_candidates():
+    for key_index, model in llm.request_candidates():
         try:
+            client = llm.client_for(key_index)
             response = await client.aio.models.generate_content(
                 model=model, contents=prompt,
                 config=types.GenerateContentConfig(
@@ -110,7 +111,7 @@ async def _translate_locked(language: str, strings: list[str]) -> dict[str, Any]
             break
         except Exception as exc:  # noqa: BLE001
             if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
-                llm.note_rate_limited(model, exc)
+                llm.note_rate_limited(model, exc, key_index)
             if llm.is_retryable(exc):
                 continue
             return {"ok": False, "translations": {s: table[s] for s in strings if s in table}}

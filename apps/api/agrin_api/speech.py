@@ -212,10 +212,17 @@ async def synthesise(
     )
 
     last_error: Exception | None = None
-    ordered = [m for m in TTS_MODELS if not llm.is_cooling_down(m)] + \
-              [m for m in TTS_MODELS if llm.is_cooling_down(m)]
-    for model in ordered:
+    # Speech gets the same key rotation as everything else. There are only
+    # two TTS models, so a single exhausted key silences the Listen button
+    # outright; a second key is two more chances before a farmer who cannot
+    # read the screen is left with nothing to listen to.
+    _keys = range(max(1, len(llm.api_keys())))
+    _pairs = [(k, m) for m in TTS_MODELS for k in _keys]
+    ordered = [p for p in _pairs if not llm.is_cooling_down(p[1], p[0])] + \
+              [p for p in _pairs if llm.is_cooling_down(p[1], p[0])]
+    for key_index, model in ordered:
         try:
+            client = llm.client_for(key_index)
             response = await client.aio.models.generate_content(
                 model=model, contents=instruction, config=config
             )
@@ -234,7 +241,7 @@ async def synthesise(
         except Exception as exc:  # noqa: BLE001
             last_error = exc
             if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
-                llm.note_rate_limited(model, exc)
+                llm.note_rate_limited(model, exc, key_index)
             if llm.is_retryable(exc):
                 continue
             break
@@ -309,8 +316,9 @@ async def transcribe(
     ]
 
     last_error: Exception | None = None
-    for model in llm.model_candidates():
+    for key_index, model in llm.request_candidates():
         try:
+            client = llm.client_for(key_index)
             response = await client.aio.models.generate_content(
                 model=model,
                 contents=contents,
