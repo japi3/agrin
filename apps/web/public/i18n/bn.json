@@ -254,5 +254,9 @@
  "₹{n} per quintal": "কুইন্টাল প্রতি ₹{n}",
  "How do I get more from my soil?": "আমার মাটি থেকে কীভাবে আরও বেশি ফলন পাব?",
  "Something is wrong with my crop": "আমার ফসলে কিছু সমস্যা হয়েছে",
- "What should I sow this season?": "এই মৌসুমে কী লাগাব?"
+ "What should I sow this season?": "এই মৌসুমে কী লাগাব?",
+ "...": "...",
+ "How can I improve my soil?": "আমি কীভাবে আমার মাটি ভালো করব?",
+ "How does my crop look from the satellite?": "স্যাটেলাইট থেকে আমার ফসল কেমন দেখাচ্ছে?",
+ "What is the rate at my mandi today?": "আজ আমার মান্ডিতে দর কত?"
 }

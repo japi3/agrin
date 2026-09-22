@@ -364,15 +364,38 @@ export function FieldPanel({
               )}
 
               {/* Shortcuts phrased as questions, so tapping one teaches what
-                  can be asked rather than hiding features behind buttons. */}
+                  can be asked rather than hiding features behind buttons.
+ 
+                  Which questions appear depends on what the field knows,
+                  because a shortcut that cannot be answered is worse than no
+                  shortcut: it spends a farmer's tap to be told no. The panel
+                  was offering the mandi rate to a field with nothing planted,
+                  while the panel directly above it said "what is planted" was
+                  missing -- and get_mandi_prices abstains outright without a
+                  crop. So a field with no crop is asked what to sow instead,
+                  which is answerable from soil and climate alone and is the
+                  question that actually moves that farmer forward.
+ 
+                  The satellite question survives without a sowing date on
+                  purpose: get_crop_health still returns the NDVI history and
+                  only withholds the on-track verdict, so it stays useful. */}
               <div>
                 <div className="text-[13px] font-medium mb-1.5">{t('Ask about')}</div>
                 <div className="space-y-1">
-                  {[
-                    'How does my crop look from the satellite?',
-                    'What is the rate at my mandi today?',
-                    'How can I improve my soil?',
-                  ].map((english) => t(english)).map((q) => (
+                  {(() => {
+                    // Each literal sits inside t() rather than being mapped
+                    // through it afterwards. The translation extractor reads
+                    // the source for t('...') calls, so a string reached any
+                    // other way is never collected and ships in English --
+                    // which is what had happened to all three of these.
+                    const hasCrop = (data.crops_growing?.length ?? 0) > 0
+                    const questions = hasCrop
+                      ? [t('How does my crop look from the satellite?'),
+                         t('What is the rate at my mandi today?')]
+                      : [t('What should I sow this season?')]
+                    if (data.soil) questions.push(t('How can I improve my soil?'))
+                    return questions
+                  })().map((q) => (
                     <button key={q} onClick={() => onAsk(q)}
                             className="w-full text-left text-[13px] rounded-lg px-2 py-2"
                             style={{ background: 'var(--bg-sunken)' }}>

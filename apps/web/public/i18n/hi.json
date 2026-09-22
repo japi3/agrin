@@ -252,5 +252,11 @@
  "{n} mm per metre": "{n} mm प्रति मीटर",
  "{n} mm rain expected this week": "इस हफ्ते {n} mm बारिश की उम्मीद है",
  "₹{n} per quintal": "₹{n} प्रति क्विंटल",
- "How do I get more from my soil?": "अपनी मिट्टी से ज़्यादा पैदावार कैसे लें?"
+ "How do I get more from my soil?": "अपनी मिट्टी से ज़्यादा पैदावार कैसे लें?",
+ "...": "...",
+ "How can I improve my soil?": "मैं अपनी मिट्टी को कैसे सुधारूँ?",
+ "How does my crop look from the satellite?": "सैटेलाइट से मेरी फसल कैसी दिख रही है?",
+ "Something is wrong with my crop": "मेरी फसल में कुछ दिक्कत है",
+ "What is the rate at my mandi today?": "आज मेरी मंडी में क्या भाव है?",
+ "What should I sow this season?": "इस मौसम में क्या बोएँ?"
 }

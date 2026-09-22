@@ -122,6 +122,21 @@ _cooldowns: dict[str, float] = {}
 # Fallback when the API does not tell us how long to wait.
 DEFAULT_COOLDOWN_S = 45.0
 
+# How long to write off a model whose DAILY allowance is gone.
+#
+# The free tier's binding limit is GenerateRequestsPerDayPerProjectPerModel:
+# twenty requests a day per model, not per minute. But the 429 for it still
+# carries a retryDelay of ten or twenty seconds, so trusting that delay meant
+# a model exhausted until tomorrow was retried every fifteen seconds for the
+# rest of the day. Every retry is a wasted round trip, and the tool-calling
+# loop makes several model calls per question, so a single farmer question
+# walked the graveyard three or four times over.
+#
+# An hour rather than "until midnight Pacific" because the reset time needs
+# timezone data this image does not carry, and because re-probing hourly is
+# cheap insurance against having read the quota wrong.
+DAILY_QUOTA_COOLDOWN_S = 3600.0
+
 
 def note_rate_limited(model: str, exc: Exception) -> None:
     """Record that a model is out of quota, and for how long.
@@ -131,8 +146,17 @@ def note_rate_limited(model: str, exc: Exception) -> None:
     for a minute.
     """
     import re
+    text = str(exc)
+
+    # A per-day exhaustion is not a pause, it is the end of the day for this
+    # model. Its retryDelay describes when the rate limiter will next accept
+    # a request, not when the allowance returns, so it must not be believed.
+    if "PerDay" in text or "per day" in text.lower():
+        _cooldowns[model] = time.time() + DAILY_QUOTA_COOLDOWN_S
+        return
+
     seconds = DEFAULT_COOLDOWN_S
-    match = re.search(r"retry in ([\d.]+)s", str(exc), re.IGNORECASE)
+    match = re.search(r"retry in ([\d.]+)s", text, re.IGNORECASE)
     if match:
         try:
             seconds = min(300.0, float(match.group(1)) + 1.0)

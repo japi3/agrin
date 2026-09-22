@@ -254,5 +254,9 @@
  "{n} markets reporting": "{n} খন বজাৰৰ খবৰ পোৱা গৈছে",
  "{n} mm per metre": "প্ৰতি মিটাৰত {n} mm",
  "{n} mm rain expected this week": "এই সপ্তাহত {n} mm বৰষুণ হোৱাৰ সম্ভাৱনা আছে",
- "₹{n} per quintal": "প্ৰতি কুইণ্টলত ₹{n}"
+ "₹{n} per quintal": "প্ৰতি কুইণ্টলত ₹{n}",
+ "...": "পঞ্জীয়ন কৰক",
+ "How can I improve my soil?": "মাটি কেনেকৈ সাৰুৱা কৰিম?",
+ "How does my crop look from the satellite?": "ছেটেলাইটত মোৰ খেতিডৰা কেনেকুৱা দেখা গৈছে?",
+ "What is the rate at my mandi today?": "আজি মোৰ মণ্ডীত দৰ কিমান?"
 }

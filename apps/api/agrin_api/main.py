@@ -253,6 +253,15 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
     field_context = storage.build_field_context(field_id) if field_id else None
     season_memory = storage.build_season_memory(field_id) if field_id else None
 
+    # Both are cached reads, so this costs far less than the model round trip
+    # it saves. It is appended to the stored record rather than replacing it,
+    # because the two say different things: one is what the farmer told us,
+    # the other is what the ground is doing today.
+    if field_id:
+        conditions = await _live_conditions(field_id)
+        if conditions:
+            field_context = f"{field_context}\n{conditions}" if field_context else conditions
+
     def make_field(lat: float, lon: float, name: str | None) -> str:
         """Create the farmer's field from a place they named, once per conversation."""
         new_id = storage.add_field(farmer_id, lat, lon, name=name)
@@ -324,6 +333,82 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+async def _live_conditions(field_id: str) -> str | None:
+    """Today's soil and weather for a field, rendered as prompt facts.
+
+    Why this is worth the tokens: answering "does my field need water" was
+    three model round trips, not one. The model asked for weather, read it,
+    asked for irrigation advice, read that, then wrote the reply -- and each
+    round trip is the dominant cost of a reply, measured at roughly three
+    seconds against essentially nothing for the tools themselves, which are
+    served from cache. Questions like "will it rain this week" or "what is my
+    soil" needed a round trip purely to fetch numbers the server already had
+    in hand for the side panel.
+
+    So the numbers the panel is already showing the farmer go into the prompt
+    too, and those questions are answered directly.
+
+    What is deliberately NOT injected is any irrigation verdict. Advice in
+    this platform has to be traceable to the model that produced it, and a
+    verdict arrived at from prompt context carries no evidence ledger and no
+    card. The tool stays the only route to "water today", and it keeps its
+    round trip. This shortens the cheap questions, not the consequential one.
+
+    Failure is silent by design: no conditions block simply means the model
+    asks for what it needs, exactly as before.
+    """
+    field = storage.get_field(field_id)
+    if not field:
+        return None
+
+    from . import tools as tool_impl
+
+    lat, lon = field["latitude"], field["longitude"]
+    try:
+        soil, weather = await asyncio.gather(
+            tool_impl.get_soil_profile(lat, lon),
+            tool_impl.get_weather(lat, lon, days_ahead=7),
+            return_exceptions=True,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+    lines: list[str] = []
+
+    if not isinstance(soil, BaseException) and soil and soil.get("ok"):
+        bits = [f"Soil: {soil['texture']['usda_class']}"]
+        ph = soil["chemistry"].get("ph")
+        if ph is not None:
+            bits.append(f"pH {ph} ({soil['chemistry'].get('ph_class') or 'unclassified'})")
+        awc = soil["water_holding"].get("available_water_mm_per_m")
+        if awc is not None:
+            bits.append(f"holds {awc} mm water per metre")
+        if soil.get("confidence") == "low":
+            # Stated so the assistant hedges rather than quoting a shaky
+            # figure as though it were measured on this field.
+            bits.append("soil map uncertain at this location")
+        lines.append(", ".join(bits))
+
+    if not isinstance(weather, BaseException) and weather and weather.get("ok"):
+        forecast = weather.get("forecast", [])[:7]
+        if forecast:
+            today = forecast[0]
+            lines.append(
+                f"Today: {round(today['t_max_c'])}C max, "
+                f"{round(today['t_min_c'])}C min, "
+                f"reference ET {today.get('reference_et_mm')} mm"
+            )
+        past = weather.get("rain_last_14_days_mm")
+        ahead = weather.get("rain_next_7_days_mm")
+        if past is not None or ahead is not None:
+            lines.append(
+                f"Rain: {past if past is not None else '?'} mm in the last 14 days, "
+                f"{ahead if ahead is not None else '?'} mm forecast for the next 7"
+            )
+
+    return "\n".join(lines) if lines else None
 
 
 # --------------------------------------------------------------------------

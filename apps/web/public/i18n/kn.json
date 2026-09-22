@@ -254,5 +254,9 @@
  "{n} markets reporting": "{n} ಮಾರುಕಟ್ಟೆಗಳ ಮಾಹಿತಿ ಬಂದಿದೆ",
  "{n} mm per metre": "ಪ್ರತಿ ಮೀಟರ್‌ಗೆ {n} mm",
  "{n} mm rain expected this week": "ಈ ವಾರ {n} mm ಮಳೆ ಬರಬಹುದು",
- "₹{n} per quintal": "ಕ್ವಿಂಟಾಲ್‌ಗೆ ₹{n}"
+ "₹{n} per quintal": "ಕ್ವಿಂಟಾಲ್‌ಗೆ ₹{n}",
+ "...": "ಮುಂದೆ...",
+ "How can I improve my soil?": "ನನ್ನ ಮಣ್ಣನ್ನು ಸುಧಾರಿಸುವುದು ಹೇಗೆ?",
+ "How does my crop look from the satellite?": "ಸ್ಯಾಟಲೈಟ್‌ನಿಂದ ನನ್ನ ಬೆಳೆ ಹೇಗೆ ಕಾಣಿಸುತ್ತೆ?",
+ "What is the rate at my mandi today?": "ಇವತ್ತು ನಮ್ಮ ಮಂಡಿ ರೇಟು ಎಷ್ಟು?"
 }
