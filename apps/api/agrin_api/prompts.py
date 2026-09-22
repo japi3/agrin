@@ -231,6 +231,24 @@ def build_system_prompt(
             f"script, even when their message is in English or Roman letters. "
             f"Numbers may stay as digits. Keep local crop names as farmers say them."
         )
+    else:
+        # No language chosen, so follow the farmer -- but follow their LATEST
+        # message, which is the part that was missing.
+        #
+        # With no instruction at all, the model inferred a language from the
+        # whole conversation, and one earlier turn in another language was
+        # enough to pull later replies back into it. Observed: a farmer wrote
+        # once in Roman-script Punjabi, then twice in plain English, and got
+        # Gurmukhi back both times. The Hinglish case this default exists for
+        # still works, because a Hinglish message is the latest message.
+        parts.append(
+            "\n## Language for this conversation\n\n"
+            "Reply in the language of the farmer's most recent message, and "
+            "in the script they wrote it in. If they switch languages partway "
+            "through, switch with them: what language earlier turns were in "
+            "does not carry over. A message written in English gets an answer "
+            "in English."
+        )
 
     if field_context:
         parts.append(
