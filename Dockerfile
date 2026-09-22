@@ -38,6 +38,13 @@ COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 COPY scripts/ ./scripts/
 
+# The local soil map of India, when it has been built -- see
+# scripts/build_india_soil.py. Not under /app/data, which is a mounted volume
+# and would hide anything baked into the image at that path. In a fresh
+# checkout the directory holds only its README, and soil lookups use the
+# live service exactly as before.
+COPY data/soil/ ./soil/
+
 # The built frontend is served from where main.py expects it.
 COPY --from=web /build/dist ./apps/web/dist
 
@@ -55,7 +62,13 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Run as a non-root user.
-RUN useradd --create-home --uid 1000 agrin && chown -R agrin:agrin /app
+#
+# Ownership changes only where the app writes. chown -R over all of /app
+# rewrote every file into a fresh layer, which meant a second full copy of
+# the 165 MB soil map in the image. The code and the map need only be
+# readable, which they are; the cache and the database are the only paths
+# written at runtime, and both are mounted volumes in any real deployment.
+RUN useradd --create-home --uid 1000 agrin && chown -R agrin:agrin /app/.cache /app/data
 USER agrin
 
 # One worker: the workload is I/O-bound (waiting on SoilGrids, Open-Meteo,

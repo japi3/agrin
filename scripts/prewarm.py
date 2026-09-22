@@ -2,6 +2,13 @@
 Warm the slow caches: geocoding and soil for places farmers name, and the
 satellite read for fields already on record.
 
+Since the local soil map of India (scripts/build_india_soil.py), soil inside
+India answers from disk in milliseconds whether or not it was warmed, so the
+soil pass below is now mostly a check that places resolve. It still matters
+where the map is absent -- a fresh checkout that has not built it -- and the
+geocoding and satellite passes matter as much as ever. The satellite one most
+of all: see below.
+
 SoilGrids is the slowest thing this system depends on, and on a bad day it is
 slow enough to matter. Measured on 20 September 2026, one query for the eight
 properties across three depths took 26 seconds at best and 91-115 seconds at
@@ -80,6 +87,36 @@ PLACES: list[str] = [
     "Palakkad, Kerala",
     # East.
     "Cuttack, Odisha",
+    "Ranchi, Jharkhand",
+    "Raipur, Chhattisgarh",
+    # The North-East, every state. These are the places most likely to be
+    # asked about by someone checking whether the app covers all of India --
+    # and the least likely to have been queried by anyone before.
+    "Jorhat, Assam",
+    "Pasighat, Arunachal Pradesh",
+    "Dimapur, Nagaland",
+    "Thoubal, Manipur",
+    "Aizawl, Mizoram",
+    "Agartala, Tripura",
+    "Nongpoh, Meghalaya",
+    "Gangtok, Sikkim",
+    # The hills and the north.
+    "Mandi, Himachal Pradesh",
+    "Dehradun, Uttarakhand",
+    "Anantnag, Jammu and Kashmir",
+    "Leh, Ladakh",
+    # The west and the remaining states.
+    "Jaipur, Rajasthan",
+    "Ponda, Goa",
+    # Union territories, including both island groups.
+    "Port Blair, Andaman and Nicobar Islands",
+    "Kavaratti, Lakshadweep",
+    "Karaikal, Puducherry",
+    "Chandigarh",
+    "Narela, Delhi",
+    "Silvassa, Dadra and Nagar Haveli and Daman and Diu",
+    # A real farm this has been tested against.
+    "Dindori, Nashik, Maharashtra",
 ]
 
 

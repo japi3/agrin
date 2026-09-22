@@ -30,6 +30,7 @@ Two things this client takes seriously:
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -397,6 +398,153 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * R * math.asin(math.sqrt(a))
 
 
+# --------------------------------------------------------------------------
+# Local map of India
+# --------------------------------------------------------------------------
+
+# Built once by scripts/build_india_soil.py from ISRIC's 1 km aggregate. When
+# present, every coordinate in India answers from disk; see that script for
+# what the 1 km resolution does and does not give up.
+INDIA_SOIL_PATH = os.environ.get(
+    "AGRIN_INDIA_SOIL", "/app/soil/india_soilgrids_1km.tif"
+)
+_NODATA = -32768
+
+_local_dataset = None
+_local_unavailable = False
+
+# What a cell must hold before it counts as soil rather than as a mask.
+#
+# "Has any data" was the first test, and it was wrong. SoilGrids masks each
+# property separately, and at the edge of a town the masks do not line up: a
+# cell in Ranchi held bulk density and organic carbon but no clay, sand, silt
+# or pH. It passed, so the ring search that would have found a complete cell
+# a kilometre away never ran, and the texture step downstream -- which needs
+# all three fractions -- gave up. The farmer was told their soil could not be
+# resolved, a few hundred metres from soil that could.
+_REQUIRED_PROPERTIES = ("clay", "sand", "silt", "phh2o")
+
+
+def _open_local():
+    """Open the local map once and keep it open, or report it is absent.
+
+    Absent is a normal state -- a fresh checkout, or a deployment that chose
+    not to carry 190 MB -- and must cost nothing: the app simply asks the
+    live service as it always did.
+    """
+    global _local_dataset, _local_unavailable
+    if _local_dataset is not None or _local_unavailable:
+        return _local_dataset
+    if not os.path.exists(INDIA_SOIL_PATH):
+        _local_unavailable = True
+        return None
+    try:
+        import rasterio
+        _local_dataset = rasterio.open(INDIA_SOIL_PATH)
+    except Exception:  # noqa: BLE001
+        _local_unavailable = True
+        return None
+    return _local_dataset
+
+
+def local_soil_profile(latitude: float, longitude: float) -> SoilProfile | None:
+    """The soil at one point from the local India map, or None.
+
+    None means "ask the network": the point is outside the map, or the map
+    has no data there (water, or outside India within the bounding box).
+    """
+    dataset = _open_local()
+    if dataset is None:
+        return None
+    left, bottom, right, top = dataset.bounds
+    if not (left <= longitude < right and bottom < latitude <= top):
+        return None
+
+    from rasterio.windows import Window
+
+    row, col = dataset.index(longitude, latitude)
+    values = dataset.read(window=Window(col, row, 1, 1))[:, 0, 0]
+
+    profile = SoilProfile(
+        latitude=latitude,
+        longitude=longitude,
+        source="ISRIC SoilGrids 2.0, 1 km aggregate (local copy)",
+        resolution_m=1000,
+    )
+    for band, raw in zip(dataset.descriptions, values):
+        if not band:
+            continue
+        prop, _, depth = band.partition("_")
+        if prop not in PROPERTY_CONVERSIONS:
+            continue
+        divisor, unit, label = PROPERTY_CONVERSIONS[prop]
+        profile.layers.append(
+            SoilLayer(
+                property_name=prop,
+                depth=depth,
+                mean=None if int(raw) == _NODATA else float(raw) / divisor,
+                # The aggregate publishes means only. No bands means
+                # is_confident() is False, so the app says the map is
+                # uncertain and suggests a KVK test -- the honest reading of
+                # a 1 km regional average for one particular field.
+                q05=None,
+                q95=None,
+                unit=unit,
+                label=label,
+            )
+        )
+    return profile if _is_complete(profile) else None
+
+
+def _is_complete(profile: SoilProfile) -> bool:
+    """Every property texture and pH depend on, present at every depth."""
+    present = {
+        (layer.property_name, layer.depth)
+        for layer in profile.layers
+        if layer.mean is not None
+    }
+    return all(
+        (prop, depth) in present
+        for prop in _REQUIRED_PROPERTIES
+        for depth in DEFAULT_DEPTHS
+    )
+
+
+def _local_resilient(
+    latitude: float, longitude: float, max_search_km: float
+) -> SoilProfile | None:
+    """The same urban-mask ring search as the live path, on the local map.
+
+    Over the network a masked village cost one slow round trip per ring.
+    Locally each probe is a disk read, so the whole search is effectively
+    free and a pin on a town centre resolves as fast as one on a field.
+    """
+    profile = local_soil_profile(latitude, longitude)
+    if profile is not None:
+        return profile
+    if _open_local() is None:
+        return None
+    for radius in _SEARCH_RING_KM:
+        if radius > max_search_km:
+            break
+        best: tuple[float, SoilProfile, float] | None = None
+        for bearing in _SEARCH_BEARINGS:
+            lat2, lon2 = _offset_point(latitude, longitude, radius, bearing)
+            candidate = local_soil_profile(lat2, lon2)
+            if candidate is None:
+                continue
+            distance = haversine_km(latitude, longitude, lat2, lon2)
+            if best is None or distance < best[0]:
+                best = (distance, candidate, bearing)
+        if best is not None:
+            distance, candidate, bearing = best
+            candidate.displaced_km = distance
+            candidate.displaced_from = (latitude, longitude)
+            candidate.displacement_bearing = bearing
+            return candidate
+    return None
+
+
 async def fetch_soil_profile_resilient(
     latitude: float,
     longitude: float,
@@ -419,6 +567,13 @@ async def fetch_soil_profile_resilient(
     location rather than the exact pin. Silently substituting nearby data
     without disclosing it would be the wrong trade.
     """
+    # The local map answers first, and for anywhere in India it answers
+    # completely. Only a point it cannot cover goes to the network.
+    if properties is None and depths is None:
+        local = _local_resilient(latitude, longitude, max_search_km)
+        if local is not None:
+            return local
+
     owns_client = client is None
     client = client or httpx.AsyncClient(timeout=SOILGRIDS_TIMEOUT_S)
     started = time.monotonic()
