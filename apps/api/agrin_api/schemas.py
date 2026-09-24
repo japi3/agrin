@@ -258,7 +258,11 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "Separates constraints a farmer can fix with an input (acidity, "
             "correctable with a stated tonnage of lime) from hard climate "
             "limits (insufficient heat to reach maturity). It screens out "
-            "unsuitable crops; it does not predict yield."
+            "unsuitable crops; it does not predict yield.\n\n"
+            "Pass sowing_month whenever the farmer is asking what to sow "
+            "now, next, or after the current crop. Without it the answer "
+            "covers the whole year, which will list crops belonging to a "
+            "different season than the one they are asking about."
         ),
         "input_schema": {
             "type": "object",
@@ -270,6 +274,17 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "description": (
                         "Optional subset of crop keys to assess. Omit to "
                         "assess all calibrated crops."
+                    ),
+                },
+                "sowing_month": {
+                    "type": "integer",
+                    "description": (
+                        "Month number 1-12 the farmer would sow in. Set it "
+                        "for 'what should I sow now' or 'what comes after "
+                        "this crop' -- use the month they would actually "
+                        "plant, which for a question about the next season "
+                        "is the start of that season, not today. Omit only "
+                        "when the question really is about the whole year."
                     ),
                 },
             },

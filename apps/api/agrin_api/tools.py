@@ -471,7 +471,8 @@ async def compare_regenerative_practices(
 # --------------------------------------------------------------------------
 
 async def assess_crop_suitability(
-    latitude: float, longitude: float, candidate_crops: list[str] | None = None
+    latitude: float, longitude: float, candidate_crops: list[str] | None = None,
+    sowing_month: int | None = None,
 ) -> dict[str, Any]:
     """Score candidate crops against this field's soil and climate.
 
@@ -479,6 +480,16 @@ async def assess_crop_suitability(
     genuinely disqualifying (pH outside a crop's tolerance, thermal time
     insufficient to reach maturity, water demand far exceeding supply) rather
     than producing a confident ranking the underlying data cannot support.
+
+    `sowing_month` narrows the answer to crops actually sown in that month.
+    Without it the question being answered is "what could ever grow on this
+    land", which is not what a farmer asking what to sow next means. Asked in
+    Nashik in September what to sow after the kharif crop, this returned
+    paddy, cotton and soybean -- every one of them a kharif crop, each
+    labelled as growing on rain alone from 1063 mm of monsoon, while the
+    assistant's own text was correctly recommending chickpea and rabi wheat
+    and warning that rain stops in October. The card contradicted the answer
+    above it.
     """
     soil_profile, weather_series = await _soil_and_weather(latitude, longitude)
     if not soil_profile.has_data or soil_profile.texture_fractions is None:
@@ -515,6 +526,23 @@ async def assess_crop_suitability(
     }
 
     keys = candidate_crops or list(CROPS)
+    if sowing_month:
+        # A crop belongs to this question only if it is actually sown now.
+        # Hemisphere-aware, because the same crop is a different season
+        # either side of the equator.
+        keys = [
+            k for k in keys
+            if k in CROPS and sowing_month in CROPS[k].sowing_months(latitude)
+        ]
+        if not keys:
+            return {
+                "ok": False,
+                "abstain_reason": (
+                    f"None of the crops I model are normally sown in month "
+                    f"{sowing_month} at this latitude. Ask about a different "
+                    f"month, or about the year as a whole."
+                ),
+            }
     assessments = []
     for key in keys:
         if key not in CROPS:

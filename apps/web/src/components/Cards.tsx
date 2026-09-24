@@ -136,6 +136,8 @@ export function IrrigationCard({ d }: { d: any }) {
   // pumping do. Both are shown; the familiar unit leads.
   const inches = d.gross_depth_mm ? (d.gross_depth_mm / 25.4).toFixed(1) : null
 
+  const needsWater = d.verdict === 'irrigate_now' || d.verdict === 'irrigate_in_days'
+
   const steps = d.verdict === 'wait_for_rain' || d.verdict === 'no_irrigation_needed'
     ? [{ kind: 'rain', label: t('Rain coming') }, { kind: 'no-water', label: t('No pump') }]
     : [
@@ -153,7 +155,15 @@ export function IrrigationCard({ d }: { d: any }) {
       <div className="mt-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
         {d.crop_name && <Detail label={t('Crop')} value={`${t(d.crop_name)} · ${t(String(d.growth_stage || '').replace('_', ' '))}`} />}
         <Detail label={t('Water in the soil now')} value={`${d.soil_moisture_percent}%`} />
-        {d.gross_depth_mm > 0 && (
+        {/* Only when the answer is actually to water.
+            
+            The depth is computed either way -- it is what a full irrigation
+            would need, not a recommendation -- and printing it regardless put
+            "Water to apply: 0.5 inch" directly beneath "No water needed" and
+            "No pump". A farmer skimming the card could irrigate a field that
+            did not need it, which is the one outcome this card exists to
+            prevent. */}
+        {needsWater && d.gross_depth_mm > 0 && (
           <Detail label={t('Water to apply')}
                   value={<>{t('{n} inch', { n: inches ?? '' })} <span style={{ color: 'var(--text-muted)' }}>({d.gross_depth_mm} mm)</span></>} />
         )}

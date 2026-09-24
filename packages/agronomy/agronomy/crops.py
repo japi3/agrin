@@ -80,6 +80,24 @@ class CropParameters:
     def total_days(self) -> int:
         return sum(self.stage_days)
 
+    def sowing_months(self, latitude: float) -> list[int]:
+        """Calendar months this crop is normally sown in, for this hemisphere.
+
+        Distinct from `growing_months`, which is the whole window the crop
+        occupies. Asked what to sow in October, a farmer means crops sown
+        then -- not every crop that happens to still be standing in October.
+
+        A crop with no declared window is treated as sowable at any time,
+        matching how `growing_months` treats the same gap: the honest reading
+        of missing data is "unknown", and excluding the crop outright would
+        silently drop it from every seasonal answer.
+        """
+        windows = (
+            self.sowing_months_north if latitude >= 0
+            else self.sowing_months_south
+        )
+        return list(windows) if windows else list(range(1, 13))
+
     def growing_months(self, latitude: float) -> list[int]:
         """Calendar months this crop occupies, for the given hemisphere.
 
