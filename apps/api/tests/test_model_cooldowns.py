@@ -166,3 +166,45 @@ class TestBackoffOnlyWhereItHelps:
             for i in range(20)
         )
         assert total <= 4 * llm.BACKOFF_CAP_S
+
+
+class TestCooldownsSurviveARestart:
+    """Otherwise every restart pays to rediscover the same exhausted models."""
+
+    def test_what_was_learned_is_written_and_read_back(self, tmp_path, monkeypatch):
+        _clear()
+        monkeypatch.setattr(llm, "_COOLDOWN_FILE", str(tmp_path / "cooldowns.json"))
+
+        llm.note_rate_limited("gemini-3.7-flash", Exception("429. PerDay"), 1)
+
+        # A fresh process: nothing in memory, the file is all there is.
+        llm._cooldowns.clear()
+        monkeypatch.setattr(llm, "_cooldowns_loaded", False)
+
+        assert llm.is_cooling_down("gemini-3.7-flash", 1)
+        assert not llm.is_cooling_down("gemini-3.7-flash", 0)
+        _clear()
+
+    def test_an_expired_cooldown_is_not_resurrected(self, tmp_path, monkeypatch):
+        """Yesterday's exhaustion must not write off today's allowance."""
+        import json
+        path = tmp_path / "cooldowns.json"
+        path.write_text(json.dumps({"0:gemini-3.7-flash": time.time() - 10}))
+        monkeypatch.setattr(llm, "_COOLDOWN_FILE", str(path))
+        _clear()
+        monkeypatch.setattr(llm, "_cooldowns_loaded", False)
+
+        assert not llm.is_cooling_down("gemini-3.7-flash", 0)
+        _clear()
+
+    def test_an_unreadable_file_is_not_fatal(self, tmp_path, monkeypatch):
+        """This is an optimisation; it must never stop the service answering."""
+        path = tmp_path / "cooldowns.json"
+        path.write_text("{ not json")
+        monkeypatch.setattr(llm, "_COOLDOWN_FILE", str(path))
+        _clear()
+        monkeypatch.setattr(llm, "_cooldowns_loaded", False)
+
+        assert llm.is_cooling_down("gemini-3.7-flash", 0) is False
+        assert llm.request_candidates(), "must still offer something to try"
+        _clear()

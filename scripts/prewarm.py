@@ -180,7 +180,34 @@ async def main() -> int:
               f"since warmed places are served from cache.")
 
     failed += await _warm_satellite()
+    await _probe_models()
     return 1 if failed else 0
+
+
+async def _probe_models() -> None:
+    """Find out which models still have quota, so the first farmer does not.
+
+    Does not count toward the failure total. Every model being spent is a
+    fact about the day, not a fault in the deployment, and the app answers
+    on whatever is left.
+    """
+    from agrin_api import llm
+
+    print("\nModel quota:", flush=True)
+    findings = await llm.probe_models()
+    ready = [f"{m}" for k, m, state in findings if state == "ready"]
+    spent = [f"{m}" for k, m, state in findings if state == "out of quota"]
+    other = [(m, state) for k, m, state in findings
+             if state not in ("ready", "out of quota")]
+
+    print(f"  ready:       {len(ready)} of {len(findings)} key-model pairs", flush=True)
+    if spent:
+        print(f"  out of quota: {len(spent)}", flush=True)
+    for model, state in other:
+        print(f"  {model}: {state}", flush=True)
+    if not ready:
+        print("  Nothing has quota left today. The allowance resets at "
+              "midnight Pacific (12:30 PM IST).", flush=True)
 
 
 async def _warm_satellite() -> int:

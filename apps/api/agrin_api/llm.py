@@ -119,6 +119,59 @@ _TRY_NEXT_MODEL_STATUS = (404,)
 # than backing off globally.
 _cooldowns: dict[tuple[int, str], float] = {}
 
+# ...and kept on disk, because otherwise every restart pays to rediscover it.
+#
+# A model exhausted for the day stays exhausted across a restart, but the
+# knowledge did not survive one: the first question after any restart walked
+# the whole graveyard again. Measured, that is the difference between a
+# fifteen second first answer and a five second one -- and on a laptop where
+# Docker starts fresh each morning, it was paid daily.
+#
+# Expiry times are absolute, so a file written before a restart still means
+# what it said afterwards. Failure to read or write is ignored on purpose:
+# this is an optimisation, and an unwritable cache directory must not stop
+# the service answering.
+_COOLDOWN_FILE = os.path.join(
+    os.environ.get("AGRIN_CACHE_DIR", "/tmp"), "model_cooldowns.json"
+)
+_cooldowns_loaded = False
+
+
+def _load_cooldowns() -> None:
+    global _cooldowns_loaded
+    if _cooldowns_loaded:
+        return
+    _cooldowns_loaded = True
+    try:
+        import json
+        with open(_COOLDOWN_FILE) as handle:
+            stored = json.load(handle)
+    except Exception:  # noqa: BLE001
+        return
+    now = time.time()
+    for key, expiry in stored.items():
+        index, _, model = key.partition(":")
+        if model and float(expiry) > now:
+            _cooldowns[(int(index), model)] = float(expiry)
+
+
+def _save_cooldowns() -> None:
+    try:
+        import json
+        now = time.time()
+        payload = {
+            f"{index}:{model}": expiry
+            for (index, model), expiry in _cooldowns.items()
+            if expiry > now
+        }
+        os.makedirs(os.path.dirname(_COOLDOWN_FILE), exist_ok=True)
+        tmp = _COOLDOWN_FILE + ".tmp"
+        with open(tmp, "w") as handle:
+            json.dump(payload, handle)
+        os.replace(tmp, _COOLDOWN_FILE)
+    except Exception:  # noqa: BLE001
+        pass
+
 # Fallback when the API does not tell us how long to wait.
 DEFAULT_COOLDOWN_S = 45.0
 
@@ -153,6 +206,7 @@ def note_rate_limited(model: str, exc: Exception, key_index: int = 0) -> None:
     # a request, not when the allowance returns, so it must not be believed.
     if "PerDay" in text or "per day" in text.lower():
         _cooldowns[(key_index, model)] = time.time() + DAILY_QUOTA_COOLDOWN_S
+        _save_cooldowns()
         return
 
     seconds = DEFAULT_COOLDOWN_S
@@ -163,6 +217,7 @@ def note_rate_limited(model: str, exc: Exception, key_index: int = 0) -> None:
         except ValueError:
             pass
     _cooldowns[(key_index, model)] = time.time() + seconds
+    _save_cooldowns()
 
 
 def backoff_seconds(exc: Exception, attempt: int) -> float:
@@ -192,6 +247,7 @@ BACKOFF_CAP_S = 2.0
 
 
 def is_cooling_down(model: str, key_index: int = 0) -> bool:
+    _load_cooldowns()
     expiry = _cooldowns.get((key_index, model))
     if expiry is None:
         return False
@@ -202,11 +258,18 @@ def is_cooling_down(model: str, key_index: int = 0) -> bool:
 
 
 def cooldown_status() -> dict[str, float]:
-    """Remaining cooldown per model, for the health endpoint."""
+    """Remaining cooldown per key and model, for the health endpoint.
+
+    Loads from disk first. Without that, health reported nothing exhausted
+    after a restart while the file said otherwise -- the map is filled
+    lazily, and health was reading it before anything had asked a question.
+    A diagnostic that under-reports is worse than none.
+    """
+    _load_cooldowns()
     now = time.time()
     return {
-        m: round(expiry - now, 1)
-        for m, expiry in _cooldowns.items() if expiry > now
+        f"{index}:{model}": round(expiry - now, 1)
+        for (index, model), expiry in _cooldowns.items() if expiry > now
     }
 
 
@@ -418,6 +481,42 @@ def build_tools(tool_definitions: list[dict[str, Any]]) -> list[types.Tool]:
         for t in tool_definitions
     ]
     return [types.Tool(function_declarations=declarations)]
+
+
+async def probe_models() -> list[tuple[int, str, str]]:
+    """Ask every key and model whether it still has quota, and remember.
+
+    The cooldown map is only ever filled by a farmer's question failing, so
+    the first question of the day pays to discover which models are spent --
+    fifteen seconds against five, measured. Run before a demo, this moves
+    that cost off the person asking.
+
+    It is not free: a probe against a model that still has quota spends one
+    of that model's twenty daily requests. Against one already exhausted it
+    costs nothing that was not already gone. Twenty probes to save the first
+    real question is a trade worth making before a demo and not worth making
+    casually, which is why this is a script step rather than something that
+    runs at startup.
+    """
+    findings: list[tuple[int, str, str]] = []
+    for key_index, model in request_candidates():
+        try:
+            client = client_for(key_index)
+            await client.aio.models.generate_content(
+                model=model,
+                contents="ok",
+                config=types.GenerateContentConfig(max_output_tokens=1),
+            )
+            findings.append((key_index, model, "ready"))
+        except Exception as exc:  # noqa: BLE001
+            text = str(exc)
+            if "429" in text or "RESOURCE_EXHAUSTED" in text:
+                note_rate_limited(model, exc, key_index)
+                findings.append((key_index, model, "out of quota"))
+            else:
+                code = "503" if "503" in text else type(exc).__name__
+                findings.append((key_index, model, code))
+    return findings
 
 
 def build_config(
