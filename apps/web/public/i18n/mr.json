@@ -258,5 +258,21 @@
  "...": "...",
  "How can I improve my soil?": "मी माझी माती कशी सुधारू?",
  "How does my crop look from the satellite?": "सॅटेलाइटवरून माझं पीक कसं दिसतंय?",
- "What is the rate at my mandi today?": "आज माझ्या मंडीत काय भाव आहे?"
+ "What is the rate at my mandi today?": "आज माझ्या मंडीत काय भाव आहे?",
+ "At today’s rate": "आजच्या भावाने",
+ "Left after your costs": "खर्च जाऊन उरलेले",
+ "Likely harvest": "अंदाजे उत्पादन",
+ "Loss after your costs": "खर्च जाऊन तोटा",
+ "No mandi rate reported for this crop today, so no rupee figure.": "आज या पिकाचा बाजारभाव आलेला नाही, त्यामुळे रक्कम दाखवता येत नाही.",
+ "Rate used": "वापरलेला भाव",
+ "Support price floor": "हमीभाव",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "आजच्या भावाने एवढ्या पिकाचे हे पैसे मिळतील. काढणीच्या वेळी काय भाव असेल हे सांगता येत नाही.",
+ "What your crop is worth today": "आज तुमच्या पिकाची किंमत",
+ "What your {crop} is worth today": "आज तुमच्या {crop} ची किंमत",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "तुमचं नेहमीचं एकरी {n}, पाण्याच्या ताणामुळे {pct}% कमी झालेलं",
+ "{low} to {high} quintals": "{low} ते {high} क्विंटल",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} मध्ये ₹{price} भाव मिळतोय — एवढ्या मालाला जवळपास ₹{extra} जास्त",
+ "— today’s rate is above it": "— आजचा भाव यापेक्षा जास्त आहे",
+ "— today’s rate is below it": "— आजचा भाव यापेक्षा कमी आहे",
+ "₹{n} a quintal at {market}": "{market} मध्ये क्विंटलला ₹{n}"
 }

@@ -737,6 +737,97 @@ export function SchemesCard({ d }: { d: any }) {
 }
 
 /** Dispatch a card payload to its renderer. */
+export function CropValueCard({ d }: { d: any }) {
+  const t = useT()
+  const m = d.money || {}
+  const rupees = (n: number) =>
+    // Indian grouping: 1,20,000 rather than 120,000. A farmer reading
+    // "120,000" has to stop and count digits.
+    new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)
+
+  return (
+    <Card tone="neutral">
+      <Headline>
+        {d.crop_name
+          ? t('What your {crop} is worth today', { crop: t(d.crop_name) })
+          : t('What your crop is worth today')}
+      </Headline>
+
+      <div className="text-[15px] mt-1">
+        {t('Likely harvest')}{' '}
+        <span className="font-medium">
+          {t('{low} to {high} quintals', {
+            low: m.quintals?.[0] ?? '', high: m.quintals?.[1] ?? '',
+          })}
+        </span>
+      </div>
+      {d.lost_to_water_stress_percent > 0 && (
+        <div className="text-[13px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+          {t('Your usual {n} per acre, less {pct}% the crop gave up to water stress', {
+            n: d.attainable_in_a_good_year ?? '', pct: d.lost_to_water_stress_percent,
+          })}
+        </div>
+      )}
+
+      <div className="mt-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+        {m.revenue ? (
+          <Detail
+            label={t('At today’s rate')}
+            value={`₹${rupees(m.revenue[0])} – ₹${rupees(m.revenue[1])}`}
+          />
+        ) : (
+          <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+            {t('No mandi rate reported for this crop today, so no rupee figure.')}
+          </div>
+        )}
+        {m.price_today && (
+          <Detail label={t('Rate used')}
+                  value={t('₹{n} a quintal at {market}', {
+                    n: m.price_today, market: m.price_market || '',
+                  })} />
+        )}
+        {m.msp && (
+          <Detail
+            label={t('Support price floor')}
+            value={
+              <>
+                {`₹${rupees(m.msp)}`}{' '}
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {m.above_msp === true ? t('— today’s rate is above it')
+                    : m.above_msp === false ? t('— today’s rate is below it')
+                    : ''}
+                </span>
+              </>
+            } />
+        )}
+        {m.margin && (
+          <Detail label={m.margin[0] < 0 ? t('Loss after your costs')
+                                         : t('Left after your costs')}
+                  value={`₹${rupees(m.margin[0])} – ₹${rupees(m.margin[1])}`} />
+        )}
+      </div>
+
+      {m.better_market && (
+        <div className="mt-2 text-[14px] rounded-xl p-2"
+             style={{ background: 'var(--bg-sunken)' }}>
+          {t('{market} is paying ₹{price} — about ₹{extra} more for this much crop', {
+            market: m.better_market.market, price: m.better_market.price,
+            extra: rupees(m.better_market.extra_rupees),
+          })}
+        </div>
+      )}
+
+      {/* Said on the card, not only in the evidence ledger. The number most
+          likely to be misread is the rupee one, and the misreading that
+          costs a farmer money is treating it as what they will get at
+          harvest. */}
+      <div className="mt-2 text-[12px]" style={{ color: 'var(--text-muted)' }}>
+        {t('This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.')}
+      </div>
+    </Card>
+  )
+}
+
 export function RenderCard({ card }: { card: any }) {
   switch (card.card) {
     case 'irrigation':  return <IrrigationCard d={card} />
@@ -747,6 +838,7 @@ export function RenderCard({ card }: { card: any }) {
     case 'diagnosis':   return <DiagnosisCard d={card} imageUrl={card.imageUrl} />
     case 'mandi':       return <MandiCard d={card} />
     case 'schemes':     return <SchemesCard d={card} />
+    case 'crop_value':  return <CropValueCard d={card} />
     default: return null
   }
 }

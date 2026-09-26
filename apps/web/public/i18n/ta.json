@@ -258,5 +258,21 @@
  "...": "...",
  "How can I improve my soil?": "மண்ணை எப்படி வளமாக்கலாம்?",
  "How does my crop look from the satellite?": "சாட்டிலைட்-ல என் பயிர் எப்படி இருக்கு?",
- "What is the rate at my mandi today?": "இன்னைக்கு என் மண்டியில என்ன விலை?"
+ "What is the rate at my mandi today?": "இன்னைக்கு என் மண்டியில என்ன விலை?",
+ "At today’s rate": "இன்றைய விலையில்",
+ "Left after your costs": "செலவு போக மீதி",
+ "Likely harvest": "வரக்கூடிய மகசூல்",
+ "Loss after your costs": "செலவு போக நஷ்டம்",
+ "No mandi rate reported for this crop today, so no rupee figure.": "இன்று இந்த பயிருக்கு மண்டி விலை வரவில்லை, அதனால் ரூபாய் கணக்கு இல்லை.",
+ "Rate used": "போட்ட விலை",
+ "Support price floor": "குறைந்தபட்ச ஆதரவு விலை",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "இன்னைக்கு விலைக்கு இவ்வளவு பயிருக்கு இவ்வளவு கிடைக்கும். அறுவடை அப்போ என்ன விலை இருக்கும்னு யாராலும் சொல்ல முடியாது.",
+ "What your crop is worth today": "இன்னைக்கு உங்க பயிரோட மதிப்பு",
+ "What your {crop} is worth today": "இன்னைக்கு உங்க {crop} மதிப்பு",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "ஏக்கருக்கு வழக்கமான {n}-ல், தண்ணீர் பற்றாக்குறையால் {pct}% குறைவு",
+ "{low} to {high} quintals": "{low} முதல் {high} குவிண்டால்",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market}-ல் ₹{price} தருகிறார்கள் — இந்த அளவுக்கு சுமார் ₹{extra} அதிகம்",
+ "— today’s rate is above it": "— இன்றைய விலை இதைவிட அதிகம்",
+ "— today’s rate is below it": "— இன்றைய விலை இதைவிடக் குறைவு",
+ "₹{n} a quintal at {market}": "{market}-ல் குவிண்டாலுக்கு ₹{n}"
 }

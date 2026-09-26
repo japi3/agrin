@@ -258,5 +258,21 @@
  "...": "...",
  "How can I improve my soil?": "મારી જમીન કેવી રીતે સુધારવી?",
  "How does my crop look from the satellite?": "સેટેલાઇટથી મારો પાક કેવો દેખાય છે?",
- "What is the rate at my mandi today?": "આજે મારી મંડીમાં શું ભાવ છે?"
+ "What is the rate at my mandi today?": "આજે મારી મંડીમાં શું ભાવ છે?",
+ "At today’s rate": "આજના ભાવે",
+ "Left after your costs": "ખર્ચ કાઢતા વધેલા",
+ "Likely harvest": "અંદાજે પાક",
+ "Loss after your costs": "ખર્ચ કાઢતા નુકસાન",
+ "No mandi rate reported for this crop today, so no rupee figure.": "આજે આ પાકના મંડી ભાવ નથી મળ્યા, એટલે રૂપિયા નથી બતાવ્યા.",
+ "Rate used": "ગણેલો ભાવ",
+ "Support price floor": "ટેકાનો ભાવ",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "આજના ભાવ પ્રમાણે આટલા પાકના આટલા પૈસા થાય. કાપણી વખતે શું ભાવ રહેશે એ કોઈ ન કહી શકે.",
+ "What your crop is worth today": "આજે તમારા પાકની કિંમત",
+ "What your {crop} is worth today": "આજે તમારા {crop}ની કિંમત",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "એકરે તમારી સામાન્ય {n}, પાણીની ખેંચને લીધે {pct}% ઓછી",
+ "{low} to {high} quintals": "{low} થી {high} ક્વિન્ટલ",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market}માં ₹{price} મળે છે — આટલા પાક માટે આશરે ₹{extra} વધુ",
+ "— today’s rate is above it": "— આજનો ભાવ આનાથી વધુ છે",
+ "— today’s rate is below it": "— આજનો ભાવ આનાથી ઓછો છે",
+ "₹{n} a quintal at {market}": "{market}માં ક્વિન્ટલના ₹{n}"
 }

@@ -258,5 +258,21 @@
  "...": "...",
  "How can I improve my soil?": "ਮੈਂ ਆਪਣੀ ਮਿੱਟੀ ਕਿਵੇਂ ਸੁਧਾਰਾਂ?",
  "How does my crop look from the satellite?": "ਸੈਟੇਲਾਈਟ ਤੋਂ ਮੇਰੀ ਫ਼ਸਲ ਕਿਵੇਂ ਦੀ ਦਿਖਦੀ ਹੈ?",
- "What is the rate at my mandi today?": "ਅੱਜ ਮੇਰੀ ਮੰਡੀ ਦਾ ਕੀ ਰੇਟ ਹੈ?"
+ "What is the rate at my mandi today?": "ਅੱਜ ਮੇਰੀ ਮੰਡੀ ਦਾ ਕੀ ਰੇਟ ਹੈ?",
+ "At today’s rate": "ਅੱਜ ਦੇ ਭਾਅ 'ਤੇ",
+ "Left after your costs": "ਖਰਚਾ ਕੱਢ ਕੇ ਬਚਤ",
+ "Likely harvest": "ਅੰਦਾਜ਼ਨ ਝਾੜ",
+ "Loss after your costs": "ਖਰਚਾ ਕੱਢ ਕੇ ਘਾਟਾ",
+ "No mandi rate reported for this crop today, so no rupee figure.": "ਅੱਜ ਮੰਡੀ ਦਾ ਭਾਅ ਨਹੀਂ ਆਇਆ, ਇਸ ਲਈ ਰੁਪਏ ਨਹੀਂ ਦੱਸੇ।",
+ "Rate used": "ਲਾਇਆ ਗਿਆ ਭਾਅ",
+ "Support price floor": "ਘੱਟੋ-ਘੱਟ ਸਰਕਾਰੀ ਰੇਟ",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "ਅੱਜ ਦੇ ਰੇਟ ਮੁਤਾਬਕ ਤੁਹਾਡੀ ਇੰਨੀ ਫ਼ਸਲ ਦਾ ਇਹ ਮੁੱਲ ਬਣਦਾ ਹੈ। ਫ਼ਸਲ ਕੱਟਣ ਵੇਲੇ ਕੀ ਰੇਟ ਹੋਵੇਗਾ, ਕੋਈ ਨਹੀਂ ਕਹਿ ਸਕਦਾ।",
+ "What your crop is worth today": "ਅੱਜ ਤੁਹਾਡੀ ਫ਼ਸਲ ਦਾ ਮੁੱਲ",
+ "What your {crop} is worth today": "ਅੱਜ ਤੁਹਾਡੀ {crop} ਦਾ ਮੁੱਲ",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "ਤੁਹਾਡਾ ਆਮ {n} ਪ੍ਰਤੀ ਏਕੜ, ਪਾਣੀ ਦੀ ਘਾਟ ਨਾਲ {pct}% ਘੱਟ",
+ "{low} to {high} quintals": "{low} ਤੋਂ {high} ਕੁਇੰਟਲ",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} ਵਿੱਚ ₹{price} ਮਿਲ ਰਹੇ ਹਨ — ਇੰਨੀ ਫ਼ਸਲ ਦੇ ਲਗਭਗ ₹{extra} ਵਾਧੂ",
+ "— today’s rate is above it": "— ਅੱਜ ਦਾ ਭਾਅ ਇਸ ਤੋਂ ਉੱਪਰ ਹੈ",
+ "— today’s rate is below it": "— ਅੱਜ ਦਾ ਭਾਅ ਇਸ ਤੋਂ ਹੇਠਾਂ ਹੈ",
+ "₹{n} a quintal at {market}": "{market} 'ਚ ₹{n} ਕੁਇੰਟਲ"
 }

@@ -258,5 +258,21 @@
  "How does my crop look from the satellite?": "सैटेलाइट से मेरी फसल कैसी दिख रही है?",
  "Something is wrong with my crop": "मेरी फसल में कुछ दिक्कत है",
  "What is the rate at my mandi today?": "आज मेरी मंडी में क्या भाव है?",
- "What should I sow this season?": "इस मौसम में क्या बोएँ?"
+ "What should I sow this season?": "इस मौसम में क्या बोएँ?",
+ "At today’s rate": "आज के भाव से",
+ "Left after your costs": "लागत काटकर बचा",
+ "Likely harvest": "अंदाज़न पैदावार",
+ "Loss after your costs": "लागत काटकर घाटा",
+ "No mandi rate reported for this crop today, so no rupee figure.": "आज इस फसल का मंडी भाव नहीं आया, इसलिए रुपये का हिसाब नहीं है।",
+ "Rate used": "लगाया गया भाव",
+ "Support price floor": "कम से कम तय भाव",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "आज के भाव से इतनी फसल का यह दाम बनेगा। कटाई के समय क्या भाव होगा, कोई नहीं बता सकता।",
+ "What your crop is worth today": "आज आपकी फसल की कीमत",
+ "What your {crop} is worth today": "आज आपकी {crop} की कीमत",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "प्रति एकड़ आपका आम {n}, पानी की कमी से {pct}% कम",
+ "{low} to {high} quintals": "{low} से {high} क्विंटल",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} में ₹{price} मिल रहे हैं — इतनी फसल के करीब ₹{extra} ज़्यादा",
+ "— today’s rate is above it": "— आज का भाव इससे ऊपर है",
+ "— today’s rate is below it": "— आज का भाव इससे नीचे है",
+ "₹{n} a quintal at {market}": "{market} में ₹{n} प्रति क्विंटल"
 }

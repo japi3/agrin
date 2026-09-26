@@ -258,5 +258,21 @@
  "{n} markets reporting": "{n}个市场已报价",
  "{n} mm per metre": "每米{n} mm",
  "{n} mm rain expected this week": "本周预计降雨{n} mm",
- "₹{n} per quintal": "每公担₹{n}"
+ "₹{n} per quintal": "每公担₹{n}",
+ "At today’s rate": "按今天的价",
+ "Left after your costs": "扣掉成本剩下的",
+ "Likely harvest": "估计收成",
+ "Loss after your costs": "扣掉成本亏的",
+ "No mandi rate reported for this crop today, so no rupee figure.": "今天这庄稼没报市场价，所以没算钱。",
+ "Rate used": "用的价格",
+ "Support price floor": "保底价",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "按今天的价，这么多庄稼能卖这些钱。收割时啥价，谁也说不准。",
+ "What your crop is worth today": "你的庄稼今天值多少钱",
+ "What your {crop} is worth today": "你的{crop}今天值多少钱",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "平常每亩收 {n}，缺水减了 {pct}%",
+ "{low} to {high} quintals": "{low} 到 {high} 公担",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} 给 ₹{price} —— 这么多庄稼能多卖 ₹{extra}",
+ "— today’s rate is above it": "—— 今天的价比这高",
+ "— today’s rate is below it": "—— 今天的价比这低",
+ "₹{n} a quintal at {market}": "{market} 每公担 ₹{n}"
 }

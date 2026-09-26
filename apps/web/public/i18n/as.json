@@ -258,5 +258,21 @@
  "...": "পঞ্জীয়ন কৰক",
  "How can I improve my soil?": "মাটি কেনেকৈ সাৰুৱা কৰিম?",
  "How does my crop look from the satellite?": "ছেটেলাইটত মোৰ খেতিডৰা কেনেকুৱা দেখা গৈছে?",
- "What is the rate at my mandi today?": "আজি মোৰ মণ্ডীত দৰ কিমান?"
+ "What is the rate at my mandi today?": "আজি মোৰ মণ্ডীত দৰ কিমান?",
+ "At today’s rate": "আজিৰ দৰত",
+ "Left after your costs": "খৰচৰ পিছত বাকী",
+ "Likely harvest": "হ’ব পৰা ফচল",
+ "Loss after your costs": "খৰচৰ পিছত লোকচান",
+ "No mandi rate reported for this crop today, so no rupee figure.": "আজি এই খেতিৰ বজাৰৰ দাম পোৱা নাই, গতিকে টকাৰ হিচাপ নাই।",
+ "Rate used": "ধৰা দাম",
+ "Support price floor": "চৰকাৰী সৰ্বনিম্ন দাম",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "আজিৰ দামত ইমানখিনি ফচলৰ এইটোৱেই মূল্য। খেতি চপোৱাৰ সময়ত দাম কি হ’ব কোনেও ক’ব নোৱাৰে।",
+ "What your crop is worth today": "আজি আপোনাৰ ফচলৰ দাম",
+ "What your {crop} is worth today": "আজি আপোনাৰ {crop} ৰ দাম",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "একৰত আপোনাৰ সদায় হোৱা {n}, পানীৰ টানত {pct}% কমি গ'ল",
+ "{low} to {high} quintals": "{low} ৰ পৰা {high} কুইণ্টল",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market}-ত ₹{price} দিছে — ইমান শস্যত প্ৰায় ₹{extra} বেছি পাব",
+ "— today’s rate is above it": "— আজিৰ দৰ ইয়াতকৈ বেছি",
+ "— today’s rate is below it": "— আজিৰ দৰ ইয়াতকৈ কম",
+ "₹{n} a quintal at {market}": "{market}-ত কুইণ্টলে ₹{n}"
 }

@@ -258,5 +258,21 @@
  "...": "...",
  "How can I improve my soil?": "నా మట్టిని ఎలా బాగు చేసుకోవాలి?",
  "How does my crop look from the satellite?": "శాటిలైట్ నుండి నా పంట ఎలా కనిపిస్తోంది?",
- "What is the rate at my mandi today?": "ఈరోజు మా మండిలో రేటు ఎంత?"
+ "What is the rate at my mandi today?": "ఈరోజు మా మండిలో రేటు ఎంత?",
+ "At today’s rate": "ఈరోజు రేటు ప్రకారం",
+ "Left after your costs": "ఖర్చులు పోను మిగిలేది",
+ "Likely harvest": "రాగల దిగుబడి",
+ "Loss after your costs": "ఖర్చులు పోను నష్టం",
+ "No mandi rate reported for this crop today, so no rupee figure.": "ఈ రోజు ఈ పంటకు మండి ధర రాలేదు, అందుకే రూపాయల్లో చూపించట్లేదు.",
+ "Rate used": "తీసుకున్న ధర",
+ "Support price floor": "మద్దతు ధర",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "ఈ రోజు ధర ప్రకారం ఈ పంట విలువ ఇది. కోతల నాటికి ధర ఎంత ఉంటుందో ఎవరూ చెప్పలేరు.",
+ "What your crop is worth today": "ఈ రోజు మీ పంట విలువ",
+ "What your {crop} is worth today": "ఈ రోజు మీ {crop} విలువ",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "ఎకరాకు మీ మామూలు {n}, నీళ్లు చాలక {pct}% తగ్గింది",
+ "{low} to {high} quintals": "{low} నుండి {high} క్వింటాళ్లు",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} లో ₹{price} ఇస్తున్నారు — ఇంత పంటకు దాదాపు ₹{extra} ఎక్కువ",
+ "— today’s rate is above it": "— ఈరోజు రేటు దీనికంటే ఎక్కువ",
+ "— today’s rate is below it": "— ఈరోజు రేటు దీనికంటే తక్కువ",
+ "₹{n} a quintal at {market}": "{market} లో క్వింటాకు ₹{n}"
 }

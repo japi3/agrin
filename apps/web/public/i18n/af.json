@@ -258,5 +258,21 @@
  "{n} markets reporting": "{n} markte gee verslag",
  "{n} mm per metre": "{n} mm per meter",
  "{n} mm rain expected this week": "{n} mm reën verwag die week",
- "₹{n} per quintal": "₹{n} per kwintaal"
+ "₹{n} per quintal": "₹{n} per kwintaal",
+ "At today’s rate": "Teen vandag se prys",
+ "Left after your costs": "Oor na kostes",
+ "Likely harvest": "Verwagte oes",
+ "Loss after your costs": "Verlies na kostes",
+ "No mandi rate reported for this crop today, so no rupee figure.": "Geen mandi-prys vandag nie, so geen rupee-bedrag nie.",
+ "Rate used": "Prys gebruik",
+ "Support price floor": "Minimum prys",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "Dit is wat jy vandag vir soveel sou kry. Niemand weet wat die prys met oestyd sal wees nie.",
+ "What your crop is worth today": "Wat jou oes vandag werd is",
+ "What your {crop} is worth today": "Wat jou {crop} vandag werd is",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "Jou gewone {n} per akker, minus {pct}% weens watertekort",
+ "{low} to {high} quintals": "{low} tot {high} kwintale",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} betaal ₹{price} — omtrent ₹{extra} meer vir die oes",
+ "— today’s rate is above it": "— vandag se prys is hoër",
+ "— today’s rate is below it": "— vandag se prys is laer",
+ "₹{n} a quintal at {market}": "₹{n} per kwintaal by {market}"
 }

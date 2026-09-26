@@ -258,5 +258,21 @@
  "{n} markets reporting": "{n} mercados informando",
  "{n} mm per metre": "{n} mm por metro",
  "{n} mm rain expected this week": "{n} mm de chuva esperados esta semana",
- "₹{n} per quintal": "₹{n} por quintal"
+ "₹{n} per quintal": "₹{n} por quintal",
+ "At today’s rate": "No preço de hoje",
+ "Left after your costs": "Sobra depois dos gastos",
+ "Likely harvest": "Colheita esperada",
+ "Loss after your costs": "Prejuízo depois dos gastos",
+ "No mandi rate reported for this crop today, so no rupee figure.": "Sem preço do mercado hoje para essa lavoura, por isso não tem o valor em rúpias.",
+ "Rate used": "Preço usado",
+ "Support price floor": "Preço mínimo",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "Isso é o que pagariam hoje por essa quantidade. Ninguém sabe o preço na colheita.",
+ "What your crop is worth today": "Quanto vale a sua colheita hoje",
+ "What your {crop} is worth today": "Quanto vale {crop} hoje",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "Seu {n} normal por acre, menos {pct}% que a lavoura perdeu por falta de água",
+ "{low} to {high} quintals": "{low} a {high} quintais",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} está pagando ₹{price} — uns ₹{extra} a mais por essa colheita",
+ "— today’s rate is above it": "— o preço de hoje está acima",
+ "— today’s rate is below it": "— o preço de hoje está abaixo",
+ "₹{n} a quintal at {market}": "₹{n} por quintal no {market}"
 }

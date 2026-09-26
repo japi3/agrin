@@ -79,6 +79,7 @@ TOOL_REGISTRY: dict[str, Callable[..., Awaitable[dict[str, Any]]]] = {
     "compare_regenerative_practices": tool_impl.compare_regenerative_practices,
     "get_crop_health": tool_impl.get_crop_health,
     "get_mandi_prices": tool_impl.get_mandi_prices,
+    "estimate_crop_value": tool_impl.estimate_crop_value,
     "find_government_schemes": tool_impl.find_government_schemes,
 }
 
@@ -216,6 +217,15 @@ def _card_for(name: str, result: dict[str, Any]) -> dict[str, Any] | None:
             "crop_name": result.get("crop_name"),
             "provider": result.get("provider"),
         }
+    if name == "estimate_crop_value":
+        return {
+            "card": "crop_value",
+            "crop_name": result.get("crop_name"),
+            "acres": result.get("acres"),
+            **(result.get("yield") or {}),
+            "money": result.get("money"),
+        }
+
     if name == "find_government_schemes":
         return {"card": "schemes", "schemes": result.get("schemes", [])}
     if name == "get_mandi_prices":

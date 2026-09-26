@@ -258,5 +258,21 @@
  "...": "തുടങ്ങുക",
  "How can I improve my soil?": "മണ്ണ് എങ്ങനെ നന്നാക്കാം?",
  "How does my crop look from the satellite?": "സാറ്റലൈറ്റിൽ കൃഷി എങ്ങനെയുണ്ട്?",
- "What is the rate at my mandi today?": "ഇന്ന് എന്റെ മണ്ടിയിലെ വില എത്രയാണ്?"
+ "What is the rate at my mandi today?": "ഇന്ന് എന്റെ മണ്ടിയിലെ വില എത്രയാണ്?",
+ "At today’s rate": "ഇന്നത്തെ വിലയ്ക്ക്",
+ "Left after your costs": "ചെലവ് കഴിഞ്ഞ് ബാക്കി",
+ "Likely harvest": "കിട്ടാൻ സാധ്യതയുള്ള വിളവ്",
+ "Loss after your costs": "ചെലവ് കഴിഞ്ഞ് നഷ്ടം",
+ "No mandi rate reported for this crop today, so no rupee figure.": "ഈ വിളയ്ക്ക് ഇന്ന് മാർക്കറ്റ് വില വന്നിട്ടില്ല, അതുകൊണ്ട് തുക കണക്കാക്കിയിട്ടില്ല.",
+ "Rate used": "ഉപയോഗിച്ച വില",
+ "Support price floor": "താങ്ങുവില",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "ഇന്നത്തെ വില വെച്ച് ഇത്രയും വിളവിന് ഇത്ര കിട്ടും. വിളവെടുക്കുമ്പോൾ എന്ത് വിലയാകുമെന്ന് ആർക്കും പറയാൻ പറ്റില്ല.",
+ "What your crop is worth today": "നിങ്ങളുടെ വിളവിന് ഇന്നത്തെ വില",
+ "What your {crop} is worth today": "നിങ്ങളുടെ {crop}-ന് ഇന്നത്തെ വില",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "പതിവ് {n}-ൽ നിന്ന് വെള്ളം കുറഞ്ഞതുകൊണ്ട് {pct}% കുറവ്",
+ "{low} to {high} quintals": "{low} മുതൽ {high} ക്വിന്റൽ വരെ",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market}-ൽ ₹{price} കിട്ടും — ഇത്രയും വിളവിന് ₹{extra} ലാഭം",
+ "— today’s rate is above it": "— ഇന്നത്തെ വില ഇതിലും കൂടുതലാണ്",
+ "— today’s rate is below it": "— ഇന്നത്തെ വില ഇതിലും കുറവാണ്",
+ "₹{n} a quintal at {market}": "{market}-ൽ ക്വിന്റലിന് ₹{n}"
 }

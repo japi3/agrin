@@ -258,5 +258,21 @@
  "{n} markets reporting": "{n} рынков сообщают",
  "{n} mm per metre": "{n} мм на метр",
  "{n} mm rain expected this week": "{n} мм дождя ожидается на этой неделе",
- "₹{n} per quintal": "₹{n} за центнер"
+ "₹{n} per quintal": "₹{n} за центнер",
+ "At today’s rate": "По сегодняшней цене",
+ "Left after your costs": "Осталось после расходов",
+ "Likely harvest": "Ожидаемый урожай",
+ "Loss after your costs": "Убыток после расходов",
+ "No mandi rate reported for this crop today, so no rupee figure.": "Сегодня нет цен с рынка на эту культуру, поэтому нет суммы в рупиях.",
+ "Rate used": "Использованная цена",
+ "Support price floor": "Минимальная цена",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "Столько вы получите за этот урожай по сегодняшней цене. Какая цена будет при сборе — никто не знает.",
+ "What your crop is worth today": "Сколько стоит ваш урожай сегодня",
+ "What your {crop} is worth today": "Сколько сегодня стоит {crop}",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "Обычные {n} с акра, минус {pct}% из-за нехватки воды",
+ "{low} to {high} quintals": "от {low} до {high} центнеров",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "В {market} дают ₹{price} — примерно на ₹{extra} больше за этот урожай",
+ "— today’s rate is above it": "— сегодня цена выше",
+ "— today’s rate is below it": "— сегодня цена ниже",
+ "₹{n} a quintal at {market}": "₹{n} за центнер в {market}"
 }

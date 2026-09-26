@@ -46,6 +46,9 @@ from agronomy.canopy import (  # noqa: E402
 )
 from agronomy.fao56 import et0_from_daily_weather  # noqa: E402
 from agronomy.schemes import SCHEMES, schemes_for_situation  # noqa: E402
+from agronomy.economics import (  # noqa: E402
+    estimate_yield, msp_for, msp_is_verified, value_at_todays_price,
+)
 from agronomy.waterbalance import (  # noqa: E402
     DailyWeather, next_irrigation_advice, simulate,
 )
@@ -871,6 +874,152 @@ async def get_crop_health(
 # --------------------------------------------------------------------------
 # Tool: mandi prices
 # --------------------------------------------------------------------------
+
+async def estimate_crop_value(
+    latitude: float,
+    longitude: float,
+    crop: str,
+    sowing_date: str,
+    acres: float,
+    usual_yield_per_acre: float | None = None,
+    cost_per_acre: float | None = None,
+) -> dict[str, Any]:
+    """What the standing crop is likely to yield, and what it is worth today.
+
+    Three things that are true now and checkable, and deliberately nothing
+    else:
+
+      - how much crop there is likely to be, from this season's own water
+        balance rather than an average;
+      - what a quintal fetched at the nearest mandi today, and whether
+        another market is paying more;
+      - the announced minimum support price, a floor the government
+        undertakes to buy at.
+
+    It does not forecast prices. A farmer deciding when to sell on a number
+    this system invented could lose a season's income, and every other
+    figure here traces to a published model or a live measurement.
+
+    `usual_yield_per_acre` is what the farmer normally gets. Their own
+    figure beats any district average, which silently mixes irrigated with
+    rainfed and good soil with bad. Without it there is no baseline to apply
+    a loss fraction to, so the tool asks rather than assuming.
+    """
+    if crop not in CROPS:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                f"'{crop}' is not in the calibrated crop set, so I cannot "
+                f"estimate its yield."
+            ),
+        }
+    if usual_yield_per_acre is None or usual_yield_per_acre <= 0:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                "Ask the farmer what this field usually yields per acre in a "
+                "normal year, in quintals. The water balance gives the "
+                "percentage lost to stress this season, but it needs their "
+                "own figure to be a percentage of -- a district average "
+                "would mix irrigated land with rainfed and be wrong for "
+                "their field."
+            ),
+        }
+    if acres <= 0:
+        return {"ok": False, "abstain_reason": "Field area must be positive."}
+
+    crop_params = CROPS[crop]
+    try:
+        sow = date.fromisoformat(sowing_date)
+    except ValueError:
+        return {"ok": False, "abstain_reason": f"Unparseable sowing date: {sowing_date}"}
+
+    soil_profile, weather_series = await _soil_and_weather(latitude, longitude)
+    if not soil_profile.has_data or soil_profile.texture_fractions is None:
+        return {"ok": False, "abstain_reason": "Soil data unavailable for this field."}
+
+    soil = soil_from_texture(*soil_profile.texture_fractions)
+    driving = _to_daily_weather(
+        weather_series, weather_series.elevation_m, weather_series.latitude
+    )
+    history = [w for w in driving if w.day < date.today()]
+    if not history:
+        return {"ok": False, "abstain_reason": "No observed weather for this field yet."}
+
+    # The season as it actually happened, without assuming irrigation that
+    # may not have been given: the loss this reports is the loss the crop
+    # really took.
+    balance = simulate(crop_params, soil, sow, history, auto_irrigate=False)
+    loss = balance.estimated_yield_loss(crop_params)
+
+    estimate = estimate_yield(
+        attainable=usual_yield_per_acre,
+        relative_loss=loss,
+        basis="the farmer's own figure for a normal year",
+    )
+
+    price = market = as_of = best_market = best_price = None
+    try:
+        report = await prices_for_crop(crop, latitude=latitude, longitude=longitude)
+        if report.quotes:
+            nearest = report.quotes[0]
+            price, market = nearest.modal_price, nearest.market
+            as_of = nearest.arrival_date.isoformat() if nearest.arrival_date else None
+            dearest = max(report.quotes, key=lambda q: q.modal_price)
+            if dearest.market != market:
+                best_market, best_price = dearest.market, dearest.modal_price
+    except Exception:  # noqa: BLE001
+        # No price is a blank figure, not a failure: the quintals still help.
+        pass
+
+    msp, msp_year = msp_for(crop)
+    money = value_at_todays_price(
+        estimate, acres, price_today=price, price_market=market, price_date=as_of,
+        msp=msp, msp_year=msp_year,
+        best_market=best_market, best_market_price=best_price,
+        cost_per_acre=cost_per_acre,
+    )
+
+    return {
+        "ok": True,
+        "crop": crop,
+        "crop_name": crop_params.name_en,
+        "acres": acres,
+        "days_after_sowing": (date.today() - sow).days,
+        "yield": estimate.as_dict(),
+        "money": money.as_dict(),
+        "evidence": {
+            "yield_method": (
+                "FAO-33 water production function (Doorenbos & Kassam 1979), "
+                f"Ky = {crop_params.yield_response_factor}, applied to the "
+                "farmer's stated normal yield. Water deficit from the daily "
+                "root-zone balance over this season's observed weather."
+            ),
+            "price_method": (
+                "Today's modal rate at the nearest reporting mandi "
+                "(Agmarknet via data.gov.in). Not a forecast: no attempt is "
+                "made to say what prices will be at harvest."
+            ),
+            "msp_method": (
+                "Announced minimum support price"
+                + (f" for {msp_year}" if msp_year else "")
+                + ". A floor the government undertakes to buy at, not the "
+                "market rate and not a prediction."
+                + ("" if msp_is_verified() else
+                   " These figures are entered by hand and not yet verified "
+                   "against CACP for the current season.")
+            ) if msp else None,
+            "limitations": [
+                "Yield reflects water stress only. Pests, disease, hail, "
+                "lodging and a bad patch of the field are not in it.",
+                "The range is wide on purpose; a single number would imply "
+                "precision this does not have.",
+                "Rupee figures are what today's rate would pay for this "
+                "much crop, not what it will fetch at harvest.",
+            ],
+        },
+    }
+
 
 async def get_mandi_prices(
     crop: str,

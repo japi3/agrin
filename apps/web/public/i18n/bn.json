@@ -258,5 +258,21 @@
  "...": "...",
  "How can I improve my soil?": "আমি কীভাবে আমার মাটি ভালো করব?",
  "How does my crop look from the satellite?": "স্যাটেলাইট থেকে আমার ফসল কেমন দেখাচ্ছে?",
- "What is the rate at my mandi today?": "আজ আমার মান্ডিতে দর কত?"
+ "What is the rate at my mandi today?": "আজ আমার মান্ডিতে দর কত?",
+ "At today’s rate": "আজকের দরে",
+ "Left after your costs": "খরচ বাদে হাতে থাকবে",
+ "Likely harvest": "আন্দাজ ফলন",
+ "Loss after your costs": "খরচ বাদে লোকসান",
+ "No mandi rate reported for this crop today, so no rupee figure.": "আজ এই ফসলের কোনো মান্ডি দর পাওয়া যায়নি, তাই টাকার হিসাব নেই।",
+ "Rate used": "যে দর ধরা হয়েছে",
+ "Support price floor": "সর্বনিম্ন দাম",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "আজকের দর হিসেবে এতখানি ফসলের এই দাম মিলবে। ফসল কাটার সময় দাম কত হবে, তা কেউ বলতে পারে না।",
+ "What your crop is worth today": "আজ আপনার ফসলের দাম",
+ "What your {crop} is worth today": "আজ আপনার {crop}-এর দাম",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "একরে আপনার স্বাভাবিক {n}, জলের অভাবে {pct}% কম",
+ "{low} to {high} quintals": "{low} থেকে {high} কুইন্টাল",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market}-এ দর ₹{price} — এই ফসলে প্রায় ₹{extra} বেশি",
+ "— today’s rate is above it": "— আজকের দর এর চেয়ে বেশি",
+ "— today’s rate is below it": "— আজকের দর এর চেয়ে কম",
+ "₹{n} a quintal at {market}": "{market}-এ কুইন্টালে ₹{n}"
 }

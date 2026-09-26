@@ -258,5 +258,21 @@
  "{n} markets reporting": "{n} سوق يبلغ عن الأسعار",
  "{n} mm per metre": "{n} مم لكل متر",
  "{n} mm rain expected this week": "{n} مم مطر متوقع هذا الأسبوع",
- "₹{n} per quintal": "{n}₹ للقنطار"
+ "₹{n} per quintal": "{n}₹ للقنطار",
+ "At today’s rate": "بسعر اليوم",
+ "Left after your costs": "اللي بيفضل لك بعد المصاريف",
+ "Likely harvest": "المحصول المتوقع",
+ "Loss after your costs": "خسارتك بعد المصاريف",
+ "No mandi rate reported for this crop today, so no rupee figure.": "مفيش سعر سوق للمحصول ده النهاردة، فمفيش حساب بالروبية.",
+ "Rate used": "السعر اللي اتحسب",
+ "Support price floor": "سعر الضمان",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "هذا المبلغ اللي تاخذه اليوم مقابل محصولك. ما حد يعرف كم بيكون السعر وقت الحصاد.",
+ "What your crop is worth today": "قيمة محصولك اليوم",
+ "What your {crop} is worth today": "قيمة {crop} حقك اليوم",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "المعتاد {n} للفدان، نقص {pct}% بسبب العطش",
+ "{low} to {high} quintals": "{low} إلى {high} قنطار",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "سعر {market} هو {price}₹ — زيادة {extra}₹ لهذه الكمية",
+ "— today’s rate is above it": "— سعر اليوم أعلى منه",
+ "— today’s rate is below it": "— سعر اليوم أقل منه",
+ "₹{n} a quintal at {market}": "{n}₹ للقنطار في {market}"
 }

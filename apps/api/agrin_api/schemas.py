@@ -292,6 +292,58 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "estimate_crop_value",
+        "description": (
+            "How much the standing crop is likely to yield, and what that is "
+            "worth at today's mandi rate.\n\n"
+            "Use for 'what will I get from this crop', 'is it worth "
+            "harvesting', 'will I make a profit', 'how much will I earn'.\n\n"
+            "Yield comes from this season's own water balance (FAO-33 Ky "
+            "applied to the farmer's normal yield), so it reflects the "
+            "stress this crop actually took. Rupee figures are today's rate "
+            "for this much crop.\n\n"
+            "It does NOT forecast prices, and you must not either. If asked "
+            "what prices will be at harvest, say plainly that nobody can "
+            "know, and give what is knowable instead: today's rate, the "
+            "support price floor, and that prices usually fall when arrivals "
+            "peak at harvest.\n\n"
+            "Requires the farmer's usual yield per acre. If you do not have "
+            "it, ask -- their own figure is better than any average, and "
+            "without it the tool abstains. Pass cost_per_acre only if they "
+            "have told you their costs; margin is never estimated."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                **_LOCATION_PROPS,
+                "crop": {"type": "string", "description": "Crop key."},
+                "sowing_date": {
+                    "type": "string",
+                    "description": "ISO date the crop was sown.",
+                },
+                "acres": {
+                    "type": "number",
+                    "description": "Area of the field in acres.",
+                },
+                "usual_yield_per_acre": {
+                    "type": "number",
+                    "description": (
+                        "Quintals per acre the farmer normally gets in a "
+                        "good year. Ask them; do not guess."
+                    ),
+                },
+                "cost_per_acre": {
+                    "type": "number",
+                    "description": (
+                        "Rupees per acre spent this season, only if the "
+                        "farmer stated it. Omit otherwise."
+                    ),
+                },
+            },
+            "required": ["latitude", "longitude", "crop", "sowing_date", "acres"],
+        },
+    },
+    {
         "name": "get_crop_health",
         "description": (
             "Read the crop's actual condition from Sentinel-2 satellite "

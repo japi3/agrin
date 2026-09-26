@@ -258,5 +258,21 @@
  "{n} markets reporting": "amamakethe a-{n} abikayo",
  "{n} mm per metre": "{n} mm ngemitha",
  "{n} mm rain expected this week": "kulindeleke imvula eku-{n} mm kule viki",
- "₹{n} per quintal": "₹{n} nge-quintal"
+ "₹{n} per quintal": "₹{n} nge-quintal",
+ "At today’s rate": "Ngenani lanamuhla",
+ "Left after your costs": "Imali esele emva kwezindleko",
+ "Likely harvest": "Isivuno ozosithola",
+ "Loss after your costs": "Imali elahlekile emva kwezindleko",
+ "No mandi rate reported for this crop today, so no rupee figure.": "Ayikho intengo ye-mandi namuhla, ngakho ayikho imali ye-rupee evelayo.",
+ "Rate used": "Intengo esetshenzisiwe",
+ "Support price floor": "Intengo ephansi",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "Yimali ongayithola namuhla le. Akekho owaziyo ukuthi intengo iyoba yini uma usuvuna.",
+ "What your crop is worth today": "Inani lesivuno sakho namuhla",
+ "What your {crop} is worth today": "Inani le-{crop} lakho namuhla",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "{n} nge-ekere, kukhishwe u-{pct}% ngenxa yokoma",
+ "{low} to {high} quintals": "{low} kuya ku-{high} ama-quintal",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "E-{market} bakhokha u-₹{price} — cishe u-₹{extra} ngaphezulu ngalesi sivuno",
+ "— today’s rate is above it": "— intengo yanamuhla ingaphezulu",
+ "— today’s rate is below it": "— intengo yanamuhla ingaphansi",
+ "₹{n} a quintal at {market}": "u-₹{n} nge-quintal e-{market}"
 }

@@ -258,5 +258,21 @@
  "{n} markets reporting": "masoko {n} yanayotoa taarifa",
  "{n} mm per metre": "{n} mm kwa mita",
  "{n} mm rain expected this week": "mvua ya {n} mm inatarajiwa wiki hii",
- "₹{n} per quintal": "₹{n} kwa kwin tali"
+ "₹{n} per quintal": "₹{n} kwa kwin tali",
+ "At today’s rate": "Kwa bei ya leo",
+ "Left after your costs": "Faida baada ya gharama",
+ "Likely harvest": "Mavuno yanayotarajiwa",
+ "Loss after your costs": "Hasara baada ya gharama",
+ "No mandi rate reported for this crop today, so no rupee figure.": "Hakuna bei ya soko kwa zao hili leo, hivyo hakuna kiasi cha pesa.",
+ "Rate used": "Bei iliyotumika",
+ "Support price floor": "Bei elekezi ya chini",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "Hii ndiyo bei ya leo kwa kiasi hiki cha mazao. Hakuna anayejua bei itakuwaje wakati wa mavuno.",
+ "What your crop is worth today": "Thamani ya mazao yako leo",
+ "What your {crop} is worth today": "Thamani ya {crop} yako leo",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "{n} yako ya kawaida kwa ekari, punguza {pct}% kwa sababu ya ukame",
+ "{low} to {high} quintals": "Kutoka {low} hadi {high} kwa kintali",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} inalipa ₹{price} — ni kama ₹{extra} zaidi kwa mavuno haya",
+ "— today’s rate is above it": "— bei ya leo iko juu",
+ "— today’s rate is below it": "— bei ya leo iko chini",
+ "₹{n} a quintal at {market}": "₹{n} kwa kintali moja katika {market}"
 }

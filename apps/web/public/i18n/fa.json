@@ -258,5 +258,21 @@
  "{n} markets reporting": "{n} بازار گزارش داده‌اند",
  "{n} mm per metre": "{n} میلی‌متر در متر",
  "{n} mm rain expected this week": "{n} میلی‌متر باران در این هفته پیش‌بینی می‌شود",
- "₹{n} per quintal": "{n} روپیه در هر کوینتال"
+ "₹{n} per quintal": "{n} روپیه در هر کوینتال",
+ "At today’s rate": "با نرخ امروز",
+ "Left after your costs": "سود خالص شما",
+ "Likely harvest": "برداشت احتمالی",
+ "Loss after your costs": "ضرر خالص شما",
+ "No mandi rate reported for this crop today, so no rupee figure.": "امروز قیمتی برای این محصول در بازار نیست، پس مبلغی ثبت نشد.",
+ "Rate used": "قیمت محاسبه شده",
+ "Support price floor": "کف قیمت خرید",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "این مبلغی است که امروز برای این مقدار محصول می‌دهند. هیچ‌کس نمی‌داند موقع برداشت قیمت چقدر است.",
+ "What your crop is worth today": "ارزش امروز محصول شما",
+ "What your {crop} is worth today": "ارزش امروز {crop} شما",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "{n} همیشگی در هر هکتار، {pct}% کمتر به خاطر کم‌آبی",
+ "{low} to {high} quintals": "{low} تا {high} کوینتال",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} قیمت {price} تومان می‌دهد — حدود {extra} تومان بیشتر برای این مقدار محصول",
+ "— today’s rate is above it": "— قیمت امروز بالاتر است",
+ "— today’s rate is below it": "— قیمت امروز پایین‌تر است",
+ "₹{n} a quintal at {market}": "{n} تومان برای هر کوینتال در {market}"
 }

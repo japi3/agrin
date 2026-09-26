@@ -258,5 +258,21 @@
  "...": "ಮುಂದೆ...",
  "How can I improve my soil?": "ನನ್ನ ಮಣ್ಣನ್ನು ಸುಧಾರಿಸುವುದು ಹೇಗೆ?",
  "How does my crop look from the satellite?": "ಸ್ಯಾಟಲೈಟ್‌ನಿಂದ ನನ್ನ ಬೆಳೆ ಹೇಗೆ ಕಾಣಿಸುತ್ತೆ?",
- "What is the rate at my mandi today?": "ಇವತ್ತು ನಮ್ಮ ಮಂಡಿ ರೇಟು ಎಷ್ಟು?"
+ "What is the rate at my mandi today?": "ಇವತ್ತು ನಮ್ಮ ಮಂಡಿ ರೇಟು ಎಷ್ಟು?",
+ "At today’s rate": "ಇವತ್ತಿನ ದರದಲ್ಲಿ",
+ "Left after your costs": "ಖರ್ಚು ಕಳೆದು ಉಳಿದದ್ದು",
+ "Likely harvest": "ಬರಬಹುದಾದ ಇಳುವರಿ",
+ "Loss after your costs": "ಖರ್ಚು ಕಳೆದು ಆದ ನಷ್ಟ",
+ "No mandi rate reported for this crop today, so no rupee figure.": "ಇವತ್ತು ಈ ಬೆಳೆಗೆ ಮಂಡಿ ರೇಟ್ ಬಂದಿಲ್ಲ, ಹಾಗಾಗಿ ರೂಪಾಯಿ ಲೆಕ್ಕ ಇಲ್ಲ.",
+ "Rate used": "ಬಳಸಿದ ರೇಟ್",
+ "Support price floor": "ಬೆಂಬಲ ಬೆಲೆ",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "ಇಷ್ಟೇ ಬೆಳೆಗೆ ಇವತ್ತಿನ ದರದಲ್ಲಿ ಇಷ್ಟು ಸಿಗುತ್ತೆ. ಕೊಯ್ಲು ಹೊತ್ತಿಗೆ ದರ ಎಷ್ಟಿರುತ್ತೆ ಅಂತ ಯಾರೂ ಹೇಳೋಕೆ ಆಗಲ್ಲ.",
+ "What your crop is worth today": "ಇವತ್ತು ನಿಮ್ಮ ಬೆಳೆಯ ಬೆಲೆ",
+ "What your {crop} is worth today": "ಇವತ್ತು ನಿಮ್ಮ {crop} ಬೆಲೆ",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "ಎಕರೆಗೆ ನಿಮ್ಮ ಮಾಮೂಲಿ {n}, ನೀರಿನ ಅಭಾವದಿಂದ {pct}% ಕಮ್ಮಿ",
+ "{low} to {high} quintals": "{low} ರಿಂದ {high} ಕ್ವಿಂಟಾಲ್",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} ನಲ್ಲಿ ₹{price} ಕೊಡ್ತಿದ್ದಾರೆ — ಇಷ್ಟು ಬೆಳೆಗೆ ಸುಮಾರು ₹{extra} ಜಾಸ್ತಿ",
+ "— today’s rate is above it": "— ಇವತ್ತಿನ ರೇಟು ಇದಕ್ಕಿಂತ ಜಾಸ್ತಿ ಇದೆ",
+ "— today’s rate is below it": "— ಇವತ್ತಿನ ರೇಟು ಇದಕ್ಕಿಂತ ಕಮ್ಮಿ ಇದೆ",
+ "₹{n} a quintal at {market}": "{market} ನಲ್ಲಿ ಕ್ವಿಂಟಾಲ್‌ಗೆ ₹{n}"
 }

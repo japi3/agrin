@@ -258,5 +258,21 @@
  "{n} markets reporting": "{n} ገበያዎች መረጃ ሰጥተዋል",
  "{n} mm per metre": "{n} ሚሜ በሜትር",
  "{n} mm rain expected this week": "በዚህ ሳምንት {n} ሚሜ ዝናብ ይጠበቃል",
- "₹{n} per quintal": "₹{n} በኩንታል"
+ "₹{n} per quintal": "₹{n} በኩንታል",
+ "At today’s rate": "የዛሬውን ዋጋ መሰረት በማድረግ",
+ "Left after your costs": "ከወጪ በኋላ የቀረ",
+ "Likely harvest": "የሚጠበቅ ምርት",
+ "Loss after your costs": "ከወጪ በኋላ የደረሰ ኪሳራ",
+ "No mandi rate reported for this crop today, so no rupee figure.": "ዛሬ ለዚህ ሰብል የገበያ ዋጋ የለም፣ ስለዚህ የገንዘብ መጠን የለም።",
+ "Rate used": "የተጠቀምንበት ዋጋ",
+ "Support price floor": "ዝቅተኛ የመሸጫ ዋጋ",
+ "This is what today’s rate would pay for this much crop. Nobody can say what the rate will be at harvest.": "ዛሬ ባለው ዋጋ ለዚህ ምርት የሚገኘው ገቢ ይህ ነው። በምርት ጊዜ ዋጋው ምን እንደሚሆን ማንም አያውቅም።",
+ "What your crop is worth today": "የምርትዎ የዛሬ ዋጋ",
+ "What your {crop} is worth today": "የ{crop}ዎ የዛሬ ዋጋ",
+ "Your usual {n} per acre, less {pct}% the crop gave up to water stress": "የተለመደው {n} በኤከር፣ በውሃ እጥረት ምክንያት {pct}% ቀንሷል",
+ "{low} to {high} quintals": "ከ {low} እስከ {high} ኩንታል",
+ "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} ላይ {price} ብር እየከፈሉ ነው — ለዚህ ምርት {extra} ብር ይበልጣል",
+ "— today’s rate is above it": "— የዛሬው ዋጋ ከዚህ በላይ ነው",
+ "— today’s rate is below it": "— የዛሬው ዋጋ ከዚህ በታች ነው",
+ "₹{n} a quintal at {market}": "{market} ላይ በኩንታል {n} ብር"
 }

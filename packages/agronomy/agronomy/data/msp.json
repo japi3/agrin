@@ -1,0 +1,47 @@
+{
+  "_README": [
+    "Minimum Support Price, rupees per quintal, as announced by the Cabinet",
+    "on the recommendation of the Commission for Agricultural Costs and",
+    "Prices (CACP). MSP is a floor the government undertakes to buy at, not",
+    "a forecast and not the market rate -- the market often pays more, and",
+    "where procurement is thin a farmer may not be able to realise it.",
+    "",
+    "VERIFY BEFORE RELYING ON THESE. They are entered by hand and the",
+    "Cabinet revises them every season. Check the current figures at",
+    "https://cacp.dacnet.nic.in or the PIB release for the season, and",
+    "correct any number here -- nothing else needs changing.",
+    "",
+    "A crop absent from this file simply has no MSP shown. That is the",
+    "right behaviour for fruit, vegetables and anything outside the MSP",
+    "list, which is most of what many farmers actually grow."
+  ],
+  "source": "CACP / Cabinet Committee on Economic Affairs",
+  "source_url": "https://cacp.dacnet.nic.in",
+  "verified_on": null,
+  "seasons": {
+    "kharif": {
+      "marketing_year": "2025-26",
+      "crops": {
+        "rice_paddy": 2369,
+        "maize_grain": 2400,
+        "sorghum": 3699,
+        "pearl_millet": 2775,
+        "groundnut": 7263,
+        "soybean": 5328,
+        "sunflower": 7721,
+        "cotton": 7710
+      }
+    },
+    "rabi": {
+      "marketing_year": "2025-26",
+      "crops": {
+        "wheat_rabi": 2425,
+        "wheat_spring": 2425,
+        "wheat_winter": 2425,
+        "barley": 1980,
+        "chickpea": 5650,
+        "mustard": 5950
+      }
+    }
+  }
+}
