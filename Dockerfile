@@ -45,6 +45,13 @@ COPY scripts/ ./scripts/
 # live service exactly as before.
 COPY data/soil/ ./soil/
 
+# The advisory corpus -- passages of published Indian agricultural guidance
+# and their embeddings, built by scripts/build_advisory_index.py. Same
+# reasoning as the soil map: baked in, not under /app/data, so the running
+# service embeds only the incoming question and never crawls at runtime.
+# Absent in a fresh checkout, and the assistant simply loses one tool.
+COPY data/advisory/ ./advisory/
+
 # The built frontend is served from where main.py expects it.
 COPY --from=web /build/dist ./apps/web/dist
 
@@ -53,7 +60,7 @@ COPY --from=web /build/dist ./apps/web/dist
 # persistent cache across revisions, mount a volume here.
 ENV AGRIN_CACHE_DIR=/app/.cache \
     AGRIN_DB=/app/data/agrin.db \
-    PYTHONPATH=/app/packages/agronomy:/app/packages/geo:/app/apps/api \
+    PYTHONPATH=/app/packages/agronomy:/app/packages/geo:/app/packages/rag:/app/apps/api \
     PYTHONUNBUFFERED=1
 RUN mkdir -p /app/.cache /app/data
 

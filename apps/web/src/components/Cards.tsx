@@ -828,6 +828,53 @@ export function CropValueCard({ d }: { d: any }) {
   )
 }
 
+// Where an answer came from.
+//
+// Deliberately quiet: a small list under the reply rather than a panel
+// competing with it. The passages themselves are not repeated here — the
+// assistant has already said what they say, in the farmer's own language,
+// and printing the English underneath would be noise for the person who
+// needed the translation most.
+//
+// What this adds is the one thing spoken advice cannot carry: something to
+// check. A farmer who is unsure, or an extension officer they show the phone
+// to, can open the page and read the original. That is also the honest
+// signal that this particular answer was read from somewhere rather than
+// recalled.
+export function SourcesCard({ d }: { d: any }) {
+  const t = useT()
+  const sources: any[] = d.sources || []
+  if (!sources.length) return null
+
+  return (
+    <Card tone="neutral">
+      <Headline>{t('Where this came from')}</Headline>
+      <div className="text-[13px] mb-2" style={{ color: 'var(--text-muted)' }}>
+        {t('Published advice from')} {d.source_name || t('Vikaspedia, Government of India')}
+      </div>
+      <div className="space-y-2">
+        {sources.map((s, i) => (
+          <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
+             className="block rounded-xl p-3"
+             style={{ background: 'var(--bg-sunken)' }}>
+            <div className="text-[14px] font-medium">{s.title}</div>
+            {s.section && s.section !== s.title && (
+              <div className="text-[13px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                {String(s.section).split(' > ').slice(1).join(' › ')}
+              </div>
+            )}
+            {s.updated && (
+              <div className="text-[12px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                {t('Page updated')} {s.updated}
+              </div>
+            )}
+          </a>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 export function RenderCard({ card }: { card: any }) {
   switch (card.card) {
     case 'irrigation':  return <IrrigationCard d={card} />
@@ -839,6 +886,7 @@ export function RenderCard({ card }: { card: any }) {
     case 'mandi':       return <MandiCard d={card} />
     case 'schemes':     return <SchemesCard d={card} />
     case 'crop_value':  return <CropValueCard d={card} />
+    case 'sources':     return <SourcesCard d={card} />
     default: return null
   }
 }

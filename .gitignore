@@ -13,6 +13,14 @@ build/
 *.pt
 *.pth
 data/raw/
+# The crawl cache for the advisory corpus: every fetched Vikaspedia page,
+# kept only so a re-run does not hit the site again. The built index in
+# data/advisory/ is the artefact worth keeping.
+data/advisory_cache/
+# Partial state from an interrupted embedding run. The finished index --
+# chunks.jsonl, vectors.npy, manifest.json -- is committed; these are not.
+data/advisory/vectors.partial.npy
+data/advisory/progress.json
 data/cache/
 data/plantvillage/
 .pytest_cache/

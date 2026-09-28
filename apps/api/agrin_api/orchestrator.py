@@ -81,6 +81,7 @@ TOOL_REGISTRY: dict[str, Callable[..., Awaitable[dict[str, Any]]]] = {
     "get_mandi_prices": tool_impl.get_mandi_prices,
     "estimate_crop_value": tool_impl.estimate_crop_value,
     "find_government_schemes": tool_impl.find_government_schemes,
+    "look_up_official_guidance": tool_impl.look_up_official_guidance,
 }
 
 
@@ -226,6 +227,23 @@ def _card_for(name: str, result: dict[str, Any]) -> dict[str, Any] | None:
             "money": result.get("money"),
         }
 
+    if name == "look_up_official_guidance":
+        # Shown as sources rather than as the passages themselves. The model
+        # is answering from these in the farmer's own language; repeating the
+        # English text underneath would be noise. What the card adds is the
+        # thing prose cannot: a link the farmer, or an extension officer
+        # reading over their shoulder, can open and check.
+        if not result.get("ok"):
+            return None
+        return {
+            "card": "sources",
+            "sources": [
+                {"title": p.get("title"), "section": p.get("section"),
+                 "url": p.get("url"), "updated": p.get("updated")}
+                for p in result.get("passages", [])[:4]
+            ],
+            "source_name": (result.get("evidence") or {}).get("source"),
+        }
     if name == "find_government_schemes":
         return {"card": "schemes", "schemes": result.get("schemes", [])}
     if name == "get_mandi_prices":

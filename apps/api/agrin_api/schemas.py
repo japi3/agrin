@@ -499,6 +499,48 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["latitude", "longitude"],
         },
     },
+    {
+        "name": "look_up_official_guidance",
+        "description": (
+            "Search India's published agricultural advisory material and "
+            "return the actual passages, with their source.\n\n"
+            "Use this for anything written down rather than computed: "
+            "varieties suited to a region, seed treatment, spacing and seed "
+            "rate, nursery practice, pest and disease management, storage, "
+            "post-harvest handling, scheme eligibility and paperwork, "
+            "livestock and fisheries practice.\n\n"
+            "Use it whenever you would otherwise be recalling a specific "
+            "figure -- a dose, a spacing, a variety name, a waiting period. "
+            "Those are exactly the details that sound right when invented, "
+            "and a farmer cannot check them.\n\n"
+            "Do NOT use it for anything the computed tools cover: water, "
+            "irrigation timing, soil properties at this field, weather, "
+            "carbon, crop health from satellite, or prices. Those measure "
+            "this field; this only reports what is published in general.\n\n"
+            "State only what the returned passages say, and name the source. "
+            "If the tool abstains, say you have no published source and do "
+            "not fill the gap from memory."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "question": {
+                    "type": "string",
+                    "description": (
+                        "What to look up, as a full question. Include the "
+                        "crop and the topic. Searching works across "
+                        "languages, but an English question matches the "
+                        "library best."
+                    ),
+                },
+                "passages": {
+                    "type": "integer",
+                    "description": "How many passages to return. Default 4.",
+                },
+            },
+            "required": ["question"],
+        },
+    },
 ]
 
 

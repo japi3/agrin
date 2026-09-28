@@ -29,11 +29,14 @@ from typing import Any
 # The agronomy and geo packages are separate installables; in development
 # they are resolved from the repo root.
 _ROOT = Path(__file__).resolve().parents[3]
-for pkg in ("packages/agronomy", "packages/geo"):
+for pkg in ("packages/agronomy", "packages/geo", "packages/rag"):
     p = str(_ROOT / pkg)
     if p not in sys.path:
         sys.path.insert(0, p)
 
+from rag.index import load_index as load_advisory_index  # noqa: E402
+
+from . import llm  # noqa: E402
 from agronomy.carbon import (  # noqa: E402
     MonthlyInput, manure_carbon_from_fresh_weight, project, soc_percent_to_t_ha,
 )
@@ -1549,4 +1552,137 @@ async def get_my_farm(field_id: str | None = None) -> dict[str, Any]:
                 ("when it was last watered", last is not None),
             ] if not present
         ],
+    }
+
+
+# --------------------------------------------------------------------------
+# Published advisory material
+# --------------------------------------------------------------------------
+#
+# Every other tool in this file computes. This one remembers.
+#
+# The models in `packages/agronomy` cover what can be derived from physics and
+# measurement -- water, carbon, yield response, disease pressure. A great deal
+# of farming is not derivable at all. Which variety suits a district, what a
+# seed treatment is, the spacing for a crop, what a scheme asks of an
+# applicant: these are written down by people, and the only honest way to
+# answer them is to find the passage that says so and quote it.
+#
+# Asked from memory, a language model answers all of these fluently and some
+# of them wrongly, with invented dosages and plausible variety names that do
+# not exist. A farmer has no way to tell which. So the guidance here is
+# retrieved, quoted and cited, and when the corpus has nothing close enough
+# the tool abstains rather than letting the model fall back on recall.
+
+_advisory_client_index = 0
+
+
+async def look_up_official_guidance(
+    question: str,
+    language: str | None = None,
+    passages: int = 4,
+) -> dict[str, Any]:
+    """Find published Indian advisory material answering a question.
+
+    Returns the passages themselves, each with the page it came from and when
+    that page was last revised, or an abstention if nothing matched closely
+    enough. It deliberately does not summarise: summarising is the model's
+    job, and the point of this tool is that the model has the actual words in
+    front of it while doing so.
+    """
+    global _advisory_client_index
+
+    question = (question or "").strip()
+    if not question:
+        return {
+            "ok": False,
+            "abstain_reason": "No question was given to look up.",
+            "confidence": "none",
+        }
+
+    index = load_advisory_index()
+    if index is None:
+        # A deployment without the corpus is a supported one. Saying so
+        # plainly is better than an empty result the model reads as "nothing
+        # is published about this".
+        return {
+            "ok": False,
+            "abstain_reason": (
+                "The advisory library is not installed in this deployment, so "
+                "published guidance cannot be quoted. Answer from the "
+                "computed tools only, and say that you cannot cite a source."
+            ),
+            "confidence": "none",
+        }
+
+    from rag.embedding import embed_query
+
+    # Query embedding is one small call, but it runs on the same keys as
+    # everything else. Rotating means a key cooling down from a chat request
+    # does not also take retrieval out with it.
+    keys = llm.api_keys()
+    last_error: Exception | None = None
+    vector = None
+    for _ in range(max(1, len(keys))):
+        slot = _advisory_client_index % max(1, len(keys))
+        _advisory_client_index += 1
+        try:
+            vector = await embed_query(llm.client_for(slot), question)
+            break
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+    if vector is None:
+        return {
+            "ok": False,
+            "abstain_reason": (
+                "The advisory library could not be searched just now "
+                f"({type(last_error).__name__}). Do not answer from memory; "
+                "say the library is unavailable."
+            ),
+            "confidence": "none",
+        }
+
+    hits = index.search(vector, k=max(1, min(passages, 6)), language=language)
+
+    if not hits:
+        return {
+            "ok": False,
+            "question": question,
+            "abstain_reason": (
+                "Nothing in the published advisory library is close enough to "
+                "this question to quote. Say plainly that you do not have a "
+                "published source for it. Do NOT answer from your own "
+                "knowledge -- an invented variety, dose or spacing is worse "
+                "than no answer."
+            ),
+            "searched": len(index),
+            "confidence": "none",
+        }
+
+    return {
+        "ok": True,
+        "question": question,
+        "passages": [hit.as_dict() for hit in hits],
+        "how_to_use": (
+            "These are the published words. State only what they say. If they "
+            "do not cover part of the question, say that part is not covered "
+            "rather than filling it in. Name the source when you use it."
+        ),
+        "confidence": "high" if hits[0].score >= 0.72 else "moderate",
+        "evidence": {
+            "source": index.manifest.get("source", "Vikaspedia"),
+            "retrieval": (
+                f"{index.manifest.get('model', 'gemini-embedding-001')} "
+                f"over {len(index)} passages; best match "
+                f"{hits[0].score:.2f} cosine"
+            ),
+            "corpus_built_on": index.manifest.get("built_on"),
+            "limitations": [
+                "Published guidance is general to a region and season; it is "
+                "not specific to this field.",
+                "Where it conflicts with what the field's own measurements "
+                "show, the measurements describe this field and the guidance "
+                "does not.",
+            ],
+        },
     }

@@ -89,6 +89,7 @@ season**, under irrigation and rainfed, on soils from sand to clay.
 | **Soil carbon** — what practice changes are worth | RothC-26.3, the IPCC Tier 3 accepted method |
 | **Prices** — today's mandi rates and where to sell | Agmarknet, ~3,000 regulated markets |
 | **Government schemes** | PM-KISAN, PMFBY, KCC, Soil Health Card, PMKSY, e-NAM — navigation, never an eligibility ruling |
+| **Published guidance** — varieties, seed rates, spacing, seed treatment, scheme paperwork | Retrieval over 17,000 passages of Government of India advisory material, quoted and linked |
 | **Anything else** | It is a capable assistant, not a crop bot |
 
 ---
@@ -134,6 +135,44 @@ say no:
 - Satellite verdicts state that they depend on the sowing date being right.
 - **No price forecasting.** Predicting mandi rates is genuinely hard; a
   confident guess is worse than silence.
+- **Published details are quoted, never recalled.** See below.
+
+### Answers that are written down rather than computed
+
+The agronomic models cover what physics and measurement can settle — water,
+carbon, yield response, disease pressure. A great deal of farming they cannot
+touch: which variety suits a district, the seed rate per acre, the spacing,
+the seed treatment and its dose, how long to wait after spraying, what
+documents a scheme wants.
+
+Asked from memory, a language model answers all of these fluently and some of
+them wrongly. An invented variety name, a dose off by a factor of ten, a
+waiting period that is too short — each reads as authoritative, and the
+person acting on it has no way to check.
+
+So these are retrieved instead. 17,479 passages of Government of India
+advisory material, from the agriculture domain of Vikaspedia, embedded with
+`gemini-embedding-001` and searched by cosine similarity at query time. The
+model is handed the passages themselves and the instruction to state only
+what they say, and the interface shows the source links beside the answer so
+a farmer — or the extension officer they show the phone to — can open the
+original page.
+
+Two properties make this worth having rather than merely present:
+
+- **It refuses.** Similarity search always returns its best matches; for a
+  question the corpus does not cover, those are simply the least irrelevant
+  passages, ranked just as confidently as a real answer. A score floor
+  (0.62 cosine, calibrated against on- and off-topic questions that land at
+  0.71–0.79 and 0.50–0.55 respectively) turns that into an abstention, and
+  the tool tells the model in plain words not to fall back on its own recall.
+- **It crosses languages.** The corpus is largely English; the farmers are
+  not. A question typed in Hindi retrieves the English passage that answers
+  it at 0.76 cosine, in Punjabi at 0.71, and the reply comes back in the
+  language it was asked in.
+
+No vector database. At this size the index is a 27 MB array and the search is
+one matrix-vector multiply — a few milliseconds, with nothing extra to run.
 
 ### Known limitations, stated plainly
 
@@ -149,6 +188,16 @@ say no:
 - A federation node holding a **single record** publishes aggregates that are
   that record. Production needs a k-anonymity floor. There is a test that
   says so.
+- The advisory corpus is currently **English only**, and Vikaspedia publishes
+  the same material in 22 more languages. Cross-language retrieval already
+  works, so this costs fidelity rather than coverage: a Marathi farmer gets a
+  correct answer translated from an English passage instead of the Marathi
+  passage that exists. The builder takes `--languages`; the gap is embedding
+  time on a free quota, not design.
+- The retrieval **score floor is calibrated by hand**, against questions
+  chosen to be clearly on or off topic. There is no Indian agricultural
+  advisory retrieval benchmark to tune it against, so it is set strict and
+  stated rather than optimised.
 
 ---
 
@@ -193,6 +242,7 @@ python federation/coordinator.py             # over the network
 | **Gemini multimodal** | Crop disease diagnosis from photographs, structured output |
 | **Gemini TTS** | Reading advice aloud in the farmer's language |
 | **Gemini audio understanding** | Transcribing spoken questions |
+| **`gemini-embedding-001`** | Retrieval over the advisory corpus, including across languages |
 | **Vertex AI** | Production path — IAM, VPC-SC, audit logging, `asia-south1` residency |
 | **Cloud Run** | Deployment target, scale-to-zero |
 
@@ -246,6 +296,7 @@ agreement — which is what makes one platform work across every BRICS member.
 | Copernicus Sentinel-2 | NDVI crop health, 10 m, ~5-day revisit | Copernicus open |
 | Agmarknet via data.gov.in | Daily mandi prices, ~3,000 APMC markets | GODL-India |
 | OpenStreetMap Nominatim | Place name → coordinates | ODbL |
+| Vikaspedia (C-DAC, MeitY) | Published advisory passages, quoted with attribution | GODL-India |
 
 Satellite reads use **Google Earth Engine** when credentials are present
 (server-side reduction) and fall back to Planetary Computer STAC otherwise,
@@ -294,6 +345,7 @@ anywhere in the country. 269 points are cached; the script is resumable.
 ```
 packages/agronomy/   Validated agronomic models + 197 tests
 packages/geo/        Data clients, caching, provenance
+packages/rag/        Advisory corpus: extraction, chunking, retrieval
 apps/api/            Gemini orchestrator, tool layer, vision
 apps/web/            Conversation-first interface
 federation/          Five-node BRICS federated learning

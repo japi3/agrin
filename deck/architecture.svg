@@ -1,0 +1,424 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1240" viewBox="0 0 2000 1240">
+<defs>
+  <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#7CB86A"/>
+  </marker>
+</defs>
+<rect width="2000" height="1240" fill="#1A1611"/>
+<rect x="18" y="18" width="1964" height="1204" rx="20"
+      fill="#12100C" stroke="#3A3226" stroke-width="2"/>
+<rect x="48" y="54" width="300" height="452" rx="16"
+        fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
+<text x="70" y="90" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
+        font-weight="700" fill="#7CB86A">1 · FARMER</text>
+<rect x="70" y="112" width="256" height="54" rx="9" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.6"/>
+<g stroke="#7CB86A" stroke-width="2" fill="none">
+    <rect x="91" y="127" width="9" height="15" rx="4.5" fill="#7CB86A"/>
+    <path d="M 86 137 a 9.5 9.5 0 0 0 19 0"/>
+    <line x1="95.5" y1="146" x2="95.5" y2="151"/>
+  </g>
+<text x="120" y="145" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="16" fill="#F2ECE1">Speaks a question</text>
+<rect x="70" y="178" width="256" height="54" rx="9" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.6"/>
+<rect x="85" y="196" width="22" height="16" rx="3" stroke="#7CB86A" stroke-width="2" fill="none"/><rect x="88" y="199.5" width="2.6" height="2.6" fill="#7CB86A"/><rect x="92.4" y="199.5" width="2.6" height="2.6" fill="#7CB86A"/><rect x="96.8" y="199.5" width="2.6" height="2.6" fill="#7CB86A"/><rect x="101.2" y="199.5" width="2.6" height="2.6" fill="#7CB86A"/><rect x="88" y="204.5" width="2.6" height="2.6" fill="#7CB86A"/><rect x="92.4" y="204.5" width="2.6" height="2.6" fill="#7CB86A"/><rect x="96.8" y="204.5" width="2.6" height="2.6" fill="#7CB86A"/><rect x="101.2" y="204.5" width="2.6" height="2.6" fill="#7CB86A"/>
+<text x="120" y="211" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="16" fill="#F2ECE1">Types a question</text>
+<rect x="70" y="244" width="256" height="54" rx="9" fill="#1F2B1A"
+        stroke="#C2703D" stroke-width="1.6"/>
+<g stroke="#C2703D" stroke-width="2" fill="none">
+    <rect x="85" y="263" width="22" height="15" rx="3"/>
+    <path d="M 92 263 l 2 -3 h 4 l 2 3"/>
+    <circle cx="96" cy="270.5" r="4"/>
+  </g>
+<text x="120" y="277" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="16" fill="#F2ECE1">Photographs a leaf</text>
+<rect x="70" y="318" width="256" height="166" rx="11" fill="#1F2B1A"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<text x="87" y="348" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">24 languages</text>
+<text x="87" y="374" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">English · हिन्दी · ਪੰਜਾਬੀ</text>
+<text x="87" y="396" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">বাংলা · தமிழ் · 中文</text>
+<text x="87" y="418" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">Русский · العربية · +16</text>
+<text x="87" y="440" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">Voice or text, either way</text>
+<rect x="378" y="54" width="330" height="300" rx="16"
+        fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
+<text x="400" y="90" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
+        font-weight="700" fill="#7CB86A">2 · SAATHI PWA</text>
+<rect x="400" y="106" width="286" height="226" rx="11" fill="#241F18"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="417" y="136" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Conversation first</text>
+<text x="417" y="162" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">Farm panel beside it, not</text>
+<text x="417" y="184" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">instead of it</text>
+<text x="417" y="206" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">Listen on every answer</text>
+<text x="417" y="228" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">Installs on a phone</text>
+<text x="417" y="250" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">Offline shell, honest when</text>
+<text x="417" y="272" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">there is no signal</text>
+<rect x="378" y="384" width="330" height="210" rx="16"
+        fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
+<text x="400" y="420" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
+        font-weight="700" fill="#7CB86A">3 · SPEECH IN</text>
+<rect x="400" y="436" width="286" height="62" rx="11" fill="#241F18"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="417" y="466" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16"
+          font-weight="600" fill="#F2ECE1">Gemini speech-to-text</text>
+<rect x="400" y="510" width="286" height="66" rx="11" fill="#2A1D12"
+        stroke="#C2703D" stroke-width="1.8" stroke-dasharray="7 5"/>
+<text x="417" y="540" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16"
+          font-weight="600" fill="#F2ECE1">RMS silence guard</text>
+<text x="417" y="566" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">silence never becomes words</text>
+<rect x="738" y="54" width="640" height="620" rx="16"
+        fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
+<text x="760" y="90" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
+        font-weight="700" fill="#7CB86A">4 · ORCHESTRATOR</text>
+<rect x="762" y="106" width="592" height="74" rx="11" fill="#2A1D12"
+        stroke="#C2703D" stroke-width="1.8"/>
+<text x="779" y="136" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16"
+          font-weight="600" fill="#F2ECE1">Script detector — counts the characters, before the model sees them</text>
+<text x="779" y="162" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">a reply comes back in the script the farmer wrote in</text>
+<rect x="762" y="194" width="592" height="92" rx="11" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="779" y="224" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18"
+          font-weight="600" fill="#F2ECE1">Gemini 3.7 Flash · function calling</text>
+<text x="779" y="250" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">routes, translates and explains — it does not do the agronomy</text>
+<text x="779" y="272" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">reasoning traces preserved across turns</text>
+<text x="762" y="326" font-family="Menlo, Monaco, Courier New, monospace" font-size="14" fill="#B3A288">13 TOOLS</text>
+<rect x="762" y="340" width="110" height="44" rx="8"
+        fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="817" y="367" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">irrigation</text>
+<rect x="881" y="340" width="110" height="44" rx="8"
+        fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="936" y="367" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">crop health</text>
+<rect x="1000" y="340" width="110" height="44" rx="8"
+        fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1055" y="367" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">photo diagnosis</text>
+<rect x="1119" y="340" width="110" height="44" rx="8"
+        fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1174" y="367" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">mandi prices</text>
+<rect x="1238" y="340" width="110" height="44" rx="8"
+        fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1293" y="367" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">crop value</text>
+<rect x="762" y="394" width="110" height="44" rx="8"
+        fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="817" y="421" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">soil profile</text>
+<rect x="881" y="394" width="110" height="44" rx="8"
+        fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="936" y="421" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">schemes</text>
+<rect x="1000" y="394" width="110" height="44" rx="8"
+        fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1055" y="421" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">farm memory</text>
+<rect x="1119" y="394" width="110" height="44" rx="8"
+        fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1174" y="421" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">guidance lookup</text>
+<rect x="762" y="462" width="592" height="90" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<text x="779" y="492" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Fallback chain — 16 key-and-model pairs</text>
+<text x="779" y="518" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">an exhausted daily quota never stops a farmer</text>
+<text x="779" y="540" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">what is spent is remembered, and survives a restart</text>
+<rect x="762" y="566" width="592" height="86" rx="11" fill="#2A1D12"
+        stroke="#C2703D" stroke-width="1.8"/>
+<text x="779" y="596" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Refusals are first-class</text>
+<text x="779" y="622" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">no fertiliser dose without a lab test · no price forecast</text>
+<text x="779" y="644" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">an uncalibrated crop is named as uncalibrated, not guessed</text>
+<rect x="1408" y="54" width="544" height="620" rx="16"
+        fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
+<text x="1430" y="90" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
+        font-weight="700" fill="#7CB86A">5 · WHAT COMES BACK</text>
+<rect x="1430" y="106" width="500" height="86" rx="11" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1447" y="136" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18"
+          font-weight="600" fill="#F2ECE1">The answer, in their script</text>
+<text x="1447" y="162" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">Gurmukhi in, Gurmukhi out — decided in code</text>
+<rect x="1430" y="204" width="500" height="96" rx="11" fill="#241F18"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1447" y="234" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18"
+          font-weight="600" fill="#F2ECE1">Evidence ledger</text>
+<text x="1447" y="260" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">“Where did this come from?”</text>
+<text x="1447" y="282" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">every figure names its model and inputs</text>
+<text x="1430" y="336" font-family="Menlo, Monaco, Courier New, monospace" font-size="14" fill="#B3A288">PICTORIAL CARDS</text>
+<rect x="1430" y="350" width="118" height="40" rx="8" fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1489" y="375" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">irrigation</text>
+<rect x="1556" y="350" width="118" height="40" rx="8" fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1615" y="375" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">weather</text>
+<rect x="1682" y="350" width="118" height="40" rx="8" fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1741" y="375" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">soil</text>
+<rect x="1808" y="350" width="118" height="40" rx="8" fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1867" y="375" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">crop value</text>
+<rect x="1430" y="400" width="118" height="40" rx="8" fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1489" y="425" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">diagnosis</text>
+<rect x="1556" y="400" width="118" height="40" rx="8" fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1615" y="425" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">schemes</text>
+<rect x="1682" y="400" width="118" height="40" rx="8" fill="#241F18"
+        stroke="#3A3226" stroke-width="1.4"/>
+<text x="1741" y="425" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
+        fill="#F2ECE1" text-anchor="middle">sources</text>
+<rect x="1430" y="466" width="500" height="84" rx="11" fill="#241F18"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1447" y="496" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18"
+          font-weight="600" fill="#F2ECE1">Gemini text-to-speech</text>
+<text x="1447" y="522" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15"
+          fill="#B3A288">read aloud in 24 languages, stoppable mid-sentence</text>
+<rect x="1430" y="564" width="500" height="88" rx="11" fill="#2A1D12"
+        stroke="#C2703D" stroke-width="1.8"/>
+<text x="1447" y="594" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Said plainly when uncertain</text>
+<text x="1447" y="620" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">“Soil map uncertain here — a KVK</text>
+<text x="1447" y="642" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">soil test would be firmer.”</text>
+<rect x="48" y="706" width="900" height="262" rx="16"
+        fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
+<text x="70" y="742" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
+        font-weight="700" fill="#7CB86A">6 · VALIDATED AGRONOMY — NOT THE LANGUAGE MODEL</text>
+<rect x="70" y="758" width="200" height="188" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<text x="87" y="788" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">FAO-56</text>
+<text x="87" y="814" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Penman-Monteith ET₀</text>
+<text x="87" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">dual crop coefficient</text>
+<text x="87" y="858" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">daily root-zone balance</text>
+<rect x="288" y="758" width="200" height="188" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<text x="305" y="788" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">FAO-33</text>
+<text x="305" y="814" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">yield response to</text>
+<text x="305" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">water deficit (Ky)</text>
+<text x="305" y="858" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">16 crops calibrated</text>
+<rect x="506" y="758" width="200" height="188" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<text x="523" y="788" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">RothC-26.3</text>
+<text x="523" y="814" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">soil organic carbon</text>
+<text x="523" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">IPCC Tier 3</text>
+<text x="523" y="858" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">20-year projections</text>
+<rect x="724" y="758" width="200" height="188" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<text x="741" y="788" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">EPIDEMIOLOGY</text>
+<text x="741" y="814" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Smith Periods (1956)</text>
+<text x="741" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Analytis · Magarey</text>
+<text x="741" y="858" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">12 disease models</text>
+<rect x="978" y="706" width="974" height="262" rx="16"
+        fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
+<text x="1000" y="742" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
+        font-weight="700" fill="#7CB86A">7 · LIVE DATA AND PUBLISHED GUIDANCE — NOTHING MOCKED</text>
+<rect x="1000" y="758" width="228" height="188" rx="11" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1017" y="788" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Soil</text>
+<text x="1017" y="814" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">ISRIC SoilGrids</text>
+<text x="1017" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">1 km map of India,</text>
+<text x="1017" y="858" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">carried locally</text>
+<text x="1017" y="880" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">→ anywhere in India</text>
+<text x="1017" y="902" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">   answers in ~6 ms</text>
+<rect x="1244" y="758" width="228" height="188" rx="11" fill="#241F18"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1261" y="788" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Weather &amp; satellite</text>
+<text x="1261" y="814" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Open-Meteo forecast</text>
+<text x="1261" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">and 20-year normals</text>
+<text x="1261" y="858" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Sentinel-2 NDVI via</text>
+<text x="1261" y="880" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Earth Engine and</text>
+<text x="1261" y="902" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Planetary Computer</text>
+<rect x="1488" y="758" width="228" height="188" rx="11" fill="#241F18"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1505" y="788" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Market &amp; place</text>
+<text x="1505" y="814" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Agmarknet prices</text>
+<text x="1505" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">(data.gov.in)</text>
+<text x="1505" y="858" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">MSP floor, by season</text>
+<text x="1505" y="880" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Nominatim — a village</text>
+<text x="1505" y="902" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">name becomes a field</text>
+<rect x="1732" y="758" width="198" height="188" rx="11" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1749" y="788" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Advisory corpus</text>
+<text x="1749" y="814" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5"
+          fill="#B3A288">17,479 passages of</text>
+<text x="1749" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5"
+          fill="#B3A288">Government of India</text>
+<text x="1749" y="858" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5"
+          fill="#B3A288">guidance, embedded</text>
+<text x="1749" y="880" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5"
+          fill="#B3A288">→ quoted and linked,</text>
+<text x="1749" y="902" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5"
+          fill="#B3A288">   never recalled</text>
+<rect x="48" y="1000" width="1904" height="186" rx="16"
+        fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
+<text x="70" y="1036" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
+        font-weight="700" fill="#7CB86A">8 · BRICS FEDERATION — COOPERATION WITHOUT SURRENDERING DATA</text>
+<rect x="72" y="1052" width="208" height="106" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<rect x="88" y="1068" width="34" height="26" rx="5" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.5"/>
+<text x="105" y="1086" font-family="Menlo, Monaco, Courier New, monospace" font-size="14"
+        font-weight="700" fill="#7CB86A" text-anchor="middle">IN</text>
+<text x="132" y="1088" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+        font-weight="600" fill="#F2ECE1">India</text>
+<text x="90" y="1120" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#B3A288">150 records held</text>
+<text x="90" y="1142" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#7CB86A">0 records shared</text>
+<rect x="300" y="1052" width="208" height="106" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<rect x="316" y="1068" width="34" height="26" rx="5" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.5"/>
+<text x="333" y="1086" font-family="Menlo, Monaco, Courier New, monospace" font-size="14"
+        font-weight="700" fill="#7CB86A" text-anchor="middle">BR</text>
+<text x="360" y="1088" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+        font-weight="600" fill="#F2ECE1">Brazil</text>
+<text x="318" y="1120" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#B3A288">100 records held</text>
+<text x="318" y="1142" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#7CB86A">0 records shared</text>
+<rect x="528" y="1052" width="208" height="106" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<rect x="544" y="1068" width="34" height="26" rx="5" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.5"/>
+<text x="561" y="1086" font-family="Menlo, Monaco, Courier New, monospace" font-size="14"
+        font-weight="700" fill="#7CB86A" text-anchor="middle">RU</text>
+<text x="588" y="1088" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+        font-weight="600" fill="#F2ECE1">Russia</text>
+<text x="546" y="1120" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#B3A288">150 records held</text>
+<text x="546" y="1142" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#7CB86A">0 records shared</text>
+<rect x="756" y="1052" width="208" height="106" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<rect x="772" y="1068" width="34" height="26" rx="5" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.5"/>
+<text x="789" y="1086" font-family="Menlo, Monaco, Courier New, monospace" font-size="14"
+        font-weight="700" fill="#7CB86A" text-anchor="middle">CN</text>
+<text x="816" y="1088" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+        font-weight="600" fill="#F2ECE1">China</text>
+<text x="774" y="1120" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#B3A288">150 records held</text>
+<text x="774" y="1142" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#7CB86A">0 records shared</text>
+<rect x="984" y="1052" width="208" height="106" rx="11" fill="#241F18"
+        stroke="#4E8C3F" stroke-width="1.8"/>
+<rect x="1000" y="1068" width="34" height="26" rx="5" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.5"/>
+<text x="1017" y="1086" font-family="Menlo, Monaco, Courier New, monospace" font-size="14"
+        font-weight="700" fill="#7CB86A" text-anchor="middle">ZA</text>
+<text x="1044" y="1088" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+        font-weight="600" fill="#F2ECE1">South Africa</text>
+<text x="1002" y="1120" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#B3A288">100 records held</text>
+<text x="1002" y="1142" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+        fill="#7CB86A">0 records shared</text>
+<rect x="1228" y="1052" width="700" height="106" rx="11" fill="#1F2B1A"
+        stroke="#7CB86A" stroke-width="1.8"/>
+<text x="1245" y="1082" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Federated averaging — weights travel, farm records never do</text>
+<text x="1245" y="1108" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">Each country trains on its own data and publishes model weights only.</text>
+<text x="1245" y="1130" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">A test asserts no node endpoint will return a record. It is the claim, enforced.</text>
+<line x1="348" y1="205" x2="376" y2="205" stroke="#7CB86A"
+        stroke-width="2.4" marker-end="url(#head)"/>
+<line x1="348" y1="470" x2="376" y2="470" stroke="#7CB86A"
+        stroke-width="2.4" marker-end="url(#head)"/>
+<line x1="708" y1="205" x2="736" y2="205" stroke="#7CB86A"
+        stroke-width="2.4" marker-end="url(#head)"/>
+<text x="722" y="193" font-family="Menlo, Monaco, Courier New, monospace"
+          font-size="13" fill="#B3A288" text-anchor="middle">question</text>
+<line x1="708" y1="480" x2="736" y2="480" stroke="#7CB86A"
+        stroke-width="2.4" marker-end="url(#head)"/>
+<text x="722" y="468" font-family="Menlo, Monaco, Courier New, monospace"
+          font-size="13" fill="#B3A288" text-anchor="middle">transcript</text>
+<line x1="1378" y1="300" x2="1406" y2="300" stroke="#7CB86A"
+        stroke-width="2.4" marker-end="url(#head)"/>
+<text x="1392" y="288" font-family="Menlo, Monaco, Courier New, monospace"
+          font-size="13" fill="#B3A288" text-anchor="middle">answer</text>
+<text x="362" y="452" font-family="Menlo, Monaco, Courier New, monospace" font-size="13" fill="#B3A288"
+      text-anchor="middle">voice</text>
+<line x1="500" y1="704" x2="500" y2="678" stroke="#7CB86A"
+        stroke-width="2.4" marker-end="url(#head)"/>
+<line x1="1200" y1="704" x2="1200" y2="678" stroke="#7CB86A"
+        stroke-width="2.4" marker-end="url(#head)"/>
+<text x="516" y="696" font-family="Menlo, Monaco, Courier New, monospace" font-size="13" fill="#B3A288">figures</text>
+<text x="1216" y="696" font-family="Menlo, Monaco, Courier New, monospace" font-size="13" fill="#B3A288">measurements</text>
+</svg>

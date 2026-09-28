@@ -81,6 +81,8 @@ const TOOL_LABEL: Record<string, string> = {
   get_mandi_prices: 'Checking today\'s mandi rates',
   find_government_schemes: 'Looking up government schemes',
   find_place: 'Finding your village',
+  estimate_crop_value: 'Working out what your crop is worth',
+  look_up_official_guidance: 'Reading the government advisory library',
 }
 
 export default function App() {
