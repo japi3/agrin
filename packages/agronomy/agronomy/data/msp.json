@@ -6,41 +6,61 @@
     "a forecast and not the market rate -- the market often pays more, and",
     "where procurement is thin a farmer may not be able to realise it.",
     "",
-    "VERIFY BEFORE RELYING ON THESE. They are entered by hand and the",
-    "Cabinet revises them every season. Check the current figures at",
-    "https://cacp.dacnet.nic.in or the PIB release for the season, and",
-    "correct any number here -- nothing else needs changing.",
+    "These figures were checked against the Cabinet's own press releases on",
+    "the date in verified_on, release by release, and every number below",
+    "appears in the 'MSP 2026-27' column of the tables cited in verified_from.",
+    "",
+    "RE-CHECK EACH SEASON. The Cabinet revises kharif MSP around May and",
+    "rabi around October, and a stale table is worse than none: the figures",
+    "that were here before this check were the 2025-26 column, a full season",
+    "out of date, and every one of the fourteen was wrong by between 10 and",
+    "622 rupees a quintal. Nothing else needs changing when they are updated",
+    "-- correct the numbers, the marketing_year, and verified_on.",
+    "",
+    "Where the Cabinet announces two grades, the lower is carried here:",
+    "paddy common (2441) not Grade A (2461), jowar hybrid (4023) not",
+    "maldandi (4073), cotton medium staple (8267) not long staple (8667).",
+    "The crop keys in this platform do not distinguish those grades, and a",
+    "floor price quoted too high is the harmful direction of the error -- a",
+    "farmer who holds out for a number nobody will pay loses the season.",
     "",
     "A crop absent from this file simply has no MSP shown. That is the",
     "right behaviour for fruit, vegetables and anything outside the MSP",
-    "list, which is most of what many farmers actually grow."
+    "list, which is most of what many farmers actually grow. The mandated",
+    "list also covers crops this platform has no water-balance calibration",
+    "for -- ragi, tur, moong, urad, sesamum, nigerseed, lentil, safflower --",
+    "and those are left out rather than carried unusable."
   ],
   "source": "CACP / Cabinet Committee on Economic Affairs",
   "source_url": "https://cacp.dacnet.nic.in",
-  "verified_on": null,
+  "verified_on": "2026-09-28",
+  "verified_from": [
+    "PIB Release 2260617, 13 May 2026 -- MSP for Kharif Crops, Marketing Season 2026-27",
+    "PIB Release 2173567, 1 October 2025 -- MSP for Rabi Crops, Marketing Season 2026-27"
+  ],
   "seasons": {
     "kharif": {
-      "marketing_year": "2025-26",
+      "marketing_year": "2026-27",
       "crops": {
-        "rice_paddy": 2369,
-        "maize_grain": 2400,
-        "sorghum": 3699,
-        "pearl_millet": 2775,
-        "groundnut": 7263,
-        "soybean": 5328,
-        "sunflower": 7721,
-        "cotton": 7710
+        "rice_paddy": 2441,
+        "maize_grain": 2410,
+        "sorghum": 4023,
+        "pearl_millet": 2900,
+        "groundnut": 7517,
+        "soybean": 5708,
+        "sunflower": 8343,
+        "cotton": 8267
       }
     },
     "rabi": {
-      "marketing_year": "2025-26",
+      "marketing_year": "2026-27",
       "crops": {
-        "wheat_rabi": 2425,
-        "wheat_spring": 2425,
-        "wheat_winter": 2425,
-        "barley": 1980,
-        "chickpea": 5650,
-        "mustard": 5950
+        "wheat_rabi": 2585,
+        "wheat_spring": 2585,
+        "wheat_winter": 2585,
+        "barley": 2150,
+        "chickpea": 5875,
+        "mustard": 6200
       }
     }
   }

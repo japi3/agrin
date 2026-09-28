@@ -15,6 +15,7 @@ import pytest
 
 from agronomy.economics import (
     YIELD_BAND,
+    _msp_table,
     estimate_yield,
     msp_for,
     msp_is_verified,
@@ -141,7 +142,40 @@ class TestTheSupportPriceIsAFloorNotAForecast:
         m = value_at_todays_price(e, 1.0, price_today=None, msp=2400)
         assert m.as_dict()["above_msp"] is None
 
-    def test_the_table_is_marked_unverified_until_a_human_checks_it(self):
-        """Entered by hand from figures the Cabinet revises every season.
-        The app must say so rather than present them as checked."""
-        assert msp_is_verified() is False
+    def test_the_table_records_that_it_was_checked_and_against_what(self):
+        """These figures were once a full season out of date -- the 2025-26
+        column sitting under a 2025-26 label while 2026-27 was in force, every
+        one of the fourteen wrong. The file now carries the date it was
+        checked and the Cabinet releases it was checked against, so the next
+        person can tell at a glance whether it has gone stale again."""
+        assert msp_is_verified() is True
+        table = _msp_table()
+        assert table["verified_on"]
+        assert any("PIB Release" in cite for cite in table["verified_from"])
+
+    def test_every_season_says_which_marketing_year_it_is(self):
+        """A floor price without its year is unusable: the farmer cannot tell
+        whether it is this season's number or last season's."""
+        for season in _msp_table()["seasons"].values():
+            assert season["marketing_year"]
+
+    def test_the_announced_figures_are_pinned(self):
+        """Pinned deliberately. These are rupee floors a farmer may hold out
+        for, and changing one should take an edit to this test as well as to
+        the table -- not a quiet keystroke.
+
+        Kharif MS 2026-27 (PIB 2260617); Rabi RMS 2026-27 (PIB 2173567).
+        """
+        assert msp_for("rice_paddy")[0] == 2441
+        assert msp_for("cotton")[0] == 8267
+        assert msp_for("wheat_rabi")[0] == 2585
+        assert msp_for("mustard")[0] == 6200
+
+    def test_the_lower_grade_is_carried_where_two_are_announced(self):
+        """Paddy common over Grade A, cotton medium staple over long. The
+        crop keys here do not distinguish the grades, and quoting a floor too
+        high is the harmful direction: a farmer holding out for a price
+        nobody will pay loses the season."""
+        assert msp_for("rice_paddy")[0] < 2461      # Grade A
+        assert msp_for("cotton")[0] < 8667          # long staple
+        assert msp_for("sorghum")[0] < 4073         # maldandi
