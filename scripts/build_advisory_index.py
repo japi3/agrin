@@ -417,6 +417,14 @@ async def stage_embed(chunks: list[Chunk], languages: list[str]) -> None:
                     print(f"  key {slot} has spent its daily allowance")
                     if len(exhausted) >= len(clients):
                         print(f"  all keys exhausted at {done}/{len(chunks)}")
+                        if done == 0:
+                            # Nothing was embedded, so there is no index to
+                            # write -- and finalising would truncate the
+                            # passages to match zero vectors, throwing away
+                            # the crawl. Leave everything as it is.
+                            print("  nothing embedded; run again after the "
+                                  "quota resets (midnight Pacific)")
+                            return
                         save(done)
                         finalise(vectors, chunks, done, languages)
                         return
