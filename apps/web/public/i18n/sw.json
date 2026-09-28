@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} inalipa ₹{price} — ni kama ₹{extra} zaidi kwa mavuno haya",
  "— today’s rate is above it": "— bei ya leo iko juu",
  "— today’s rate is below it": "— bei ya leo iko chini",
- "₹{n} a quintal at {market}": "₹{n} kwa kintali moja katika {market}"
+ "₹{n} a quintal at {market}": "₹{n} kwa kintali moja katika {market}",
+ "Expand the field": "Panua shamba",
+ "Show the conversation too": "Onyesha mazungumzo pia",
+ "Area not added": "Eneo halijawekwa",
+ "Crop photo": "Picha ya zao",
+ "Field details": "Taarifa za shamba",
+ "Help Saathi advise better": "Saidi Saathi akushauri vizuri",
+ "I want to tell you when I sowed my crop": "Nataka kukuambia nilipopanda zao langu",
+ "Let me add {what}": "Acha niongeze {what}",
+ "Tell me when you sowed": "Niambie ulipopanda",
+ "Then I can work out whether this field needs water.": "Nitaweza kujua kama shamba linahitaji maji."
 }

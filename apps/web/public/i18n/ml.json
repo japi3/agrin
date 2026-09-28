@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market}-ൽ ₹{price} കിട്ടും — ഇത്രയും വിളവിന് ₹{extra} ലാഭം",
  "— today’s rate is above it": "— ഇന്നത്തെ വില ഇതിലും കൂടുതലാണ്",
  "— today’s rate is below it": "— ഇന്നത്തെ വില ഇതിലും കുറവാണ്",
- "₹{n} a quintal at {market}": "{market}-ൽ ക്വിന്റലിന് ₹{n}"
+ "₹{n} a quintal at {market}": "{market}-ൽ ക്വിന്റലിന് ₹{n}",
+ "Expand the field": "കൃഷിയിടം വലുതാക്കുക",
+ "Show the conversation too": "സംഭാഷണവും കാണിക്കുക",
+ "Area not added": "സ്ഥലം ചേർത്തിട്ടില്ല",
+ "Crop photo": "വിളയുടെ ഫോട്ടോ",
+ "Field details": "പാടത്തെ വിവരങ്ങൾ",
+ "Help Saathi advise better": "സഹായിയെ നന്നായി ഉപദേശിക്കാൻ സഹായിക്കൂ",
+ "I want to tell you when I sowed my crop": "വിത്ത് വിതച്ച തീയതി പറയാനുണ്ട്",
+ "Let me add {what}": "{what} ചേർക്കട്ടെ",
+ "Tell me when you sowed": "വിത്ത് വിതച്ച ദിവസം പറയൂ",
+ "Then I can work out whether this field needs water.": "എങ്കിൽ വയലിൽ വെള്ളം വേണോ എന്ന് എനിക്ക് പറയാം"
 }

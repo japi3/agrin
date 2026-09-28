@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "En {market} pagan ₹{price}, unos ₹{extra} más por esta cosecha",
  "— today’s rate is above it": "— el precio de hoy está por encima",
  "— today’s rate is below it": "— el precio de hoy está por debajo",
- "₹{n} a quintal at {market}": "₹{n} el quintal en {market}"
+ "₹{n} a quintal at {market}": "₹{n} el quintal en {market}",
+ "Expand the field": "Ampliar el campo",
+ "Show the conversation too": "Mostrar también la conversación",
+ "Area not added": "No has puesto el área",
+ "Crop photo": "Foto del cultivo",
+ "Field details": "Datos del terreno",
+ "Help Saathi advise better": "Ayuda a Saathi a dar mejores consejos",
+ "I want to tell you when I sowed my crop": "Quiero decir cuándo sembré mi cultivo",
+ "Let me add {what}": "Déjame agregar {what}",
+ "Tell me when you sowed": "Dime cuándo sembraste",
+ "Then I can work out whether this field needs water.": "Así sabré si este campo necesita agua."
 }

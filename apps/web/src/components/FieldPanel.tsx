@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useT } from '../lib/i18n'
+import { useT, uiLocale } from '../lib/i18n'
 
 interface CropEntry {
   crop: string
@@ -67,6 +67,15 @@ const VERDICT: Record<string, { text: string; tone: string }> = {
   insufficient_data:    { text: 'Not enough data',    tone: 'var(--text-muted)' },
 }
 
+// What tapping a gap should actually say. Phrased as the farmer speaking,
+// because that is what lands in the conversation.
+const MISSING_PROMPT: Record<string, string> = {
+  'when it was sown': 'I want to tell you when I sowed my crop',
+  'what is planted': 'I want to tell you what I have planted',
+  'field size': 'I want to tell you how big my field is',
+  'when it was last watered': 'I want to tell you when I last watered',
+}
+
 const PH_WORD: Record<string, string> = {
   strongly_acidic: 'very sour', slightly_acidic: 'slightly sour',
   neutral: 'balanced', alkaline: 'slightly salty',
@@ -74,7 +83,7 @@ const PH_WORD: Record<string, string> = {
 }
 
 export function FieldPanel({
-  fieldId, open, onClose, onAsk, refreshKey = 0,
+  fieldId, open, onClose, onAsk, refreshKey = 0, view = 'split', onView,
 }: {
   fieldId: string | null
   open: boolean
@@ -83,6 +92,8 @@ export function FieldPanel({
   refreshKey?: number
   onClose: () => void
   onAsk: (q: string) => void
+  view?: 'chat' | 'split' | 'field'
+  onView?: (v: 'chat' | 'split' | 'field') => void
 }) {
   const t = useT()
   const [data, setData] = useState<Summary | null>(null)
@@ -139,24 +150,48 @@ export function FieldPanel({
              onClick={onClose} />
       )}
 
+      {/* On a phone this stays a drawer sliding over the conversation --
+          half a phone is not a panel. On a wide screen it takes a real share
+          of the width, which is what lets the farm be laid out as tiles
+          instead of a list running off the bottom. */}
       <aside
         className={`fixed md:static right-0 top-0 h-full z-20 overflow-y-auto
                     border-l transition-transform duration-200
-                    ${open ? 'translate-x-0' : 'translate-x-full md:hidden'}`}
+                    ${open ? 'translate-x-0' : 'translate-x-full md:hidden'}
+                    w-[340px] max-w-[88vw]
+                    ${view === 'field' ? 'md:w-full md:max-w-none'
+                                       : 'md:w-1/2 md:max-w-none'}`}
         style={{
-          width: 300, maxWidth: '85vw',
+          // Width lives in classes, not here. An inline width beats any
+          // class, so setting it here silently pinned the panel to 340px
+          // and the half-width split never took effect.
           background: 'var(--bg-raised)', borderColor: 'var(--border)',
         }}
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="font-semibold">{t('Your field')}</span>
+            <div className="flex items-center gap-1">
+              {/* Widen the farm to fill the screen, or hand the width back
+                  to the conversation. Hidden on a phone, where there is only
+                  ever one of the two on screen. */}
+              <button
+                onClick={() => onView?.(view === 'field' ? 'split' : 'field')}
+                aria-label={view === 'field' ? t('Show the conversation too')
+                                             : t('Expand the field')}
+                title={view === 'field' ? t('Show the conversation too')
+                                        : t('Expand the field')}
+                className="hidden md:block text-[15px] leading-none px-2"
+                style={{ color: 'var(--text-muted)', minHeight: 0 }}>
+                {view === 'field' ? '⇥' : '⇤'}
+              </button>
             <button onClick={onClose}
                     aria-label={t('Close field panel')}
                     className="text-[20px] leading-none px-2"
                     style={{ color: 'var(--text-muted)', minHeight: 0 }}>
               ×
             </button>
+            </div>
           </div>
 
           {loading && (
@@ -178,18 +213,88 @@ export function FieldPanel({
             </div>
           )}
 
+          {/* Tiles rather than a column.
+              
+              Multi-column rather than a grid because the sections are
+              genuinely different heights -- a weather strip is short, the
+              crop list grows with the number of crops -- and a grid would
+              leave ragged gaps beside the short ones. break-inside-avoid
+              keeps a section whole rather than splitting it across columns,
+              which is the failure this technique is known for. */}
+          {/* What needs attention comes first.
+              
+              The farm used to open with its own name and coordinates, and a
+              farmer had to read down past soil and weather to reach the one
+              line telling them to do something. Where there is a verdict it
+              leads; where the verdict cannot be computed, the reason it
+              cannot is what leads instead -- and that is tappable. */}
           {data && !loading && (
-            <div className="space-y-4">
+            <div className={`space-y-3 ${
+              view === 'field'
+                ? 'md:columns-2 xl:columns-3 md:space-y-0 md:gap-3'
+                : 'lg:columns-2 lg:space-y-0 lg:gap-3'
+            } [&>*]:break-inside-avoid lg:[&>*]:mb-3
+              [&>*]:rounded-2xl [&>*]:border [&>*]:p-3
+              [&>*]:border-[var(--border)] [&>*]:bg-[var(--bg-sunken)]`}>
+              {/* Water: the reason most farmers open the app */}
+              {irrigationLoading && !data.irrigation && (
+                <div className="rounded-xl p-3 border text-[14px]"
+                     style={{ borderColor: 'var(--border)', background: 'var(--bg-sunken)',
+                              color: 'var(--text-muted)' }}>
+                  {t('Working out whether your field needs water…')}
+                </div>
+              )}
+              {/* No verdict is not nothing to say. The water balance needs a
+                  sowing date, and without one the farmer saw soil, weather
+                  and no advice, with no hint that one missing fact was the
+                  reason. */}
+              {!data.irrigation && !irrigationLoading
+                && (data.crops_growing?.length ?? 0) > 0
+                && data.missing?.includes('when it was sown') && (
+                <button
+                  onClick={() => onAsk(t('I want to tell you when I sowed my crop'))}
+                  className="w-full text-left rounded-xl p-3 border"
+                  style={{ borderColor: '#c2703d', background: 'var(--bg-sunken)' }}>
+                  <div className="text-[15px] font-medium" style={{ color: '#c2703d' }}>
+                    {t('Tell me when you sowed')}
+                  </div>
+                  <div className="text-[13px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    {t('Then I can work out whether this field needs water.')}
+                  </div>
+                </button>
+              )}
+              {verdict && data.irrigation && (
+                <button
+                  onClick={() => onAsk(t('Does my field need water this week?'))}
+                  className="w-full text-left rounded-xl p-3 border"
+                  style={{ borderColor: verdict.tone, background: 'var(--bg-sunken)' }}
+                >
+                  <div className="text-[15px] font-medium" style={{ color: verdict.tone }}>
+                    {t(verdict.text)}
+                  </div>
+                  <div className="text-[13px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    {t('Soil holding {n}% of its water', { n: data.irrigation.soil_moisture_percent })}
+                    {data.irrigation.days_until_stress != null
+                      ? ` · ${data.irrigation.days_until_stress === 1
+                          ? t('1 day until the crop is stressed')
+                          : t('{n} days until the crop is stressed', { n: data.irrigation.days_until_stress })}`
+                      : ''}
+                  </div>
+                </button>
+              )}
+
               {/* The farm itself */}
               <div>
                 <div className="text-[15px] font-medium">
                   {data.field.name || t('My field')}
                 </div>
                 <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                  {/* No coordinates. Nobody describes their land as
+                      31.321, 74.842, and the two numbers were the most
+                      prominent thing under the field's name. */}
                   {data.field.area_acres
-                    ? `${t('{n} acres', { n: data.field.area_acres })} · `
-                    : ''}
-                  {data.field.latitude.toFixed(3)}, {data.field.longitude.toFixed(3)}
+                    ? t('{n} acres', { n: data.field.area_acres })
+                    : t('Area not added')}
                 </div>
               </div>
 
@@ -239,34 +344,6 @@ export function FieldPanel({
                 </div>
               )}
 
-              {/* Water: the reason most farmers open the app */}
-              {irrigationLoading && !data.irrigation && (
-                <div className="rounded-xl p-3 border text-[14px]"
-                     style={{ borderColor: 'var(--border)', background: 'var(--bg-sunken)',
-                              color: 'var(--text-muted)' }}>
-                  {t('Working out whether your field needs water…')}
-                </div>
-              )}
-              {verdict && data.irrigation && (
-                <button
-                  onClick={() => onAsk(t('Does my field need water this week?'))}
-                  className="w-full text-left rounded-xl p-3 border"
-                  style={{ borderColor: verdict.tone, background: 'var(--bg-sunken)' }}
-                >
-                  <div className="text-[15px] font-medium" style={{ color: verdict.tone }}>
-                    {t(verdict.text)}
-                  </div>
-                  <div className="text-[13px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    {t('Soil holding {n}% of its water', { n: data.irrigation.soil_moisture_percent })}
-                    {data.irrigation.days_until_stress != null
-                      ? ` · ${data.irrigation.days_until_stress === 1
-                          ? t('1 day until the crop is stressed')
-                          : t('{n} days until the crop is stressed', { n: data.irrigation.days_until_stress })}`
-                      : ''}
-                  </div>
-                </button>
-              )}
-
               {/* Weather */}
               {data.weather && (
                 <div>
@@ -282,19 +359,32 @@ export function FieldPanel({
                       ? t('{n} mm rain expected this week', { n: data.weather.rain_next_7_days_mm })
                       : t('No rain expected this week')}
                   </div>
-                  {/* Seven-day rain bars: small, glanceable, no legend needed. */}
-                  <div className="flex gap-1 items-end mt-2 h-10">
+                  {/* Seven bars told you rain was coming and not which day,
+                      which is the only part a farmer plans around. Day and
+                      amount now sit under each bar; the hover title was no
+                      use on a phone, where there is no hover. */}
+                  <div className="flex gap-1 items-end mt-2">
                     {data.weather.forecast.map((d: any, i: number) => {
                       const max = Math.max(
                         1, ...data.weather!.forecast.map((x: any) => x.rain_mm || 0))
+                      const mm = d.rain_mm || 0
+                      const day = new Date(d.date).toLocaleDateString(
+                        uiLocale(), { weekday: 'short' })
                       return (
-                        <div key={i} className="flex-1 flex flex-col justify-end"
-                             title={`${d.date}: ${d.rain_mm ?? 0} mm`}>
-                          <div className="rounded-t"
-                               style={{
-                                 height: `${Math.max(2, ((d.rain_mm || 0) / max) * 36)}px`,
-                                 background: d.rain_mm > 0 ? 'var(--accent)' : 'var(--border)',
-                               }} />
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <div className="w-full flex flex-col justify-end h-10">
+                            <div className="rounded-t"
+                                 style={{
+                                   height: `${Math.max(2, (mm / max) * 36)}px`,
+                                   background: mm > 0 ? 'var(--accent)' : 'var(--border)',
+                                 }} />
+                          </div>
+                          <div className="text-[10px] leading-none"
+                               style={{ color: 'var(--text-muted)' }}>{day}</div>
+                          <div className="text-[10px] leading-none"
+                               style={{ color: mm > 0 ? 'var(--accent)' : 'transparent' }}>
+                            {mm > 0 ? mm : '0'}
+                          </div>
                         </div>
                       )
                     })}
@@ -333,7 +423,7 @@ export function FieldPanel({
                   shown -- they have dug that field and the raster has not. */}
               {(data.farmer_said?.length ?? 0) > 0 && (
                 <div>
-                  <div className="text-[13px] font-medium mb-1.5">{t('You told me')}</div>
+                  <div className="text-[13px] font-medium mb-1.5">{t('Field details')}</div>
                   <div className="space-y-1">
                     {data.farmer_said!.map((n, i) => (
                       <div key={i} className="text-[13px]"
@@ -350,14 +440,26 @@ export function FieldPanel({
               {(data.missing?.length ?? 0) > 0 && (
                 <div>
                   <div className="text-[13px] font-medium mb-1.5">
-                    {t('Tell me and I can help more')}
+                    {t('Help Saathi advise better')}
                   </div>
+                  {/* Tappable, not a label.
+                      
+                      These were dead text, and one of them -- the sowing
+                      date -- is what the water balance needs before it can
+                      say anything about irrigating at all. A farmer looking
+                      at "when it was sown" in orange had no way to act on it
+                      and no idea it was the reason no advice appeared.
+                      Tapping now asks the question in the conversation,
+                      where it can be answered by voice. */}
                   <div className="space-y-1">
                     {data.missing!.map((m, i) => (
-                      <div key={i} className="text-[13px]"
-                           style={{ color: '#c2703d' }}>
-                        · {t(m)}
-                      </div>
+                      <button key={i}
+                              onClick={() => onAsk(MISSING_PROMPT[m]
+                                ? t(MISSING_PROMPT[m]) : t('Let me add {what}', { what: t(m) }))}
+                              className="w-full text-left text-[13px] rounded-lg px-2 py-2"
+                              style={{ background: 'var(--bg-raised)', color: '#c2703d' }}>
+                        + {t(m)}
+                      </button>
                     ))}
                   </div>
                 </div>

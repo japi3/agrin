@@ -83,8 +83,19 @@ MODEL_FALLBACK_CHAIN = [
 # to conclude that is ninety seconds a farmer spends looking at nothing.
 # One-shot calls (speech, vision, transcription) get longer, because there
 # the whole response arrives in a single read and genuinely can take a while.
+# The streaming figure was 25 seconds, on the reasoning above that a stream
+# silent that long is dead rather than slow. That held for the models this
+# was written against and does not hold for a thinking model composing a
+# final answer over tool results: it reads what the tools returned, reasons,
+# and emits nothing at all while doing so. Observed in use -- a farmer
+# answered "I sowed apples after rains", two remember_about_my_farm calls
+# ran, and the reply that should have followed was cut off as dead.
+#
+# A stream wrongly declared dead throws away an answer the farmer was about
+# to get. A stream genuinely dead now costs another half minute before the
+# chain moves on, which is the cheaper mistake of the two.
 REQUEST_TIMEOUT_MS = int(os.environ.get("AGRIN_LLM_TIMEOUT_MS", "45000"))
-STREAM_TIMEOUT_MS = int(os.environ.get("AGRIN_LLM_STREAM_TIMEOUT_MS", "25000"))
+STREAM_TIMEOUT_MS = int(os.environ.get("AGRIN_LLM_STREAM_TIMEOUT_MS", "60000"))
 
 # The SDK retries failed requests on its own, with exponential backoff,
 # before an error ever reaches this code. Measured: a rate-limited speech

@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "E-{market} bakhokha u-₹{price} — cishe u-₹{extra} ngaphezulu ngalesi sivuno",
  "— today’s rate is above it": "— intengo yanamuhla ingaphezulu",
  "— today’s rate is below it": "— intengo yanamuhla ingaphansi",
- "₹{n} a quintal at {market}": "u-₹{n} nge-quintal e-{market}"
+ "₹{n} a quintal at {market}": "u-₹{n} nge-quintal e-{market}",
+ "Expand the field": "Khulisa insimu",
+ "Show the conversation too": "Bonisa nengxoxo futhi",
+ "Area not added": "Indawo ayikafakwa",
+ "Crop photo": "Isithombe sesilimo",
+ "Field details": "Imininingwane yensimu",
+ "Help Saathi advise better": "Siza uSaathi akweluleke kangcono",
+ "I want to tell you when I sowed my crop": "Ngifuna ukukutshela ukuthi ngitshale nini",
+ "Let me add {what}": "Ake ngingezele {what}",
+ "Tell me when you sowed": "Ngitshele ukuthi utshale nini",
+ "Then I can work out whether this field needs water.": "Ngizokwazi ukubala ukuthi le nsimu idinga amanzi yini."
 }

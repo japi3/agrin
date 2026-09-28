@@ -110,6 +110,16 @@ export default function App() {
   // see how their field is doing without asking; a first-time user still
   // gets the blank conversation-first screen.
   const [panelOpen, setPanelOpen] = useState(() => Boolean(session.fieldId))
+
+  // How the two halves share a wide screen: the conversation alone, both
+  // side by side, or the farm filling the width.
+  //
+  // A 300px column beside a centred conversation left a wide screen mostly
+  // empty and made the farm read as a list running off the bottom rather
+  // than as a picture of the field. Split is the default once there is a
+  // field to show; on a phone this is ignored entirely and the farm stays a
+  // drawer over the conversation, because half of a phone is not a panel.
+  const [view, setView] = useState<'chat' | 'split' | 'field'>('split')
   const [fieldId, setFieldId] = useState<string | null>(session.fieldId)
   const [panelRefresh, setPanelRefresh] = useState(0)
 
@@ -656,7 +666,10 @@ export default function App() {
             {locating ? tr('Finding…') : coords ? `📍 ${tr('Field set')}` : `📍 ${tr('Set field')}`}
           </button>
           {fieldId && (
-            <button onClick={() => setPanelOpen(!panelOpen)}
+            <button onClick={() => {
+                      if (panelOpen) { setPanelOpen(false) }
+                      else { setPanelOpen(true); setView('split') }
+                    }}
                     aria-label={tr('Show field details')}
                     className="text-[13px] px-3 py-1.5 rounded-full border"
                     style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
@@ -691,7 +704,9 @@ export default function App() {
 
       {/* Conversation + field panel */}
       <div className="flex-1 flex min-h-0">
-      <main className="flex-1 overflow-y-auto">
+      <main className={`flex-1 overflow-y-auto ${
+        panelOpen && view === 'field' ? 'hidden md:hidden' : ''
+      }`}>
         <div className="max-w-2xl mx-auto px-4 py-6">
 
           {empty && (
@@ -809,8 +824,19 @@ export default function App() {
       <FieldPanel
         fieldId={fieldId}
         open={panelOpen}
+        view={view}
+        onView={setView}
         onClose={() => setPanelOpen(false)}
-        onAsk={(q) => { setPanelOpen(false); send(q) }}
+        onAsk={(q) => {
+          // Only get out of the way where it is in the way. On a phone the
+          // farm is a drawer covering the conversation, so it has to close
+          // to show the answer; side by side it should stay put, and
+          // closing it threw away the half of the screen the farmer was
+          // reading.
+          const sideBySide = window.matchMedia('(min-width: 768px)').matches
+          if (!sideBySide) setPanelOpen(false)
+          send(q)
+        }}
         refreshKey={panelRefresh}
       />
       </div>
@@ -848,12 +874,20 @@ export default function App() {
                 e.target.value = ''
               }}
             />
+            {/* The camera is one of the strongest things here -- photograph
+                a damaged leaf and it reads the disease -- and a bare icon
+                told nobody that. The words appear where there is room for
+                them; the icon alone remains on a phone. */}
             <button onClick={() => fileRef.current?.click()}
                     aria-label={tr('Photograph the crop')}
+                    title={tr('Photograph the crop')}
                     disabled={busy}
-                    className="rounded-full w-11 h-11 flex items-center justify-center shrink-0 disabled:opacity-30"
+                    className="rounded-full h-11 px-3 sm:px-4 flex items-center gap-2 justify-center shrink-0 disabled:opacity-30 text-[13px]"
                     style={{ background: 'var(--bg-sunken)', color: 'var(--text-muted)' }}>
-              📷
+              <span aria-hidden>📷</span>
+              <span className="hidden sm:inline whitespace-nowrap">
+                {tr('Crop photo')}
+              </span>
             </button>
             <button onClick={toggleVoice}
                     aria-label={listening ? 'Stop recording' : 'Speak'}

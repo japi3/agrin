@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "В {market} дают ₹{price} — примерно на ₹{extra} больше за этот урожай",
  "— today’s rate is above it": "— сегодня цена выше",
  "— today’s rate is below it": "— сегодня цена ниже",
- "₹{n} a quintal at {market}": "₹{n} за центнер в {market}"
+ "₹{n} a quintal at {market}": "₹{n} за центнер в {market}",
+ "Expand the field": "Расширить поле",
+ "Show the conversation too": "Показать и переписку",
+ "Area not added": "Площадь не добавлена",
+ "Crop photo": "Фото культуры",
+ "Field details": "Данные поля",
+ "Help Saathi advise better": "Помоги Саатхи советовать лучше",
+ "I want to tell you when I sowed my crop": "Я хочу сказать, когда посеял",
+ "Let me add {what}": "Добавить {what}",
+ "Tell me when you sowed": "Скажи, когда посеял",
+ "Then I can work out whether this field needs water.": "Тогда я скажу, нужно ли поливать поле."
 }

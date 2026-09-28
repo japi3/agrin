@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} ላይ {price} ብር እየከፈሉ ነው — ለዚህ ምርት {extra} ብር ይበልጣል",
  "— today’s rate is above it": "— የዛሬው ዋጋ ከዚህ በላይ ነው",
  "— today’s rate is below it": "— የዛሬው ዋጋ ከዚህ በታች ነው",
- "₹{n} a quintal at {market}": "{market} ላይ በኩንታል {n} ብር"
+ "₹{n} a quintal at {market}": "{market} ላይ በኩንታል {n} ብር",
+ "Expand the field": "የእርሻ ቦታውን አስፋ",
+ "Show the conversation too": "ውይይቱን አሳይ",
+ "Area not added": "የመሬት ስፋት አልገባም",
+ "Crop photo": "የሰብል ፎቶ",
+ "Field details": "የእርሻ መረጃ",
+ "Help Saathi advise better": "ሳቲ የተሻለ ምክር እንዲሰጥ እርዱት",
+ "I want to tell you when I sowed my crop": "ሰብሌን የዘራሁበትን ቀን ልንገራችሁ",
+ "Let me add {what}": "{what} ልጨምር",
+ "Tell me when you sowed": "ዘር የዘሩበትን ቀን ይንገሩኝ",
+ "Then I can work out whether this field needs water.": "ከዚያም እርሻው ውሃ እንደሚያስፈልገው ማወቅ እችላለሁ።"
 }

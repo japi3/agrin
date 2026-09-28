@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} قیمت {price} تومان می‌دهد — حدود {extra} تومان بیشتر برای این مقدار محصول",
  "— today’s rate is above it": "— قیمت امروز بالاتر است",
  "— today’s rate is below it": "— قیمت امروز پایین‌تر است",
- "₹{n} a quintal at {market}": "{n} تومان برای هر کوینتال در {market}"
+ "₹{n} a quintal at {market}": "{n} تومان برای هر کوینتال در {market}",
+ "Expand the field": "بزرگ کردن زمین",
+ "Show the conversation too": "گفتگو را هم نشان بده",
+ "Area not added": "زمین ثبت نشده",
+ "Crop photo": "عکس محصول",
+ "Field details": "مشخصات زمین",
+ "Help Saathi advise better": "کمک کنید ساتی بهتر راهنمایی کند",
+ "I want to tell you when I sowed my crop": "می‌خواهم بگویم کِی کشت کردم",
+ "Let me add {what}": "بگذارید {what} را اضافه کنم",
+ "Tell me when you sowed": "بگو کِی کاشتی",
+ "Then I can work out whether this field needs water.": "تا بفهمم زمینت آب می‌خواد یا نه"
 }

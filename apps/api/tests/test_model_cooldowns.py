@@ -208,3 +208,15 @@ class TestCooldownsSurviveARestart:
         assert llm.is_cooling_down("gemini-3.7-flash", 0) is False
         assert llm.request_candidates(), "must still offer something to try"
         _clear()
+
+
+class TestTheStreamTimeoutTolerantOfThinking:
+    """A thinking model emits nothing while it reasons over tool results."""
+
+    def test_silence_is_tolerated_for_longer_than_a_thinking_pause(self):
+        """25s was cutting off answers that were about to arrive."""
+        assert llm.STREAM_TIMEOUT_MS >= 45_000
+
+    def test_it_is_still_bounded(self):
+        """Waiting forever on a dead stream is the other failure."""
+        assert llm.STREAM_TIMEOUT_MS <= 120_000

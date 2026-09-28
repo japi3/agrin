@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "سعر {market} هو {price}₹ — زيادة {extra}₹ لهذه الكمية",
  "— today’s rate is above it": "— سعر اليوم أعلى منه",
  "— today’s rate is below it": "— سعر اليوم أقل منه",
- "₹{n} a quintal at {market}": "{n}₹ للقنطار في {market}"
+ "₹{n} a quintal at {market}": "{n}₹ للقنطار في {market}",
+ "Expand the field": "وسّع الأرض",
+ "Show the conversation too": "أظهر المحادثة أيضاً",
+ "Area not added": "المساحة مش مضافة",
+ "Crop photo": "صورة المحصول",
+ "Field details": "تفاصيل الأرض",
+ "Help Saathi advise better": "ساعدني أنصحك أحسن",
+ "I want to tell you when I sowed my crop": "بدي أقولك متى زرعت",
+ "Let me add {what}": "خليني أضيف {what}",
+ "Tell me when you sowed": "قول لي متى زرعت",
+ "Then I can work out whether this field needs water.": "عشان أعرف إذا الأرض محتاجة مية"
 }

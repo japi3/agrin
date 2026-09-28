@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} betaal ₹{price} — omtrent ₹{extra} meer vir die oes",
  "— today’s rate is above it": "— vandag se prys is hoër",
  "— today’s rate is below it": "— vandag se prys is laer",
- "₹{n} a quintal at {market}": "₹{n} per kwintaal by {market}"
+ "₹{n} a quintal at {market}": "₹{n} per kwintaal by {market}",
+ "Expand the field": "Maak die veld groter",
+ "Show the conversation too": "Wys ook die gesprek",
+ "Area not added": "Grond nie bygevoeg nie",
+ "Crop photo": "Foto van gewas",
+ "Field details": "Landbesonderhede",
+ "Help Saathi advise better": "Help Saathi gee beter raad",
+ "I want to tell you when I sowed my crop": "Ek wil sê wanneer ek geplant het",
+ "Let me add {what}": "Laat my {what} byvoeg",
+ "Tell me when you sowed": "Sê vir my wanneer jy geplant het",
+ "Then I can work out whether this field needs water.": "Dan kan ek uitwerk of die land water nodig het."
 }

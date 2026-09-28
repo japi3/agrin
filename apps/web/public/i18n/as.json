@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market}-ত ₹{price} দিছে — ইমান শস্যত প্ৰায় ₹{extra} বেছি পাব",
  "— today’s rate is above it": "— আজিৰ দৰ ইয়াতকৈ বেছি",
  "— today’s rate is below it": "— আজিৰ দৰ ইয়াতকৈ কম",
- "₹{n} a quintal at {market}": "{market}-ত কুইণ্টলে ₹{n}"
+ "₹{n} a quintal at {market}": "{market}-ত কুইণ্টলে ₹{n}",
+ "Expand the field": "পথাৰ বঢ়াওক",
+ "Show the conversation too": "কথা-বতৰাও দেখুৱাওক",
+ "Area not added": "মাটিৰ হিচাপ দিয়া হোৱা নাই",
+ "Crop photo": "খেতিৰ ফটো",
+ "Field details": "পথাৰৰ বিৱৰণ",
+ "Help Saathi advise better": "সাথীক ভাল পৰামৰ্শ দিবলৈ সহায় কৰক",
+ "I want to tell you when I sowed my crop": "মই কেতিয়া খেতি কৰিছিলোঁ জনাব বিচাৰোঁ",
+ "Let me add {what}": "{what} যোগ কৰিবলৈ দিয়ক",
+ "Tell me when you sowed": "আপুনি কেতিয়া সিঁচিছিল জনাওক",
+ "Then I can work out whether this field needs water.": "তেতিয়া মই পথাৰত পানী লাগে নেকি উলিয়াব পাৰিম।"
 }

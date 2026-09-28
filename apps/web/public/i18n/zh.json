@@ -274,5 +274,15 @@
  "{market} is paying ₹{price} — about ₹{extra} more for this much crop": "{market} 给 ₹{price} —— 这么多庄稼能多卖 ₹{extra}",
  "— today’s rate is above it": "—— 今天的价比这高",
  "— today’s rate is below it": "—— 今天的价比这低",
- "₹{n} a quintal at {market}": "{market} 每公担 ₹{n}"
+ "₹{n} a quintal at {market}": "{market} 每公担 ₹{n}",
+ "Expand the field": "展开",
+ "Show the conversation too": "显示对话",
+ "Area not added": "还没加地块",
+ "Crop photo": "作物照片",
+ "Field details": "地块信息",
+ "Help Saathi advise better": "帮Saathi更好建议",
+ "I want to tell you when I sowed my crop": "我想说我什么时候种的",
+ "Let me add {what}": "让我添加{what}",
+ "Tell me when you sowed": "告诉我你什么时候种的",
+ "Then I can work out whether this field needs water.": "这样我就能算出这块地要不要浇水了。"
 }
