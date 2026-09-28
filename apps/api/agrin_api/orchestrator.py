@@ -40,7 +40,7 @@ from google.genai import types
 
 from . import llm
 from . import tools as tool_impl
-from .prompts import build_system_prompt
+from .prompts import build_system_prompt, dominant_script
 from .schemas import TOOL_DEFINITIONS
 
 MAX_TOOL_ROUNDS = 6
@@ -290,7 +290,27 @@ async def stream_turn(
         yield Event("error", {"message": str(exc), "kind": "not_configured"})
         return
 
-    system = build_system_prompt(language, field_context, season_memory)
+    # The script the farmer just wrote in, taken from the message rather than
+    # inferred by the model. Only the latest message counts: switching
+    # language mid-conversation has to switch the reply with it.
+    latest = ""
+    for message in reversed(messages):
+        if message.get("role") != "user":
+            continue
+        content = message.get("content")
+        if isinstance(content, str):
+            latest = content
+        elif isinstance(content, list):
+            latest = " ".join(
+                part.get("text", "") for part in content
+                if isinstance(part, dict) and part.get("type") == "text"
+            )
+        break
+
+    system = build_system_prompt(
+        language, field_context, season_memory,
+        reply_script=dominant_script(latest) if latest else None,
+    )
     config = llm.build_config(system, TOOL_DEFINITIONS, streaming=True)
     contents = llm.to_contents(messages)
     model_id = model or llm.DEFAULT_MODEL

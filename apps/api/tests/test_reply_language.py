@@ -46,3 +46,57 @@ class TestTheRulesDoNotCollide:
         """Contradictory instructions would let the model pick either."""
         prompt = build_system_prompt(language_hint="pa")
         assert "most recent message" not in prompt
+
+
+from agrin_api.prompts import dominant_script
+
+
+class TestScriptIsDetectedNotInferred:
+    """Telling the model to follow the latest message was not enough.
+
+    Asked "how the weather at patiala?" in plain English, with English
+    selected, it replied in Gurmukhi: the field is in Punjab, earlier turns
+    had been Punjabi, and the instruction lost to that weight.
+    """
+
+    def test_plain_english_reads_as_latin(self):
+        assert dominant_script("how the weather at patiala?") == "Latin"
+
+    def test_each_indian_script_is_told_apart(self):
+        assert dominant_script("ਕੀ ਪਾਣੀ ਲਾਉਣਾ ਹੈ?") == "Gurmukhi"
+        assert dominant_script("क्या पानी देना है?") == "Devanagari"
+        assert dominant_script("আমার জমিতে জল লাগবে?") == "Bengali"
+
+    def test_romanised_punjabi_stays_latin(self):
+        """The case the whole design turns on.
+
+        Someone typing Punjabi in Latin letters must get an answer they can
+        read back. Constraining the script rather than the language is what
+        preserves that -- forcing English on every Latin message would not.
+        """
+        assert dominant_script("pani kado launa hai") == "Latin"
+
+    def test_a_message_with_nothing_to_go_on_gives_no_answer(self):
+        """A photo with no caption must not force a script."""
+        assert dominant_script("") is None
+        assert dominant_script("2") is None
+
+    def test_a_stray_english_word_does_not_flip_the_script(self):
+        """Farmers mix in words like 'urea' and 'DAP' constantly."""
+        assert dominant_script("ਮੇਰੀ ਕਣਕ ਵਿੱਚ urea ਪਾਉਣਾ ਹੈ") == "Gurmukhi"
+
+
+class TestTheDetectedScriptReachesThePrompt:
+    def test_it_is_stated_as_a_rule_not_a_preference(self):
+        prompt = build_system_prompt(language_hint="en", reply_script="Latin")
+        assert "Latin script" in prompt
+        assert "do not override it" in prompt
+
+    def test_without_detection_the_softer_rule_still_stands(self):
+        prompt = build_system_prompt(language_hint="en")
+        assert "most recent message" in prompt
+
+    def test_a_chosen_language_is_not_overridden_by_the_script(self, ):
+        """Choosing Punjabi and typing English must still answer in Punjabi."""
+        prompt = build_system_prompt(language_hint="pa", reply_script="Latin")
+        assert "Latin script" not in prompt

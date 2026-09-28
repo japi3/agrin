@@ -187,10 +187,67 @@ it came from.
 """
 
 
+# Which script a farmer wrote in, decided by counting characters rather than
+# by asking the model.
+#
+# Telling the model to "reply in the language of the latest message" was not
+# enough. Asked "how the weather at patiala?" in plain English, with English
+# selected, it answered in Gurmukhi -- the field is in Punjab, earlier turns
+# had been Punjabi, and the instruction lost to that weight. An instruction
+# the model may or may not follow is not a rule.
+#
+# The constraint is the script, not the language, and that distinction is
+# deliberate. A farmer typing "pani kado launa hai" is writing Punjabi in
+# Latin letters and should get an answer they can read back -- also in Latin
+# letters. Forcing English on every Latin-script message would take that
+# away; forcing the script keeps it.
+_SCRIPTS: tuple[tuple[str, int, int], ...] = (
+    ("Latin", 0x0041, 0x024F),
+    ("Devanagari", 0x0900, 0x097F),
+    ("Bengali", 0x0980, 0x09FF),
+    ("Gurmukhi", 0x0A00, 0x0A7F),
+    ("Gujarati", 0x0A80, 0x0AFF),
+    ("Odia", 0x0B00, 0x0B7F),
+    ("Tamil", 0x0B80, 0x0BFF),
+    ("Telugu", 0x0C00, 0x0C7F),
+    ("Kannada", 0x0C80, 0x0CFF),
+    ("Malayalam", 0x0D00, 0x0D7F),
+    ("Arabic", 0x0600, 0x06FF),
+    ("Cyrillic", 0x0400, 0x04FF),
+    ("Han", 0x4E00, 0x9FFF),
+    ("Ethiopic", 0x1200, 0x137F),
+)
+
+
+def dominant_script(text: str) -> str | None:
+    """The script most of a message is written in, or None if unclear.
+
+    None for a message with no letters at all -- a photograph with no
+    caption, or "2 acres" -- where there is nothing to infer from and the
+    conversation's own language should stand.
+    """
+    counts: dict[str, int] = {}
+    letters = 0
+    for ch in text:
+        if not ch.isalpha():
+            continue
+        letters += 1
+        code = ord(ch)
+        for name, low, high in _SCRIPTS:
+            if low <= code <= high:
+                counts[name] = counts.get(name, 0) + 1
+                break
+    if letters < 3 or not counts:
+        return None
+    script, hits = max(counts.items(), key=lambda kv: kv[1])
+    return script if hits / letters > 0.6 else None
+
+
 def build_system_prompt(
     language_hint: str | None = None,
     field_context: str | None = None,
     season_memory: str | None = None,
+    reply_script: str | None = None,
 ) -> str:
     """Assemble the system prompt with whatever context we hold about this user.
 
@@ -241,14 +298,22 @@ def build_system_prompt(
         # once in Roman-script Punjabi, then twice in plain English, and got
         # Gurmukhi back both times. The Hinglish case this default exists for
         # still works, because a Hinglish message is the latest message.
-        parts.append(
-            "\n## Language for this conversation\n\n"
+        instruction = (
             "Reply in the language of the farmer's most recent message, and "
             "in the script they wrote it in. If they switch languages partway "
             "through, switch with them: what language earlier turns were in "
             "does not carry over. A message written in English gets an answer "
             "in English."
         )
+        if reply_script:
+            instruction += (
+                f"\n\nTheir latest message is written in {reply_script} "
+                f"script. Write your entire reply in {reply_script} script. "
+                f"This is not a preference to weigh against the rest of the "
+                f"conversation -- earlier turns in another script do not "
+                f"override it."
+            )
+        parts.append("\n## Language for this conversation\n\n" + instruction)
 
     if field_context:
         parts.append(
