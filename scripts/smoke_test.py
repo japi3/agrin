@@ -28,7 +28,7 @@ from pathlib import Path
 import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
-for pkg in ("packages/agronomy", "packages/geo", "apps/api"):
+for pkg in ("packages/agronomy", "packages/geo", "packages/rag", "apps/api"):
     sys.path.insert(0, str(ROOT / pkg))
 
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
@@ -104,6 +104,26 @@ def _mandi_ok(d):
         return False, reason
     return True, (f"Rs {d['median_rs_per_quintal']}/quintal, scope={d['scope']}, "
                   f"{d['markets_reporting']} markets")
+
+
+def _guidance_ok(d):
+    if not d.get("ok"):
+        return False, d.get("abstain_reason", "")
+    best = d["passages"][0]
+    return True, f"{len(d['passages'])} passages, best {best['score']} — {best['title'][:40]}"
+
+
+def _guidance_refuses(d):
+    """The refusal is the feature, so a match here is the failure.
+
+    A corpus that answers a gearbox question is one that will answer a
+    question about a pesticide dose the same way.
+    """
+    if d.get("ok"):
+        return False, f"quoted something at {d['passages'][0]['score']}"
+    if "not installed" in d.get("abstain_reason", ""):
+        return False, "corpus not built — cannot test the refusal"
+    return True, "abstained, as it should"
 
 
 def _health_ok(d):
@@ -191,6 +211,14 @@ async def main(base: str) -> int:
         await check("Mandi prices (Agmarknet)",
                     tools.get_mandi_prices("maize_grain", latitude=LAT,
                                            longitude=LON), _mandi_ok)
+        await check("Advisory retrieval (Vikaspedia corpus)",
+                    tools.look_up_official_guidance(
+                        "seed treatment before sowing wheat"),
+                    _guidance_ok)
+        await check("Advisory retrieval refuses an off-topic question",
+                    tools.look_up_official_guidance(
+                        "how do I rebuild a motorcycle gearbox"),
+                    _guidance_refuses)
 
         print("\n--- Conversation ---")
         if not llm_ready:

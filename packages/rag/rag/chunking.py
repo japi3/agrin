@@ -8,10 +8,40 @@ until a page about nine crops matches a question about none of them. A single
 sentence is small enough to lose the thing it depends on -- "spray again
 after fifteen days" is not advice until you know what the spray is.
 
-So the target here is a passage: a few paragraphs, around a thousand
-characters, cut at a boundary the author already put there.
+So the target here is a passage: a section or so of an article, around two
+and a half thousand characters, cut at a boundary the author already put
+there.
+
+That size was chosen twice. The first time it was 1,100 characters, on the
+reasoning that a tighter passage keeps one subject per vector. The second
+time the free tier decided it: embedding is capped at a thousand passages per
+key per day, so passage size is also coverage. At 1,100 the corpus was 17,875
+passages and nine days of quota; at 2,500 it is about a third of that and
+fits in two. Six hundred tokens is still comfortably inside what the
+embedding model reads, and a passage this size holds a whole recommendation
+rather than half of one -- so the trade costs some precision in ranking and
+buys the difference between shipping the material and not.
 
 Three rules make the passages safe rather than merely well-sized.
+
+**A passage may span sections, and then it is cited by what contains it.**
+These articles are written in short sections -- the median one is a couple of
+paragraphs -- so ending a passage at every heading produced passages a
+quarter of the intended size, and against a rationed embedding quota that is
+the difference between shipping half the corpus and a tenth of it. Short
+sections are therefore allowed to run together. What keeps that honest is the
+citation. A passage covering "Diseases > Rust" and "Diseases > Smut" is filed
+under "Diseases" -- the narrowest heading that truly contains all of it --
+and names both sections it covers, rather than being filed under whichever
+one happened to be open when the passage was closed.
+
+Naming them matters as much as the honesty does. These articles head their
+sections flat, as a run of siblings with no parent between them, so the
+narrowest containing heading for two adjacent sections is usually nothing at
+all. Citing by the article alone would be truthful and would also throw away
+the words that say what the passage is about -- and those words are often the
+only place the crop or the disease is named. So the citation carries both:
+where the passage sits, and what it covers.
 
 **Every chunk carries its heading path.** The text that gets embedded is
 prefixed with the article title and the headings above the passage -- "Wheat >
@@ -26,9 +56,16 @@ the continuation keeps the header row, because a row that reads
 "Wheat | 100 kg | 25 kg" is meaningless once "Crop | Nitrogen | Phosphorus"
 has been left in the previous chunk.
 
-**Passages overlap by one block.** A boundary always falls somewhere, and the
-sentence that explains a recommendation is often the one just before it.
-Repeating the last block costs a little storage and avoids losing the join.
+**Passages overlap by a sentence or two.** A boundary always falls somewhere,
+and the sentence that explains a recommendation is often the one just before
+it. Repeating the tail of the previous passage costs a little storage and
+avoids losing the join.
+
+Only the tail, though, and only when it is short. Carrying a whole block
+worked when blocks were a fifth of a passage; at this size a single paragraph
+can be a passage on its own, and repeating one wholesale would not be overlap
+but duplication -- the same text embedded twice, crowding out variety in the
+results and inflating the corpus against a rationed quota.
 
 None of this is tuned against a benchmark -- there isn't an Indian
 agricultural-advisory retrieval set to tune against. The sizes below are
@@ -43,18 +80,27 @@ from dataclasses import dataclass, field
 
 from .extract import Article, Block
 
-# Roughly 150-200 words: long enough to hold a recommendation and its reason,
-# short enough to read aloud and to keep one subject per vector.
-TARGET_CHARS = 1100
+# Roughly 400 words -- a section of an article. See the note above on why this
+# is not smaller: passage size is coverage when embedding is rationed daily.
+TARGET_CHARS = 2500
 
 # Below this a passage is usually a stray heading or a one-line caption. It is
 # merged forward rather than embedded on its own, where it would be a
 # high-scoring match with nothing useful in it.
-MIN_CHARS = 200
+MIN_CHARS = 300
 
 # A single block longer than this is split on sentence boundaries. Rare -- a
 # few pages have one enormous paragraph.
-MAX_CHARS = 1800
+MAX_CHARS = 4000
+
+# The most of the previous passage that may be repeated at the start of the
+# next one. A joining sentence or two, not a second copy of a paragraph.
+OVERLAP_CHARS = TARGET_CHARS // 4
+
+# How much a passage must already hold before a heading is allowed to end it.
+# Under this, the section was too short to be a passage on its own and runs
+# into the next; see the note on spanning sections above.
+SECTION_BREAK_CHARS = 1400
 
 
 @dataclass
@@ -67,11 +113,17 @@ class Chunk:
     section: list[str] = field(default_factory=list)
     updated: str | None = None
     author: str | None = None
+    covers: list[str] = field(default_factory=list)
 
     @property
     def heading(self) -> str:
         """The article and section this passage came from, for display."""
-        return " > ".join([self.title, *self.section])
+        parts = [self.title, *self.section]
+        if len(self.covers) > 1:
+            parts.append("; ".join(self.covers))
+        elif self.covers and not self.section:
+            parts.extend(self.covers)
+        return " > ".join(parts)
 
     def for_embedding(self) -> str:
         """What actually gets vectorised.
@@ -91,6 +143,7 @@ class Chunk:
             "section": self.section,
             "updated": self.updated,
             "author": self.author,
+            "covers": self.covers,
         }
 
     @classmethod
@@ -99,6 +152,7 @@ class Chunk:
             text=d["text"], title=d["title"], url=d["url"],
             language=d.get("language", "en"), section=d.get("section") or [],
             updated=d.get("updated"), author=d.get("author"),
+            covers=d.get("covers") or [],
         )
 
 
@@ -126,35 +180,76 @@ def chunk_article(article: Article) -> list[Chunk]:
     levels: list[int] = []
 
     lines: list[str] = []          # blocks in the passage being built
+    covered: list[list[str]] = []  # every section this passage reaches into
     table_header: str | None = None
     carried: str | None = None     # last block of the previous passage
 
+    def common_section() -> list[str]:
+        """The narrowest heading path containing everything in the passage."""
+        if not covered:
+            return list(section)
+        shared = covered[0]
+        for path in covered[1:]:
+            keep = 0
+            for a, b in zip(shared, path):
+                if a != b:
+                    break
+                keep += 1
+            shared = shared[:keep]
+            if not shared:
+                break
+        return list(shared)
+
     def flush(overlap: bool = True) -> None:
-        nonlocal lines, carried
+        nonlocal lines, carried, covered
         body = "\n".join(lines).strip()
+        where = common_section()
+        covered_now = list(covered)
         lines = []
+        covered = []
         if not body:
             return
+        leaves: list[str] = []
+        for path in covered_now:
+            leaf = path[len(where):]
+            if leaf and (not leaves or leaves[-1] != leaf[0]):
+                leaves.append(leaf[0])
         chunks.append(Chunk(
             text=body, title=article.title, url=article.url,
-            language=article.language, section=list(section),
+            language=article.language, section=where,
             updated=article.updated, author=article.author,
+            covers=leaves,
         ))
         carried = lines_tail(body) if overlap else None
 
     def lines_tail(body: str) -> str | None:
         tail = body.split("\n")[-1].strip()
-        # Only worth carrying if it is prose; a lone table row repeated out of
-        # its table reads as a fragment.
-        return tail if len(tail) >= 40 and " | " not in tail else None
+        # A lone table row repeated out of its table reads as a fragment.
+        if len(tail) < 40 or " | " in tail:
+            return None
+        if len(tail) <= OVERLAP_CHARS:
+            return tail
+        # Too long to repeat whole: keep the closing sentences that fit, which
+        # is the part the next passage actually follows on from.
+        kept: list[str] = []
+        for sentence in reversed(_SENTENCE.split(tail)):
+            if sum(len(x) + 1 for x in kept) + len(sentence) > OVERLAP_CHARS:
+                break
+            kept.insert(0, sentence)
+        joined = " ".join(kept).strip()
+        return joined if len(joined) >= 40 else None
 
     def length() -> int:
         return sum(len(line) + 1 for line in lines)
 
     for block in article.blocks:
         if block.kind == "heading":
-            # Close the passage at a heading: it is the author's own boundary.
-            if length() >= MIN_CHARS:
+            # A heading is the author's own boundary, and worth ending a
+            # passage on -- but only once the passage is big enough to stand
+            # alone. Below that the section is too short to be a passage, and
+            # is allowed to run into the next one; common_section() keeps the
+            # citation truthful when that happens.
+            if length() >= SECTION_BREAK_CHARS:
                 flush(overlap=False)
             while levels and levels[-1] >= block.level:
                 levels.pop()
@@ -173,6 +268,9 @@ def chunk_article(article: Article) -> list[Chunk]:
         pieces = [block.text]
         if block.kind == "text" and len(block.text) > MAX_CHARS:
             pieces = _split_long(block.text)
+
+        if not covered or covered[-1] != section:
+            covered.append(list(section))
 
         for piece in pieces:
             if lines and length() + len(piece) > TARGET_CHARS:
