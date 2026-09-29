@@ -1,0 +1,33 @@
+# Render Blueprint — deploys the real app, the React PWA served by FastAPI
+# out of the single existing container.
+#
+# The free plan gives 512 MB, which is ten times what this service uses: it
+# runs at 57 MB with the whole advisory index resident. What free costs
+# instead is latency after idle — Render suspends a free service after 15
+# minutes and the next request waits about 50 seconds while it wakes. For a
+# link a judge opens once that is a fair trade; for a farmer it would not be.
+#
+# The keys are deliberately not in this file. sync: false means Render asks
+# for each one in the dashboard when the blueprint is applied, so nothing
+# secret is ever committed.
+
+services:
+  - type: web
+    name: saathi
+    runtime: docker
+    plan: free
+    region: singapore          # nearest region to Indian users
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEYS
+        sync: false
+      - key: DATA_GOV_IN_KEY
+        sync: false
+      - key: AGRIN_MODEL
+        value: gemini-3.7-flash
+      - key: AGRIN_MODEL_FALLBACKS
+        sync: false
+      - key: AGRIN_CORS_ORIGINS
+        value: "*"
