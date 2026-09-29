@@ -5,7 +5,7 @@
   "languages": [
     "en"
   ],
-  "passages": 3968,
+  "passages": 4640,
   "passages_available": 6396,
   "complete": false,
   "model": "gemini-embedding-001",

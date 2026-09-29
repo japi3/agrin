@@ -1,0 +1,15 @@
+# Satellite reads, split out from requirements.txt.
+#
+# rasterio ships GDAL, which is by far the largest dependency here and the
+# slowest to install. Nothing imports it at module scope -- geo/satellite.py
+# and geo/soilgrids.py both import inside the function that needs them -- so
+# leaving this file out costs exactly one tool (crop health from Sentinel-2)
+# and the local soil map, and nothing else.
+#
+# That is what makes a Streamlit Cloud deployment practical: it installs the
+# core in under a minute instead of risking a build timeout on GDAL.
+
+rasterio==1.5.1
+pystac-client==0.9.0
+planetary-computer==1.0.0
+earthengine-api==1.7.40

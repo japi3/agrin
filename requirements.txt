@@ -15,11 +15,13 @@ google-genai==2.19.0
 # --- Data sources ---
 httpx==0.28.1
 
-# --- Satellite (Sentinel-2 COG reads) ---
-rasterio==1.5.1
-pystac-client==0.9.0
-planetary-computer==1.0.0
 numpy==2.5.2
 
-# --- Earth Engine (optional; used when credentials are present) ---
-earthengine-api==1.7.40
+# --- Browser front end (Streamlit Cloud reads this file) ---
+streamlit==1.64.0
+
+# Satellite and Earth Engine live in requirements-geo.txt. They pull GDAL,
+# which is large and slow to install, and every import of them in this
+# codebase is inside a function -- so a deployment that does not need crop
+# health from satellite can leave them out and still run everything else.
+# The container installs both; see the Dockerfile.

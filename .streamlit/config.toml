@@ -1,0 +1,12 @@
+# Saathi's own palette, so the Streamlit deployment is recognisably the
+# same product as the phone app rather than a default-themed prototype.
+
+[theme]
+base = "dark"
+primaryColor = "#7CB86A"
+backgroundColor = "#1A1611"
+secondaryBackgroundColor = "#241F18"
+textColor = "#F2ECE1"
+
+[server]
+headless = true
