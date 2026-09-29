@@ -17,53 +17,242 @@
     "",
     "Written by the team, not collected from farmers. A field-collected set",
     "is what this should eventually be replaced with, and until then the",
-    "numbers say the system finds what we thought to ask it for."
+    "numbers say the system finds what we thought to ask it for.",
+    "",
+    "The `exact_token` questions name a variety code or a molecule. They are",
+    "kept separate because they are the only case BM25 is for -- a code is",
+    "either in the passage or it is not, and an embedding that has learned",
+    "PBW 343 and HD 2967 are both wheat things will return whichever it",
+    "likes. The first version of this file had none of them, which made the",
+    "hybrid-versus-dense comparison meaningless: it measured hybrid on",
+    "exactly the questions where BM25 has nothing to add."
   ],
   "on_topic": [
-    {"q": "What seed treatment should I use before sowing wheat?", "expect": "seed treatment", "lang": "en"},
-    {"q": "How do I control yellow rust in wheat?", "expect": "wheat", "lang": "en"},
-    {"q": "What is the stage-wise pest management for tomato?", "expect": "tomato", "lang": "en"},
-    {"q": "How do I manage pests in brinjal?", "expect": "brinjal", "lang": "en"},
-    {"q": "Cabbage and cauliflower pest management", "expect": "cabbage", "lang": "en"},
-    {"q": "How is makhana cultivated commercially?", "expect": "makhana", "lang": "en"},
-    {"q": "What are the nutritional deficiencies of mango?", "expect": "mango", "lang": "en"},
-    {"q": "Diseases of moth bean", "expect": "moth bean", "lang": "en"},
-    {"q": "How do I grow potato?", "expect": "potato", "lang": "en"},
-    {"q": "Pests that attack cucurbit vegetables", "expect": "cucurbit", "lang": "en"},
-    {"q": "Coffee cultivation practices", "expect": "coffee", "lang": "en"},
-    {"q": "How do I grow kodo millet?", "expect": "kodo millet", "lang": "en"},
-    {"q": "What pests affect small cardamom?", "expect": "cardmom", "lang": "en"},
-    {"q": "Nutritional deficiencies in pearl millet", "expect": "pearl millet", "lang": "en"},
-    {"q": "What is soil organic carbon and why does it matter?", "expect": "soil organic carbon", "lang": "en"},
-    {"q": "Can farmers earn money from carbon credits?", "expect": "carbon credit", "lang": "en"},
-    {"q": "What help is available for buying farm machinery?", "expect": "mechanization", "lang": "en"},
-    {"q": "How do I get agricultural credit?", "expect": "credit", "lang": "en"},
-    {"q": "Tobacco pest management", "expect": "tobacco", "lang": "en"},
-    {"q": "What is the PM-KISAN scheme?", "expect": "kisan", "lang": "en"},
-
-    {"q": "गेहूं की बुवाई से पहले बीज उपचार कैसे करें?", "expect": "seed treatment", "lang": "hi"},
-    {"q": "टमाटर में कीट प्रबंधन कैसे करें?", "expect": "tomato", "lang": "hi"},
-    {"q": "आलू की खेती कैसे करें?", "expect": "potato", "lang": "hi"},
-    {"q": "मिट्टी में जैविक कार्बन क्या है?", "expect": "soil organic carbon", "lang": "hi"},
-    {"q": "मखाना की खेती कैसे होती है?", "expect": "makhana", "lang": "hi"},
-
-    {"q": "ਕਣਕ ਦੀ ਬਿਜਾਈ ਤੋਂ ਪਹਿਲਾਂ ਬੀਜ ਦਾ ਇਲਾਜ ਕੀ ਹੈ?", "expect": "seed treatment", "lang": "pa"},
-    {"q": "ਟਮਾਟਰ ਵਿੱਚ ਕੀੜਿਆਂ ਦਾ ਪ੍ਰਬੰਧਨ ਕਿਵੇਂ ਕਰੀਏ?", "expect": "tomato", "lang": "pa"},
-    {"q": "ਆਲੂ ਦੀ ਖੇਤੀ ਕਿਵੇਂ ਕਰੀਏ?", "expect": "potato", "lang": "pa"},
-    {"q": "ਮਿੱਟੀ ਵਿੱਚ ਜੈਵਿਕ ਕਾਰਬਨ ਕੀ ਹੈ?", "expect": "soil organic carbon", "lang": "pa"},
-
-    {"q": "wheat me yellow rust kaise control kare", "expect": "wheat", "lang": "hinglish"},
-    {"q": "aloo ki kheti kaise karein", "expect": "potato", "lang": "hinglish"},
-    {"q": "tamatar me keet prabandhan", "expect": "tomato", "lang": "hinglish"}
+    {
+      "q": "What seed treatment should I use before sowing wheat?",
+      "expect": "seed treatment",
+      "lang": "en"
+    },
+    {
+      "q": "How do I control yellow rust in wheat?",
+      "expect": "wheat",
+      "lang": "en"
+    },
+    {
+      "q": "What is the stage-wise pest management for tomato?",
+      "expect": "tomato",
+      "lang": "en"
+    },
+    {
+      "q": "How do I manage pests in brinjal?",
+      "expect": "brinjal",
+      "lang": "en"
+    },
+    {
+      "q": "Cabbage and cauliflower pest management",
+      "expect": "cabbage",
+      "lang": "en"
+    },
+    {
+      "q": "How is makhana cultivated commercially?",
+      "expect": "makhana",
+      "lang": "en"
+    },
+    {
+      "q": "What are the nutritional deficiencies of mango?",
+      "expect": "mango",
+      "lang": "en"
+    },
+    {
+      "q": "Diseases of moth bean",
+      "expect": "moth bean",
+      "lang": "en"
+    },
+    {
+      "q": "How do I grow potato?",
+      "expect": "potato",
+      "lang": "en"
+    },
+    {
+      "q": "Pests that attack cucurbit vegetables",
+      "expect": "cucurbit",
+      "lang": "en"
+    },
+    {
+      "q": "Coffee cultivation practices",
+      "expect": "coffee",
+      "lang": "en"
+    },
+    {
+      "q": "How do I grow kodo millet?",
+      "expect": "kodo millet",
+      "lang": "en"
+    },
+    {
+      "q": "What pests affect small cardamom?",
+      "expect": "cardmom",
+      "lang": "en"
+    },
+    {
+      "q": "Nutritional deficiencies in pearl millet",
+      "expect": "pearl millet",
+      "lang": "en"
+    },
+    {
+      "q": "What is soil organic carbon and why does it matter?",
+      "expect": "soil organic carbon",
+      "lang": "en"
+    },
+    {
+      "q": "Can farmers earn money from carbon credits?",
+      "expect": "carbon credit",
+      "lang": "en"
+    },
+    {
+      "q": "What help is available for buying farm machinery?",
+      "expect": "mechanization",
+      "lang": "en"
+    },
+    {
+      "q": "How do I get agricultural credit?",
+      "expect": "credit",
+      "lang": "en"
+    },
+    {
+      "q": "Tobacco pest management",
+      "expect": "tobacco",
+      "lang": "en"
+    },
+    {
+      "q": "What is the PM-KISAN scheme?",
+      "expect": "kisan",
+      "lang": "en"
+    },
+    {
+      "q": "गेहूं की बुवाई से पहले बीज उपचार कैसे करें?",
+      "expect": "seed treatment",
+      "lang": "hi"
+    },
+    {
+      "q": "टमाटर में कीट प्रबंधन कैसे करें?",
+      "expect": "tomato",
+      "lang": "hi"
+    },
+    {
+      "q": "आलू की खेती कैसे करें?",
+      "expect": "potato",
+      "lang": "hi"
+    },
+    {
+      "q": "मिट्टी में जैविक कार्बन क्या है?",
+      "expect": "soil organic carbon",
+      "lang": "hi"
+    },
+    {
+      "q": "मखाना की खेती कैसे होती है?",
+      "expect": "makhana",
+      "lang": "hi"
+    },
+    {
+      "q": "ਕਣਕ ਦੀ ਬਿਜਾਈ ਤੋਂ ਪਹਿਲਾਂ ਬੀਜ ਦਾ ਇਲਾਜ ਕੀ ਹੈ?",
+      "expect": "seed treatment",
+      "lang": "pa"
+    },
+    {
+      "q": "ਟਮਾਟਰ ਵਿੱਚ ਕੀੜਿਆਂ ਦਾ ਪ੍ਰਬੰਧਨ ਕਿਵੇਂ ਕਰੀਏ?",
+      "expect": "tomato",
+      "lang": "pa"
+    },
+    {
+      "q": "ਆਲੂ ਦੀ ਖੇਤੀ ਕਿਵੇਂ ਕਰੀਏ?",
+      "expect": "potato",
+      "lang": "pa"
+    },
+    {
+      "q": "ਮਿੱਟੀ ਵਿੱਚ ਜੈਵਿਕ ਕਾਰਬਨ ਕੀ ਹੈ?",
+      "expect": "soil organic carbon",
+      "lang": "pa"
+    },
+    {
+      "q": "wheat me yellow rust kaise control kare",
+      "expect": "wheat",
+      "lang": "hinglish"
+    },
+    {
+      "q": "aloo ki kheti kaise karein",
+      "expect": "potato",
+      "lang": "hinglish"
+    },
+    {
+      "q": "tamatar me keet prabandhan",
+      "expect": "tomato",
+      "lang": "hinglish"
+    }
   ],
   "off_topic": [
-    {"q": "How do I rebuild a motorcycle gearbox?", "lang": "en"},
-    {"q": "What is the capital of France?", "lang": "en"},
-    {"q": "Best mutual funds to invest in this year", "lang": "en"},
-    {"q": "How do I fix a leaking tap?", "lang": "en"},
-    {"q": "Who won the cricket world cup?", "lang": "en"},
-    {"q": "How do I reset my phone password?", "lang": "en"},
-    {"q": "मेरा मोबाइल ठीक कैसे करें?", "lang": "hi"},
-    {"q": "ਮੇਰੀ ਕਾਰ ਦਾ ਇੰਜਣ ਖਰਾਬ ਹੈ", "lang": "pa"}
+    {
+      "q": "How do I rebuild a motorcycle gearbox?",
+      "lang": "en"
+    },
+    {
+      "q": "What is the capital of France?",
+      "lang": "en"
+    },
+    {
+      "q": "Best mutual funds to invest in this year",
+      "lang": "en"
+    },
+    {
+      "q": "How do I fix a leaking tap?",
+      "lang": "en"
+    },
+    {
+      "q": "Who won the cricket world cup?",
+      "lang": "en"
+    },
+    {
+      "q": "How do I reset my phone password?",
+      "lang": "en"
+    },
+    {
+      "q": "मेरा मोबाइल ठीक कैसे करें?",
+      "lang": "hi"
+    },
+    {
+      "q": "ਮੇਰੀ ਕਾਰ ਦਾ ਇੰਜਣ ਖਰਾਬ ਹੈ",
+      "lang": "pa"
+    }
+  ],
+  "exact_token": [
+    {
+      "q": "Which wheat variety is HD 2967 and where is it grown?",
+      "expect": "wheat",
+      "lang": "en"
+    },
+    {
+      "q": "Tell me about PBW 343 wheat",
+      "expect": "wheat",
+      "lang": "en"
+    },
+    {
+      "q": "Is GW 322 suitable for my area?",
+      "expect": "wheat",
+      "lang": "en"
+    },
+    {
+      "q": "What is Carbendazim used for?",
+      "expect": "",
+      "lang": "en"
+    },
+    {
+      "q": "How is Imidacloprid applied?",
+      "expect": "",
+      "lang": "en"
+    },
+    {
+      "q": "Where is Azadirachtin recommended?",
+      "expect": "",
+      "lang": "en"
+    }
   ]
 }

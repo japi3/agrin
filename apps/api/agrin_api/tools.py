@@ -1666,7 +1666,13 @@ async def look_up_official_guidance(
             "confidence": "none",
         }
 
-    hits = index.search(vector, k=max(1, min(passages, 6)), language=language)
+    # query_text turns on hybrid retrieval: the question also goes through
+    # BM25 and the two rankings are fused. The cosine floor still decides
+    # what may be quoted -- see AdvisoryIndex.search.
+    hits = index.search(
+        vector, k=max(1, min(passages, 6)), language=language,
+        query_text=question,
+    )
 
     if not hits:
         return {

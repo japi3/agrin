@@ -100,6 +100,8 @@ async def embed_all(questions: list[str]) -> list:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--k", type=int, default=3)
+    parser.add_argument("--dense-only", action="store_true",
+                        help="skip BM25 fusion, to compare against hybrid")
     parser.add_argument("--out", type=Path, default=None,
                         help="also write the table to this markdown file")
     args = parser.parse_args()
@@ -113,14 +115,29 @@ def main() -> int:
     data = json.loads(SET_FILE.read_text(encoding="utf-8"))
     on_topic = data["on_topic"]
     off_topic = data["off_topic"]
+    # Exact-token questions score as on-topic where they name an expected
+    # subject, and are always checked for whether the typed token actually
+    # appears in the passage that came back -- which is the property BM25 is
+    # supposed to buy and the one a semantic match can fake.
+    exact = data.get("exact_token", [])
+    on_topic = on_topic + [row for row in exact if row.get("expect")]
 
-    print(f"corpus: {len(index)} passages, floor {MIN_SCORE}")
+    mode = "dense only" if args.dense_only else "hybrid (dense + BM25, RRF)"
+    print(f"corpus: {len(index)} passages, floor {MIN_SCORE}, {mode}")
     print(f"set:    {len(on_topic)} on-topic, {len(off_topic)} off-topic\n")
 
-    questions = [row["q"] for row in on_topic] + [row["q"] for row in off_topic]
+    # Everything is embedded in one asyncio.run. A second call closes the
+    # loop the genai client bound its transport to on the first, and the
+    # exact-token section died with "Event loop is closed" after the table
+    # had already printed -- which looked like a retrieval failure and was
+    # a lifecycle one.
+    questions = ([row["q"] for row in on_topic]
+                 + [row["q"] for row in off_topic]
+                 + [row["q"] for row in exact])
     started = time.monotonic()
     vectors = asyncio.run(embed_all(questions))
     embed_ms = (time.monotonic() - started) / len(questions) * 1000
+    vectors_exact = vectors[len(on_topic) + len(off_topic):]
 
     hit1 = defaultdict(int)
     hit_k = defaultdict(int)
@@ -133,7 +150,8 @@ def main() -> int:
         lang = row.get("lang", "en")
         total[lang] += 1
         t0 = time.perf_counter()
-        hits = index.search(vector, k=args.k, min_score=0.0)
+        hits = index.search(vector, k=args.k, min_score=0.0,
+                            query_text=None if args.dense_only else row["q"])
         search_ms.append((time.perf_counter() - t0) * 1000)
         titles = [h.chunk.title.lower() for h in hits]
         want = row["expect"].lower()
@@ -153,7 +171,8 @@ def main() -> int:
     off_scores: list[float] = []
     false_quotes: list[str] = []
     for row, vector in zip(off_topic, vectors[len(on_topic):]):
-        hits = index.search(vector, k=1, min_score=0.0)
+        hits = index.search(vector, k=1, min_score=0.0,
+                            query_text=None if args.dense_only else row["q"])
         if hits:
             off_scores.append(hits[0].score)
             if hits[0].score >= MIN_SCORE:
@@ -213,13 +232,30 @@ def main() -> int:
             say(f"  - {f}")
         say()
 
+    if exact:
+        literal = 0
+        for row, vector in zip(exact, vectors_exact):
+            hits = index.search(vector, k=1, min_score=0.0,
+                                query_text=None if args.dense_only else row["q"])
+            token = row["q"]
+            # The distinctive token is the longest word, or the code.
+            import re as _re
+            candidates = _re.findall(r"[A-Z]{2,4}\s?\d{2,4}|[A-Za-z]{9,}", token)
+            needle = candidates[0].lower() if candidates else ""
+            if hits and needle and needle.replace(" ", "") in \
+                    hits[0].chunk.text.lower().replace(" ", ""):
+                literal += 1
+        say(f"Typed token actually present in the top passage: "
+            f"**{literal}/{len(exact)}**")
+        say()
+
     if args.out:
         header = (
             f"# Retrieval evaluation\n\n"
             f"*{time.strftime('%Y-%m-%d')} · {len(index)} passages · "
             f"{n} on-topic and {len(off_topic)} off-topic questions in "
             f"English, Hindi, Punjabi and Hinglish "
-            f"(`eval/retrieval_set.json`) · floor {MIN_SCORE}*\n\n"
+            f"(`eval/retrieval_set.json`) · floor {MIN_SCORE} · {mode}*\n\n"
         )
         args.out.write_text(header + "\n".join(lines) + "\n", encoding="utf-8")
         print(f"wrote {args.out}")

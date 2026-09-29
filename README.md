@@ -210,13 +210,29 @@ one matrix-vector multiply — a few milliseconds, with nothing extra to run.
   time on a free quota, not design.
 - The retrieval **score floor is calibrated against a written test set**,
   not a published benchmark — there is no Indian agricultural advisory
-  retrieval benchmark to tune against. `eval/retrieval_set.json` holds 32
-  on-topic questions in English, Hindi, Punjabi and Hinglish plus 8
-  off-topic ones, and `scripts/evaluate_retrieval.py` reports recall@1,
-  recall@3 per language, off-topic abstention, and the margin between the
-  weakest on-topic score and the strongest off-topic one. The questions were
-  written by the team rather than collected from farmers; a field-collected
-  set is what this should become.
+  retrieval benchmark to tune against. `eval/retrieval_set.json` holds 35
+  on-topic questions in English, Hindi, Punjabi and Hinglish, 6 that name a
+  variety code or a molecule, and 8 off-topic ones whose only correct
+  outcome is silence. Measured on 3,968 passages:
+
+  | | dense only | hybrid |
+  |---|---|---|
+  | Right subject ranked 1st | 29/35 | 29/35 |
+  | Right subject in top 3 | 33/35 | 33/35 |
+  | Off-topic abstained | 8/8 | 8/8 |
+  | **Typed token present in top passage** | **5/6** | **6/6** |
+  | Margin at the floor | +0.043 | +0.026 |
+  | Search time | 0.1 ms | 0.6 ms |
+
+  Hybrid buys one thing and costs one thing. It fixes exact tokens, which is
+  where being wrong is worst — the wrong wheat variety or the wrong molecule
+  is a confident, checkable error a farmer acts on. It narrows the margin
+  between the weakest right answer and the strongest wrong one from 0.043 to
+  0.026, which is thin: the floor still separates them, but not by much, and
+  that margin is the number to watch as the corpus grows.
+
+  The questions were written by the team rather than collected from farmers;
+  a field-collected set is what this should become.
 - **Retrieval does not stop the model inventing; a check does.** Asked how to
   deworm a buffalo calf, the assistant retrieved genuine ICAR passages giving
   Albendazole at 10 mg/kg, then added a dosing schedule and a second drug
