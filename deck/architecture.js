@@ -143,7 +143,7 @@ card(400, 510, 286, 66, {
 });
 
 /* -------------------------------------------------------- 4 orchestrator */
-section(738, 54, 640, 620, "4", "ORCHESTRATOR");
+section(738, 54, 640, 640, "4", "ORCHESTRATOR");
 card(762, 106, 592, 74, {
   title: "Script detector — counts the characters, before the model sees them",
   lines: ["a reply comes back in the script the farmer wrote in"],
@@ -176,25 +176,31 @@ tools.forEach((t, i) => {
         fill="${TEXT}" text-anchor="middle">${esc(t)}</text>`);
 });
 
-card(762, 462, 592, 90, {
+card(762, 444, 592, 68, {
   title: "Fallback chain — 16 key-and-model pairs",
-  lines: [
-    "an exhausted daily quota never stops a farmer",
-    "what is spent is remembered, and survives a restart",
-  ],
+  lines: ["an exhausted daily quota never stops a farmer"],
   accent: DEEP, titleSize: 17, lineSize: 14,
 });
-card(762, 566, 592, 86, {
-  title: "Refusals are first-class",
+// The stage that reads the model's own output back. Drawn here, between the
+// answer and what leaves the building, because that is where it runs: the
+// rest of the architecture polices what goes *into* the model, and this is
+// the only thing that checks what came out.
+card(762, 520, 592, 90, {
+  title: "Grounding check — before the answer is finished",
   lines: [
-    "no fertiliser dose without a lab test · no price forecast",
-    "an uncalibrated crop is named as uncalibrated, not guessed",
+    "every figure in a quoted answer is matched against",
+    "the passages it came from · unmatched ones are flagged",
   ],
+  accent: WARN, fill: WARNBG, titleSize: 17, lineSize: 14,
+});
+card(762, 618, 592, 62, {
+  title: "Refusals are first-class",
+  lines: ["no dose without a lab test · no price forecast · no guessed crop"],
   accent: WARN, fill: WARNBG, titleSize: 17, lineSize: 14,
 });
 
 /* ------------------------------------------------------------ 7 response */
-section(1408, 54, 544, 620, "5", "WHAT COMES BACK");
+section(1408, 54, 544, 640, "5", "WHAT COMES BACK");
 card(1430, 106, 500, 86, {
   title: "The answer, in their script",
   lines: ["Gurmukhi in, Gurmukhi out — decided in code"],

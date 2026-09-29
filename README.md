@@ -9,6 +9,11 @@ satellite, soil, weather and market data.
 
 ---
 
+Full write-up: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — every layer,
+what crosses each boundary, and one question traced end to end.
+
+---
+
 ## The one design decision everything follows from
 
 **The language model never computes agronomy.**

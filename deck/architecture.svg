@@ -80,7 +80,7 @@
           font-weight="600" fill="#F2ECE1">RMS silence guard</text>
 <text x="417" y="566" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
           fill="#B3A288">silence never becomes words</text>
-<rect x="738" y="54" width="640" height="620" rx="16"
+<rect x="738" y="54" width="640" height="640" rx="16"
         fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
 <text x="760" y="90" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
         font-weight="700" fill="#7CB86A">4 · ORCHESTRATOR</text>
@@ -144,23 +144,27 @@
         stroke="#7CB86A" stroke-width="1.8"/>
 <text x="1174" y="421" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5"
         fill="#F2ECE1" text-anchor="middle">guidance lookup</text>
-<rect x="762" y="462" width="592" height="90" rx="11" fill="#241F18"
+<rect x="762" y="444" width="592" height="68" rx="11" fill="#241F18"
         stroke="#4E8C3F" stroke-width="1.8"/>
-<text x="779" y="492" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+<text x="779" y="474" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
           font-weight="600" fill="#F2ECE1">Fallback chain — 16 key-and-model pairs</text>
-<text x="779" y="518" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+<text x="779" y="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
           fill="#B3A288">an exhausted daily quota never stops a farmer</text>
-<text x="779" y="540" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
-          fill="#B3A288">what is spent is remembered, and survives a restart</text>
-<rect x="762" y="566" width="592" height="86" rx="11" fill="#2A1D12"
+<rect x="762" y="520" width="592" height="90" rx="11" fill="#2A1D12"
         stroke="#C2703D" stroke-width="1.8"/>
-<text x="779" y="596" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+<text x="779" y="550" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
+          font-weight="600" fill="#F2ECE1">Grounding check — before the answer is finished</text>
+<text x="779" y="576" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">every figure in a quoted answer is matched against</text>
+<text x="779" y="598" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">the passages it came from · unmatched ones are flagged</text>
+<rect x="762" y="618" width="592" height="62" rx="11" fill="#2A1D12"
+        stroke="#C2703D" stroke-width="1.8"/>
+<text x="779" y="648" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17"
           font-weight="600" fill="#F2ECE1">Refusals are first-class</text>
-<text x="779" y="622" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
-          fill="#B3A288">no fertiliser dose without a lab test · no price forecast</text>
-<text x="779" y="644" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
-          fill="#B3A288">an uncalibrated crop is named as uncalibrated, not guessed</text>
-<rect x="1408" y="54" width="544" height="620" rx="16"
+<text x="779" y="674" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14"
+          fill="#B3A288">no dose without a lab test · no price forecast · no guessed crop</text>
+<rect x="1408" y="54" width="544" height="640" rx="16"
         fill="#12100C" stroke="#7CB86A" stroke-width="2" opacity="0.98"/>
 <text x="1430" y="90" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21"
         font-weight="700" fill="#7CB86A">5 · WHAT COMES BACK</text>
