@@ -112,6 +112,10 @@ class TurnState:
     cards: list[dict[str, Any]] = field(default_factory=list)
     tool_calls: int = 0
     last_place: dict[str, Any] | None = None
+    # Passages handed to the model by look_up_official_guidance this turn.
+    # Kept so the finished answer can be checked against them; see
+    # _grounding_warning.
+    quoted_passages: list[str] = field(default_factory=list)
     started_at: float = field(default_factory=time.time)
 
 
@@ -161,6 +165,34 @@ async def _run_tool(
             "error": f"{type(exc).__name__}: {exc}",
             "abstain_reason": "This lookup failed. Say so plainly rather than guessing.",
         }
+
+
+def _grounding_warning(collected_text: list[str], state: "TurnState") -> str | None:
+    """Warn when an answer states a figure its sources do not contain.
+
+    Only runs when the turn quoted published guidance, because that is the
+    case where the failure is dangerous: the citation makes an invented dose
+    look checked. A computed answer carries its own provenance and its
+    numbers come from the models, not from recall.
+
+    The warning is appended rather than the answer suppressed. By the time
+    this runs the text has already streamed to the farmer, and more
+    importantly most of such an answer is usually correct and useful -- the
+    Albendazole dose that prompted this was real, and only the schedule
+    around it was not. Withholding the whole thing would trade one harm for
+    another. Telling them which parts to confirm, and with whom, is what a
+    careful person would do.
+    """
+    if not state.quoted_passages:
+        return None
+    from rag.grounding import WARNING, unsupported_quantities
+
+    answer = "".join(collected_text)
+    if not answer.strip():
+        return None
+    if unsupported_quantities(answer, state.quoted_passages):
+        return WARNING
+    return None
 
 
 def _card_for(name: str, result: dict[str, Any]) -> dict[str, Any] | None:
@@ -451,6 +483,11 @@ async def stream_turn(
             contents.append(types.Content(role="model", parts=model_parts))
 
         if not function_calls:
+            warning = _grounding_warning(collected_text, state)
+            if warning:
+                yield Event("text", {"delta": "\n\n" + warning})
+                yield Event("grounding", {"ok": False, "note": warning})
+
             yield Event(
                 "done",
                 {
@@ -503,6 +540,11 @@ async def stream_turn(
                 m = result["moved_to"]
                 yield Event("field", {"field_id": field_id, "latitude": m["latitude"],
                                       "longitude": m["longitude"], "name": m.get("label")})
+
+            if fc.name == "look_up_official_guidance" and result.get("ok"):
+                state.quoted_passages.extend(
+                    p.get("passage", "") for p in result.get("passages", [])
+                )
 
             card = _card_for(fc.name, result)
             if card:

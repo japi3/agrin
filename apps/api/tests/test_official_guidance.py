@@ -198,3 +198,62 @@ class TestItIsWiredIn:
     def test_an_abstention_shows_no_card(self):
         from agrin_api.orchestrator import _card_for
         assert _card_for("look_up_official_guidance", {"ok": False}) is None
+
+
+class TestTheAnswerIsCheckedAgainstWhatWasQuoted:
+    """The orchestrator's half of the grounding check.
+
+    `rag.grounding` decides whether a figure is supported; this is about
+    whether the orchestrator actually asks it, with the right passages, on
+    the right turns. Both halves have to hold for the warning to reach a
+    farmer, and the wiring is the part a refactor is likely to drop.
+    """
+
+    def _state(self, passages):
+        from agrin_api.orchestrator import TurnState
+        state = TurnState()
+        state.quoted_passages.extend(passages)
+        return state
+
+    # Abridged from what the tool really returned for this question.
+    ICAR = [
+        "Deworming of all the adult stock with broad spectrum antihelmintic, "
+        "Albendazole (Dose: 10 mg/ kg Body weight) during Last week of September.",
+        "Deworm your animals with Albendazole or Fenbendazole @ 10mg/kg body weight.",
+    ]
+
+    def test_the_real_answer_that_prompted_this_is_flagged(self):
+        """Verbatim from the running app: a schedule and a second drug that
+        appear in no passage, attributed to the government advisory."""
+        from agrin_api.orchestrator import _grounding_warning
+        answer = [
+            "According to the government's ICAR advisory published on "
+            "Vikaspedia, deworm the calf on its 14th day of life. ",
+            "Second, deworm on the 35th day. Third, deworm on the 56th day. ",
+            "Albendazole at a dose of 7.5 to 10 milligrams per kilogram.",
+        ]
+        assert _grounding_warning(answer, self._state(self.ICAR))
+
+    def test_an_answer_that_sticks_to_the_source_is_not_flagged(self):
+        """If correct answers carry the warning too, it stops being read."""
+        from agrin_api.orchestrator import _grounding_warning
+        answer = ["The advisory says to deworm with Albendazole at 10 mg/kg "
+                  "of body weight, in the last week of September."]
+        assert _grounding_warning(answer, self._state(self.ICAR)) is None
+
+    def test_a_turn_that_quoted_nothing_is_not_checked(self):
+        """A computed answer carries its own provenance; its numbers come
+        from the agronomic models, not from recall, and checking them
+        against an empty passage list would flag every one."""
+        from agrin_api.orchestrator import _grounding_warning
+        answer = ["Apply about 48 mm of water, roughly two inches."]
+        assert _grounding_warning(answer, self._state([])) is None
+
+    def test_an_empty_answer_is_not_flagged(self):
+        from agrin_api.orchestrator import _grounding_warning
+        assert _grounding_warning([], self._state(self.ICAR)) is None
+
+    def test_the_warning_says_who_to_confirm_with(self):
+        """A warning that only says "unverified" leaves the farmer nowhere."""
+        from rag.grounding import WARNING
+        assert "KVK" in WARNING or "veterinarian" in WARNING

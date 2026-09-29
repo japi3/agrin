@@ -21,6 +21,7 @@ required to pass that on rather than paper over it.
 from __future__ import annotations
 
 import asyncio
+import re
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -1576,6 +1577,29 @@ async def get_my_farm(field_id: str | None = None) -> dict[str, Any]:
 
 _advisory_client_index = 0
 
+# Numbers, with whatever unit is attached to them, as they appear in the
+# retrieved text.
+#
+# Handed to the model as an explicit allow-list beside the passages. A rule
+# saying "do not invent numbers" is abstract and was not enough on its own;
+# a short list of the only quantities in front of it is concrete, and a
+# quantity it is about to write that is not on the list is visibly not on
+# the list. It costs nothing to compute and nothing to send.
+_QUANTITY = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:%|mg\s*/\s*kg|ml\s*/\s*|mg|ml|gm|g\b|kg|litre|litres|"
+    r"l\b|day|days|week|weeks|month|months|year|years|hour|hours|cm|mm|m\b|"
+    r"acre|acres|ha|quintal|nos|no\.)",
+    re.I,
+)
+
+
+def _quantities(hits) -> set[str]:
+    found: set[str] = set()
+    for hit in hits:
+        for match in _QUANTITY.finditer(hit.chunk.text):
+            found.add(" ".join(match.group(0).split()))
+    return found
+
 
 async def look_up_official_guidance(
     question: str,
@@ -1664,10 +1688,23 @@ async def look_up_official_guidance(
         "question": question,
         "passages": [hit.as_dict() for hit in hits],
         "how_to_use": (
-            "These are the published words. State only what they say. If they "
-            "do not cover part of the question, say that part is not covered "
-            "rather than filling it in. Name the source when you use it."
+            "These are the published words, and they are the ONLY thing you "
+            "may attribute to the source.\n\n"
+            "Before you write any number, dose, interval, age, date or "
+            "product name, find it in the passages above. If it is not there "
+            "word for word, you may not write it. This is not a style note. "
+            "Asked about deworming a buffalo calf, an earlier version of you "
+            "read passages saying 'Albendazole 10 mg/kg' and wrote back a "
+            "schedule of day 14, day 35 and day 56, monthly thereafter, plus "
+            "a second drug at a dose -- none of which appeared in any "
+            "passage -- and told the farmer the government advisory said so. "
+            "A farmer can dose an animal on that.\n\n"
+            "A partial answer is the correct answer when the passages are "
+            "partial. Say what they cover, then say plainly which part of "
+            "the question they do not, and send them to a vet, a KVK or an "
+            "extension officer for the rest. Do not close the gap yourself."
         ),
+        "you_may_state_only_these_quantities": sorted(_quantities(hits)),
         "confidence": "high" if hits[0].score >= 0.72 else "moderate",
         "evidence": {
             "source": index.manifest.get("source", "Vikaspedia"),
