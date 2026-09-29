@@ -257,3 +257,63 @@ class TestTheAnswerIsCheckedAgainstWhatWasQuoted:
         """A warning that only says "unverified" leaves the farmer nowhere."""
         from rag.grounding import WARNING
         assert "KVK" in WARNING or "veterinarian" in WARNING
+
+
+class TestCapacityFailuresAreRememberedOnce:
+    """A 503 is about the model, not the key.
+
+    Found on the deployed service: a question took 200 seconds to its first
+    token. The model was out of capacity, the orchestrator recorded only
+    429s, so the chain tried every key against a model that was down for all
+    of them — each attempt burning most of the 60-second stream timeout —
+    before reaching one that answered.
+    """
+
+    def test_a_capacity_error_is_worth_remembering(self):
+        from agrin_api import llm
+        assert llm.is_worth_remembering(RuntimeError("503 UNAVAILABLE"))
+        assert llm.is_worth_remembering(RuntimeError("504 DEADLINE_EXCEEDED"))
+
+    def test_so_is_a_quota_error(self):
+        from agrin_api import llm
+        assert llm.is_worth_remembering(RuntimeError("429 RESOURCE_EXHAUSTED"))
+
+    def test_an_ordinary_fault_is_not(self):
+        """A bad request or a parse failure says nothing about the model's
+        availability, and writing it off would move every later question to
+        a weaker model for no reason."""
+        from agrin_api import llm
+        assert not llm.is_worth_remembering(ValueError("bad JSON"))
+        assert not llm.is_worth_remembering(RuntimeError("400 INVALID_ARGUMENT"))
+
+    def test_one_503_writes_the_model_off_for_every_key(self, monkeypatch):
+        from agrin_api import llm
+        monkeypatch.setattr(llm, "api_keys", lambda: ["a", "b", "c"])
+        monkeypatch.setattr(llm, "_save_cooldowns", lambda: None)
+        llm._cooldowns.clear()
+        llm.note_rate_limited("gemini-x", RuntimeError("503 UNAVAILABLE"), key_index=0)
+        assert all(llm.is_cooling_down("gemini-x", k) for k in (0, 1, 2))
+
+    def test_a_quota_error_writes_off_only_its_own_key(self, monkeypatch):
+        """Quota is per key. Writing off the others would throw away
+        allowance that is still there."""
+        from agrin_api import llm
+        monkeypatch.setattr(llm, "api_keys", lambda: ["a", "b", "c"])
+        monkeypatch.setattr(llm, "_save_cooldowns", lambda: None)
+        llm._cooldowns.clear()
+        llm.note_rate_limited("gemini-y", RuntimeError("429 PerDay quota"), key_index=1)
+        assert llm.is_cooling_down("gemini-y", 1)
+        assert not llm.is_cooling_down("gemini-y", 0)
+
+    def test_a_capacity_blip_never_revives_an_exhausted_key(self, monkeypatch):
+        """The daily write-off is an hour; capacity is two minutes. Taking
+        the shorter one would send a question back to a key with nothing
+        left."""
+        from agrin_api import llm
+        monkeypatch.setattr(llm, "api_keys", lambda: ["a", "b"])
+        monkeypatch.setattr(llm, "_save_cooldowns", lambda: None)
+        llm._cooldowns.clear()
+        llm.note_rate_limited("gemini-z", RuntimeError("429 PerDay quota"), key_index=0)
+        spent = llm._cooldowns[(0, "gemini-z")]
+        llm.note_unavailable("gemini-z")
+        assert llm._cooldowns[(0, "gemini-z")] == spent

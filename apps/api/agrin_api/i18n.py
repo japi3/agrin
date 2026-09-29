@@ -110,7 +110,7 @@ async def _translate_locked(language: str, strings: list[str]) -> dict[str, Any]
             result = json.loads(response.text)
             break
         except Exception as exc:  # noqa: BLE001
-            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
+            if llm.is_worth_remembering(exc):
                 llm.note_rate_limited(model, exc, key_index)
             if llm.is_retryable(exc):
                 continue

@@ -401,7 +401,7 @@ async def diagnose_crop_photo(
             }
         except Exception as exc:  # noqa: BLE001
             last_error = exc
-            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
+            if llm.is_worth_remembering(exc):
                 # Vision was not recording this, so an exhausted model stayed
                 # first in line and was retried on every photograph.
                 llm.note_rate_limited(candidate_model, exc, key_index)

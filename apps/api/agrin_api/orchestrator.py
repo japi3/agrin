@@ -487,7 +487,7 @@ async def stream_turn(
                 last_error = exc
                 # Remember an exhausted quota so the next turn does not spend
                 # ten seconds rediscovering it.
-                if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
+                if llm.is_worth_remembering(exc):
                     llm.note_rate_limited(candidate, exc, key_index)
                 if llm.is_retryable(exc) and not emitted_this_round:
                     # Pause only where pausing can help -- none after a rate

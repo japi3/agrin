@@ -202,6 +202,53 @@ DEFAULT_COOLDOWN_S = 45.0
 DAILY_QUOTA_COOLDOWN_S = 3600.0
 
 
+# How long to write off a model the service says is out of capacity.
+#
+# Separate from quota, and it has to be, because the two are not the same
+# kind of fact. A 429 is about this key's allowance. A 503 "experiencing
+# high demand" or a 504 is about the model, and it is true for every key at
+# once -- so discovering it on one key and then rediscovering it on each of
+# the others is pure waste.
+#
+# Measured on the deployed service: a question took 200 seconds to its first
+# token because the chain walked four keys of an unavailable model, each
+# attempt burning most of the 60-second stream timeout, before reaching one
+# that answered. Marking the model down for all keys on the first 503 turns
+# that into one wasted attempt instead of four.
+#
+# Two minutes because capacity does come back, and a model written off for
+# an hour on one bad minute would push every later question onto a weaker
+# one for no reason.
+CAPACITY_COOLDOWN_S = 120.0
+
+
+def note_unavailable(model: str) -> None:
+    """Mark a model as out of capacity on every key at once."""
+    until = time.time() + CAPACITY_COOLDOWN_S
+    for key_index in range(max(1, len(api_keys()))):
+        # Never shorten an existing cooldown: a key already written off for
+        # the day must not be revived by a capacity blip.
+        current = _cooldowns.get((key_index, model), 0.0)
+        _cooldowns[(key_index, model)] = max(current, until)
+    _save_cooldowns()
+
+
+def is_worth_remembering(exc: Exception) -> bool:
+    """Whether this failure should be recorded rather than rediscovered.
+
+    Quota and capacity both mean "do not come straight back here", and
+    before this only quota was being written down. A 503 was forgotten the
+    moment it was handled, so every key was tried against a model that was
+    down for all of them, on every turn -- 200 seconds to a first token on
+    the deployed service.
+    """
+    text = str(exc)
+    return any(marker in text for marker in (
+        "429", "RESOURCE_EXHAUSTED",          # quota
+        "503", "504", "UNAVAILABLE", "DEADLINE_EXCEEDED",   # capacity
+    ))
+
+
 def note_rate_limited(model: str, exc: Exception, key_index: int = 0) -> None:
     """Record that a model is out of quota, and for how long.
 
@@ -211,6 +258,13 @@ def note_rate_limited(model: str, exc: Exception, key_index: int = 0) -> None:
     """
     import re
     text = str(exc)
+
+    # Capacity, not quota: true for every key, so record it against all of
+    # them rather than letting the chain rediscover it key by key.
+    if "UNAVAILABLE" in text or "DEADLINE_EXCEEDED" in text or (
+            "503" in text or "504" in text):
+        note_unavailable(model)
+        return
 
     # A per-day exhaustion is not a pause, it is the end of the day for this
     # model. Its retryDelay describes when the rate limiter will next accept
@@ -521,7 +575,7 @@ async def probe_models() -> list[tuple[int, str, str]]:
             findings.append((key_index, model, "ready"))
         except Exception as exc:  # noqa: BLE001
             text = str(exc)
-            if "429" in text or "RESOURCE_EXHAUSTED" in text:
+            if is_worth_remembering(exc):
                 note_rate_limited(model, exc, key_index)
                 findings.append((key_index, model, "out of quota"))
             else:
