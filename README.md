@@ -206,11 +206,20 @@ one matrix-vector multiply — a few milliseconds, with nothing extra to run.
   citation. Two rounds of prompt-writing did not stop it, so every answer
   that quotes a source now has its quantities compared against the passages
   it quoted, and unsupported figures raise a warning naming who to confirm
-  with. The guard is verified at both layers against the real answer text and
-  the real passages, but **not yet end to end against the live model** — the
-  API has been returning 503 and 504 on this question. What it does not do is
-  make the model stop: it is a net, not a cure, and an answer carrying the
-  warning should be read as one to verify rather than one to act on.
+  with.
+
+  On that question the assistant now refuses outright — "I cannot give you
+  these figures from memory because an incorrect dose can be harmful to your
+  animal", and sends the farmer to a vet or a KVK — and the check stays
+  silent, because there is nothing unsupported to flag. Both halves of that
+  matter: the refusal is what should happen, and a check that fired on a
+  clean answer would teach people to ignore it.
+
+  What has not been observed in the running app is the check firing on a real
+  invented answer, because the model has stopped producing one to catch. It
+  is verified against the recorded fabrication and its passages at both
+  layers instead. Treat it as a net under a model that may still invent, not
+  as proof that it cannot.
 
 ---
 
