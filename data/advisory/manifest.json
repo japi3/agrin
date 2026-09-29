@@ -5,10 +5,10 @@
   "languages": [
     "en"
   ],
-  "passages": 992,
+  "passages": 3968,
   "passages_available": 6396,
   "complete": false,
   "model": "gemini-embedding-001",
   "dimensions": 768,
-  "built_on": "2026-09-28"
+  "built_on": "2026-09-29"
 }
