@@ -13,6 +13,7 @@ data/cache
 # chunks.jsonl, vectors.npy, manifest.json -- is what the image needs.
 data/advisory/vectors.partial.npy
 data/advisory/progress.json
+data/advisory/chunks.jsonl.building
 data/advisory_cache
 .env
 .env.*

@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import pathlib
 import sys
 import time
 from typing import Any
@@ -84,6 +85,50 @@ async def chat(
             "error": error, **ids}
 
 
+def check_advisory_index() -> None:
+    """The passages and their vectors must be a matched pair.
+
+    They are matched by row, so a count mismatch does not degrade retrieval,
+    it misattributes it: every citation past the shorter file points at the
+    wrong page. The loader refuses such an index outright, which is the safe
+    failure -- but the symptom is the assistant quietly losing a tool, with
+    nothing said at build time. That is what this catches.
+
+    An image was built in exactly that state: a resumed embedding run had
+    re-chunked to 6,396 passages while the vectors were still the 992 from
+    the day before.
+    """
+    import json as _json
+
+    directory = pathlib.Path(__file__).resolve().parents[1] / "data" / "advisory"
+    vectors_file = directory / "vectors.npy"
+    chunks_file = directory / "chunks.jsonl"
+    if not vectors_file.exists() or not chunks_file.exists():
+        record("Advisory index present", WARN,
+               "not built; the assistant runs without it")
+        return
+
+    import numpy as np
+    rows = len(np.load(vectors_file))
+    lines = sum(1 for line in open(chunks_file, encoding="utf-8") if line.strip())
+    matched = rows == lines
+    record("Advisory index is a matched pair", PASS if matched else FAIL,
+           f"{rows} vectors, {lines} passages"
+           + ("" if matched else " -- every citation past the shorter file "
+                                 "would point at the wrong page"))
+
+    if (directory / "progress.json").exists():
+        state = _json.loads((directory / "progress.json").read_text())
+        record("Advisory index is complete", WARN,
+               f"{state.get('done')} of {state.get('total')} embedded; "
+               "re-run the builder to continue")
+    else:
+        manifest = _json.loads((directory / "manifest.json").read_text())
+        record("Advisory index is complete",
+               PASS if manifest.get("complete") else WARN,
+               f"{manifest.get('passages')} passages")
+
+
 def looks_like(script: str, text: str) -> bool:
     """Whether text is written in the expected script.
 
@@ -119,6 +164,10 @@ async def main(base: str, languages: list[str]) -> int:
     async with httpx.AsyncClient(base_url=base, timeout=timeout) as client:
 
         print(f"\nAgriN release check against {base}\n")
+
+        # ---------------------------------------------------------------
+        print("--- Shipped data (no model calls) ---")
+        check_advisory_index()
 
         # ---------------------------------------------------------------
         print("--- Interface translations (no model calls) ---")

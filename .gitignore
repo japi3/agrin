@@ -21,6 +21,7 @@ data/advisory_cache/
 # chunks.jsonl, vectors.npy, manifest.json -- is committed; these are not.
 data/advisory/vectors.partial.npy
 data/advisory/progress.json
+data/advisory/chunks.jsonl.building
 data/cache/
 data/plantvillage/
 .pytest_cache/

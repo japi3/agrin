@@ -300,11 +300,17 @@ def stage_chunk(languages: list[str]) -> list[Chunk]:
             seen.add(key)
             chunks.append(chunk)
 
-    path = OUT / CHUNKS_FILE
-    with open(path, "w", encoding="utf-8") as handle:
-        for chunk in chunks:
-            handle.write(json.dumps(chunk.as_dict(), ensure_ascii=False) + "\n")
-    size = path.stat().st_size / 1e6
+    # Deliberately not written to chunks.jsonl here. The passages and the
+    # vectors are matched by row, and the shipped index is only coherent when
+    # they agree -- so only finalise() writes that file, next to the vectors
+    # it matches.
+    #
+    # Writing it at this point instead was a real trap. Re-chunking happens on
+    # every run, including a run that only resumes embedding, so for the hour
+    # that run took, chunks.jsonl held 6,396 passages while vectors.npy still
+    # held 992. An image built in that window carried an index that refused to
+    # load, and the only symptom was the assistant quietly losing one tool.
+    size = sum(len(json.dumps(c.as_dict(), ensure_ascii=False)) for c in chunks) / 1e6
     print(f"  {articles} articles -> {len(chunks)} passages ({size:.1f} MB)")
     names = {0: "crop production", 1: "inputs & practice", 2: "schemes",
              3: "post-harvest & market", 4: "livestock & fisheries",
@@ -368,6 +374,10 @@ async def stage_embed(chunks: list[Chunk], languages: list[str]) -> None:
         }))
 
     started = time.monotonic()
+    # Rows carried over from an earlier run took none of this run's time, so
+    # counting them makes the rate meaningless -- a resumed run reported
+    # 22,668/min and "0 min left" with most of the corpus still to do.
+    resumed_at = done
     turn = 0
     stalls = 0
     exhausted: set[int] = set()
@@ -446,9 +456,12 @@ async def stage_embed(chunks: list[Chunk], languages: list[str]) -> None:
         if done % (BATCH_SIZE * 8) < BATCH_SIZE or done == len(chunks):
             save(done)
             elapsed = time.monotonic() - started
-            rate = done / max(elapsed, 0.1) * 60
-            left = (len(chunks) - done) / max(rate, 1e-6)
-            print(f"  {done}/{len(chunks)}  {rate:.0f}/min  ~{left:.0f} min left")
+            rate = (done - resumed_at) / max(elapsed, 0.1) * 60
+            if rate > 1:
+                left = f"~{(len(chunks) - done) / rate:.0f} min left"
+            else:
+                left = "estimating"
+            print(f"  {done}/{len(chunks)}  {rate:.0f}/min  {left}")
 
     finalise(vectors, chunks, done, languages)
 
@@ -466,10 +479,15 @@ def finalise(vectors, chunks: list[Chunk], done: int, languages: list[str]) -> N
     has no vectors for would attribute every citation past the boundary to the
     wrong page.
     """
-    if done < len(chunks):
-        with open(OUT / CHUNKS_FILE, "w", encoding="utf-8") as handle:
-            for chunk in chunks[:done]:
-                handle.write(json.dumps(chunk.as_dict(), ensure_ascii=False) + "\n")
+    # Always written here, and only here, so that whatever is on disk is a
+    # matched pair. Written to a temporary name and moved into place, because
+    # a crash midway through this loop would otherwise leave a truncated file
+    # that looks complete.
+    building = OUT / (CHUNKS_FILE + ".building")
+    with open(building, "w", encoding="utf-8") as handle:
+        for chunk in chunks[:done]:
+            handle.write(json.dumps(chunk.as_dict(), ensure_ascii=False) + "\n")
+    building.replace(OUT / CHUNKS_FILE)
 
     # float16 halves the shipped file; see the note in rag/index.py.
     np.save(OUT / VECTORS_FILE, vectors[:done].astype(np.float16))
