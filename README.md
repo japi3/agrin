@@ -206,9 +206,11 @@ one matrix-vector multiply — a few milliseconds, with nothing extra to run.
   citation. Two rounds of prompt-writing did not stop it, so every answer
   that quotes a source now has its quantities compared against the passages
   it quoted, and unsupported figures raise a warning naming who to confirm
-  with. That guard is confirmed working in the running app. What it does not
-  do is make the model stop: it is a net, not a cure, and an answer carrying
-  the warning should be read as one to verify rather than one to act on.
+  with. The guard is verified at both layers against the real answer text and
+  the real passages, but **not yet end to end against the live model** — the
+  API has been returning 503 and 504 on this question. What it does not do is
+  make the model stop: it is a net, not a cure, and an answer carrying the
+  warning should be read as one to verify rather than one to act on.
 
 ---
 
