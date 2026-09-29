@@ -85,6 +85,57 @@ const TOOL_LABEL: Record<string, string> = {
   look_up_official_guidance: 'Reading the government advisory library',
 }
 
+// How to cut a reply up for the speech service.
+//
+// Measured against this deployment, in Punjabi: synthesis takes roughly
+// 2.6 + 0.051 seconds per character, and the audio it returns plays for
+// about 0.091 seconds per character. Playback therefore grows faster per
+// character than synthesis does, which is what makes fetching one chunk
+// ahead work at all -- a chunk covers the synthesis of the next one as long
+// as the two are comparable in size.
+//
+// The previous split was a short opening sentence and then all the rest, and
+// that is exactly the case the arithmetic does not cover. On a four-paragraph
+// answer the opening played for eight seconds while the remaining 868
+// characters took forty-seven to synthesise, so the voice stopped dead for
+// half a minute and sounded broken.
+//
+// So the chunks start small and grow. The first is one sentence, for sound
+// within a few seconds; each one after is half again as large, which keeps
+// every gap to a second or two while the whole reply still takes only three
+// or four requests. That matters because speech is metered like generation,
+// a fixed number of requests a day, and a request per sentence would empty
+// it inside a handful of answers.
+const SPEECH_FIRST_CHARS = 110
+const SPEECH_GROWTH = 1.5
+const SPEECH_MAX_CHARS = 600
+
+export function speechChunks(text: string): string[] {
+  const sentences = (text.match(/[^.!?।\n]+[.!?।]*/g) || [text])
+    .map((x) => x.trim()).filter(Boolean)
+  if (sentences.length <= 1) return sentences.length ? sentences : [text]
+
+  const chunks: string[] = []
+  let current: string[] = []
+  let target = SPEECH_FIRST_CHARS
+
+  for (const sentence of sentences) {
+    const length = current.reduce((n, x) => n + x.length + 1, 0)
+    // A sentence that would overshoot starts the next chunk instead -- but
+    // only once this one has something in it, so a single long sentence is
+    // still sent whole rather than dropped.
+    if (current.length && length + sentence.length > target) {
+      chunks.push(current.join(' '))
+      current = []
+      target = Math.min(Math.round(target * SPEECH_GROWTH), SPEECH_MAX_CHARS)
+    }
+    current.push(sentence)
+  }
+  if (current.length) chunks.push(current.join(' '))
+  return chunks
+}
+
+
 export default function App() {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
@@ -385,15 +436,7 @@ export default function App() {
     // simply looked stuck. Sentence by sentence, the first words play within
     // a few seconds, the next sentence is fetched while the current one
     // plays, and Stop works at any point.
-    const sentences = (text.match(/[^.!?।\n]+[.!?।]*/g) || [text])
-      .map((x) => x.trim()).filter(Boolean)
-    // Two requests, not one per sentence: a short opening so sound starts
-    // quickly, then everything else. The free speech quota allows only a
-    // handful of requests a minute, and a request per sentence ran out of it
-    // partway through a single reply.
-    const chunks: string[] = sentences.length > 1
-      ? [sentences[0], sentences.slice(1).join(' ')]
-      : sentences
+    const chunks = speechChunks(text)
 
     const run = { cancelled: false, controller: new AbortController() }
     speechRunRef.current = run
