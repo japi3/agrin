@@ -198,6 +198,17 @@ one matrix-vector multiply — a few milliseconds, with nothing extra to run.
   chosen to be clearly on or off topic. There is no Indian agricultural
   advisory retrieval benchmark to tune it against, so it is set strict and
   stated rather than optimised.
+- **Retrieval does not stop the model inventing; a check does.** Asked how to
+  deworm a buffalo calf, the assistant retrieved genuine ICAR passages giving
+  Albendazole at 10 mg/kg, then added a dosing schedule and a second drug
+  that appear in no passage — and attributed all of it to the government
+  advisory. Retrieval had not removed the invention, it had lent it a
+  citation. Two rounds of prompt-writing did not stop it, so every answer
+  that quotes a source now has its quantities compared against the passages
+  it quoted, and unsupported figures raise a warning naming who to confirm
+  with. That guard is confirmed working in the running app. What it does not
+  do is make the model stop: it is a net, not a cure, and an answer carrying
+  the warning should be read as one to verify rather than one to act on.
 
 ---
 
