@@ -116,6 +116,10 @@ class TurnState:
     # Kept so the finished answer can be checked against them; see
     # _grounding_warning.
     quoted_passages: list[str] = field(default_factory=list)
+    # What the farmer actually asked, kept so the safety check can read it:
+    # a banned product named in the question must be flagged even when the
+    # answer never repeats the word.
+    question: str = ""
     started_at: float = field(default_factory=time.time)
 
 
@@ -193,6 +197,25 @@ def _grounding_warning(collected_text: list[str], state: "TurnState") -> str | N
     if unsupported_quantities(answer, state.quoted_passages):
         return WARNING
     return None
+
+
+def _pesticide_notice(collected_text: list[str], state: "TurnState") -> str | None:
+    """State the legal position when a regulated pesticide is named.
+
+    Checks the farmer's own question as well as the answer. Both matter, and
+    for different reasons. A farmer asking "should I spray endosulfan on
+    brinjal" needs to be told it is banned even if the reply never repeats
+    the word; and a reply that names one — whether recalled or quoted out of
+    an old advisory in the corpus — must not pass it on unremarked.
+
+    It adds a sentence rather than refusing. The farmer may well have the
+    product already, and "that one is banned, ask your KVK what to use
+    instead" is more use to them than silence.
+    """
+    from agronomy.pesticides import find_regulated, notice
+
+    text = " ".join([state.question or "", *collected_text])
+    return notice(find_regulated(text))
 
 
 def _card_for(name: str, result: dict[str, Any]) -> dict[str, Any] | None:
@@ -333,6 +356,18 @@ async def stream_turn(
     farm panel never appeared.
     """
     state = TurnState()
+    # The farmer's own words this turn, for the safety check below.
+    for message in reversed(messages):
+        if message.get("role") == "user":
+            content = message.get("content")
+            if isinstance(content, str):
+                state.question = content
+            elif isinstance(content, list):
+                state.question = " ".join(
+                    part.get("text", "") for part in content
+                    if isinstance(part, dict) and part.get("type") == "text"
+                )
+            break
 
     try:
         client = llm.build_client()
@@ -487,6 +522,11 @@ async def stream_turn(
             if warning:
                 yield Event("text", {"delta": "\n\n" + warning})
                 yield Event("grounding", {"ok": False, "note": warning})
+
+            regulated = _pesticide_notice(collected_text, state)
+            if regulated:
+                yield Event("text", {"delta": "\n\n" + regulated})
+                yield Event("pesticide_notice", {"note": regulated})
 
             yield Event(
                 "done",

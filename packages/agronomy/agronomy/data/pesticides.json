@@ -1,0 +1,73 @@
+{
+  "_README": [
+    "Pesticides banned, withdrawn or restricted in India, from the Central",
+    "Insecticides Board and Registration Committee list as tabled in",
+    "Parliament. Verified against the source named in verified_from on the",
+    "date in verified_on.",
+    "",
+    "The three categories are kept apart on purpose, because collapsing them",
+    "is itself misinformation. Monocrotophos is not banned in India: it is",
+    "banned on vegetables and legal elsewhere. Telling a cotton grower that",
+    "the product in their shed is illegal is wrong, and being wrong in that",
+    "direction costs trust that the genuinely banned entries depend on.",
+    "",
+    "RE-CHECK PERIODICALLY. The Registration Committee reviews and adds to",
+    "this list. A missing entry means a farmer is not warned; a wrong entry",
+    "means they are warned about something lawful."
+  ],
+  "source": "Central Insecticides Board & Registration Committee (CIBRC), Ministry of Agriculture & Farmers Welfare",
+  "verified_on": "2026-09-29",
+  "verified_from": [
+    "PIB Release 1896140, 3 February 2023 — 'Banning of Pesticides', Annexure, as on 01.10.2022"
+  ],
+  "banned": [
+    "Alachlor", "Aldicarb", "Aldrin", "Benzene Hexachloride", "Benomyl",
+    "Calcium Cyanide", "Carbaryl", "Chlorbenzilate", "Chlordane",
+    "Chlorofenvinphos", "Copper Acetoarsenite", "Diazinon",
+    "Dibromochloropropane", "Dichlorovos", "Dieldrin", "Endosulfan",
+    "Endrin", "Ethyl Mercury Chloride", "Ethyl Parathion",
+    "Ethylene Dibromide", "Fenarimol", "Fenthion", "Heptachlor",
+    "Lindane", "Linuron", "Maleic Hydrazide", "Menazon",
+    "Methoxy Ethyl Mercury Chloride", "Methyl Parathion", "Metoxuron",
+    "Nitrofen", "Paraquat Dimethyl Sulphate", "Pentachloro Nitrobenzene",
+    "Pentachlorophenol", "Phenyl Mercury Acetate", "Phorate",
+    "Phosphamidon", "Sodium Cyanide", "Sodium Methane Arsonate",
+    "Tetradifon", "Thiometon", "Toxaphene", "Triazophos", "Tridemorph",
+    "Trichloro acetic acid", "Trichlorfon"
+  ],
+  "banned_formulations": [
+    "Carbofuron 50% SP", "Methomyl 12.5% L", "Methomyl 24% formulation",
+    "Phosphamidon 85% SL"
+  ],
+  "withdrawn": [
+    "Dalapon", "Ferbam", "Formothion", "Nickel Chloride",
+    "Paradichlorobenzene", "Simazine", "Sirmate", "Warfarin"
+  ],
+  "restricted": {
+    "Aluminium Phosphide": "Restricted: may be applied only by government-approved pest control operators under expert supervision. Tube packs of 10 and 20 tablets are banned outright.",
+    "Captafol": "Restricted: banned as a foliar spray. Permitted only as a seed dresser.",
+    "Cypermethrin": "Restricted: the 3% smoke generator may be used only through pest control operators, not by the general public.",
+    "Dazomet": "Restricted: not permitted on tea.",
+    "DDT": "Restricted: withdrawn from agriculture. Public health use only, under government supervision.",
+    "Fenitrothion": "Restricted: banned in agriculture except for locust control in scheduled desert areas, and public health use.",
+    "Methyl Bromide": "Restricted: may be applied only by government-approved pest control operators under expert supervision.",
+    "Monocrotophos": "Restricted: banned for use on vegetables. Not banned on other crops.",
+    "Trifluralin": "Restricted: all uses prohibited except on wheat. Toxic to aquatic life; keep away from water bodies."
+  },
+  "aliases": {
+    "Endosulfan": ["एंडोसल्फान", "एन्डोसल्फान", "ਐਂਡੋਸਲਫ਼ਾਨ", "ਐਂਡੋਸਲਫਾਨ", "endosulphan"],
+    "Monocrotophos": ["मोनोक्रोटोफॉस", "मोनोक्रोटोफोस", "ਮੋਨੋਕ੍ਰੋਟੋਫ਼ਾਸ", "ਮੋਨੋਕ੍ਰੋਟੋਫਾਸ", "monocil", "nuvacron"],
+    "DDT": ["डीडीटी", "ਡੀਡੀਟੀ", "dichloro diphenyl trichloroethane"],
+    "Phorate": ["फोरेट", "ਫੋਰੇਟ", "thimet"],
+    "Paraquat Dimethyl Sulphate": ["पैराक्वाट", "ਪੈਰਾਕੁਆਟ", "paraquat", "gramoxone"],
+    "Methyl Parathion": ["मिथाइल पैराथियान", "ਮਿਥਾਈਲ ਪੈਰਾਥੀਓਨ", "metacid"],
+    "Dichlorovos": ["डाइक्लोरवास", "ਡਾਈਕਲੋਰਵਾਸ", "dichlorvos", "ddvp", "nuvan"],
+    "Triazophos": ["ट्राइजोफॉस", "ਟ੍ਰਾਈਜ਼ੋਫਾਸ", "hostathion"],
+    "Carbaryl": ["कार्बारिल", "ਕਾਰਬਾਰਿਲ", "sevin"],
+    "Lindane": ["लिंडेन", "ਲਿੰਡੇਨ", "gamma-hch", "gamma hch", "bhc"],
+    "Benzene Hexachloride": ["बीएचसी", "ਬੀਐਚਸੀ", "hch"],
+    "Aluminium Phosphide": ["एल्युमिनियम फॉस्फाइड", "ਐਲੂਮੀਨੀਅਮ ਫਾਸਫਾਈਡ", "celphos", "aluminum phosphide"],
+    "Trichlorfon": ["ट्राइक्लोरफॉन", "dipterex"],
+    "Phosphamidon": ["फॉस्फैमिडॉन", "dimecron"]
+  }
+}

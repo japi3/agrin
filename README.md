@@ -128,7 +128,16 @@ tap away in the Evidence Ledger. More importantly, the system is built to
 say no:
 
 - A photograph that cannot support a diagnosis is **refused**, with
-  instructions for a better one. Gemini correctly identified a synthetic test
+  instructions for a better one.
+- **A banned pesticide is named as banned.** Refusing to state a dose stopped
+  the platform saying *how much* endosulfan to use; it did not stop it
+  engaging with the question. The CIBRC list — 46 banned actives, 4
+  formulations, 8 withdrawn, 9 restricted — is checked against both the
+  question and the answer, in Gurmukhi and Devanagari as well as Latin, and
+  by the trade names printed on the packet. The three categories are kept
+  apart, because monocrotophos is banned *on vegetables* and lawful
+  elsewhere, and telling a cotton grower otherwise is a false statement
+  about the law. Gemini correctly identified a synthetic test
   image as a drawing rather than a leaf and declined.
 - **No pesticide dose is ever emitted.** The response schema has no field for
   one. Doses depend on formulation and equipment, are printed on the label,
@@ -199,10 +208,15 @@ one matrix-vector multiply — a few milliseconds, with nothing extra to run.
   correct answer translated from an English passage instead of the Marathi
   passage that exists. The builder takes `--languages`; the gap is embedding
   time on a free quota, not design.
-- The retrieval **score floor is calibrated by hand**, against questions
-  chosen to be clearly on or off topic. There is no Indian agricultural
-  advisory retrieval benchmark to tune it against, so it is set strict and
-  stated rather than optimised.
+- The retrieval **score floor is calibrated against a written test set**,
+  not a published benchmark — there is no Indian agricultural advisory
+  retrieval benchmark to tune against. `eval/retrieval_set.json` holds 32
+  on-topic questions in English, Hindi, Punjabi and Hinglish plus 8
+  off-topic ones, and `scripts/evaluate_retrieval.py` reports recall@1,
+  recall@3 per language, off-topic abstention, and the margin between the
+  weakest on-topic score and the strongest off-topic one. The questions were
+  written by the team rather than collected from farmers; a field-collected
+  set is what this should become.
 - **Retrieval does not stop the model inventing; a check does.** Asked how to
   deworm a buffalo calf, the assistant retrieved genuine ICAR passages giving
   Albendazole at 10 mg/kg, then added a dosing schedule and a second drug
