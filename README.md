@@ -150,7 +150,7 @@ them wrongly. An invented variety name, a dose off by a factor of ten, a
 waiting period that is too short — each reads as authoritative, and the
 person acting on it has no way to check.
 
-So these are retrieved instead. 17,479 passages of Government of India
+So these are retrieved instead. 6,396 passages of Government of India
 advisory material, from the agriculture domain of Vikaspedia, embedded with
 `gemini-embedding-001` and searched by cosine similarity at query time. The
 model is handed the passages themselves and the instruction to state only

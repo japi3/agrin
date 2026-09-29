@@ -280,7 +280,7 @@ card(1488, 758, 228, 188, {
 card(1732, 758, 198, 188, {
   title: "Advisory corpus",
   lines: [
-    "17,479 passages of",
+    "6,396 passages of",
     "Government of India",
     "guidance, embedded",
     "→ quoted and linked,",

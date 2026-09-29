@@ -270,7 +270,7 @@ function card(slide, { x, y, w, h, label, lines, tone }) {
       "Sentinel-2 via Earth Engine and Planetary Computer",
       "ISRIC SoilGrids — 1 km map of India carried locally",
       "Open-Meteo weather · Agmarknet prices (data.gov.in)",
-      "17,479 passages of Government of India advisory material",
+      "6,396 passages of Government of India advisory material",
     ],
   });
   card(s, {

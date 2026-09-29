@@ -288,8 +288,10 @@ before the deck is shown:
   order" and do not claim the whole corpus is live.
 - **UI translations: 11 of 24 languages** carry the newest interface strings.
   The other 13 fall back to English for four labels only.
-- **MSP (minimum support price) figures are hand-entered and not yet verified
-  against CACP.** Do not present them as authoritative.
+- **MSP (minimum support price) figures were verified on 28 September 2026**
+  against the Cabinet's own press releases -- PIB 2260617 (kharif MS 2026-27)
+  and PIB 2173567 (rabi RMS 2026-27). They are current and may be presented
+  as such. Re-check after the next Cabinet revision (kharif ~May, rabi ~Oct).
 - Mandi prices depend on data.gov.in, which was returning 503 recently.
 
 ---
