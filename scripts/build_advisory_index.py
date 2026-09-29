@@ -67,7 +67,7 @@ from rag.embedding import (  # noqa: E402
     BATCH_SIZE, DIMENSIONS, EMBEDDING_MODEL, RateWindow, embed_texts,
 )
 from rag.extract import article_from_page  # noqa: E402
-from rag.index import CHUNKS_FILE, MANIFEST_FILE, VECTORS_FILE  # noqa: E402
+from rag.index import CHUNKS_GZ, MANIFEST_FILE, VECTORS_FILE  # noqa: E402
 
 SITEMAP = "https://agriculture.vikaspedia.in/sitemap.xml"
 SOURCE_NAME = "Vikaspedia (Government of India, C-DAC)"
@@ -483,11 +483,12 @@ def finalise(vectors, chunks: list[Chunk], done: int, languages: list[str]) -> N
     # matched pair. Written to a temporary name and moved into place, because
     # a crash midway through this loop would otherwise leave a truncated file
     # that looks complete.
-    building = OUT / (CHUNKS_FILE + ".building")
-    with open(building, "w", encoding="utf-8") as handle:
+    import gzip
+    building = OUT / (CHUNKS_GZ + ".building")
+    with gzip.open(building, "wt", encoding="utf-8") as handle:
         for chunk in chunks[:done]:
             handle.write(json.dumps(chunk.as_dict(), ensure_ascii=False) + "\n")
-    building.replace(OUT / CHUNKS_FILE)
+    building.replace(OUT / CHUNKS_GZ)
 
     # float16 halves the shipped file; see the note in rag/index.py.
     np.save(OUT / VECTORS_FILE, vectors[:done].astype(np.float16))

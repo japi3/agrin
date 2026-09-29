@@ -31,17 +31,28 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 START="$(git rev-parse --abbrev-ref HEAD)"
-trap 'git checkout -q "$START"' EXIT
+trap 'git checkout -qf "$START" 2>/dev/null || true' EXIT
 
-# Rebuild the branch from scratch each time, so it is always this commit plus
-# the frontmatter and never a divergent history to reconcile.
+# An orphan branch: one commit holding the current tree and no history.
+#
+# Not a tidiness choice. Hugging Face rejects any blob over 10 MiB that is
+# not in LFS, and it checks every object in the push, not just the tip. The
+# passage file has been re-chunked twice, so the history carries 17.1 MiB
+# and 12.6 MiB versions of it that would fail the hook even though the
+# current one is small. A Space does not need our history, so it does not
+# get it -- and the push is a few megabytes instead of thirteen.
 git branch -D "$BRANCH" 2>/dev/null || true
-git checkout -q -b "$BRANCH"
+git checkout -q --orphan "$BRANCH"
+git reset -q
 
 cat deploy/huggingface/space-header.md README.md > README.hf.md
 mv README.hf.md README.md
-git add README.md
-git commit -q -m "Space configuration for Hugging Face"
+git add -A
+git commit -q -m "Saathi — deployed from github.com/japi3/agrin"
+
+# Put the working tree back the way it was; the frontmatter belongs only in
+# the commit that goes to Hugging Face.
+git checkout -q "$START" -- README.md 2>/dev/null || true
 
 echo
 echo "Pushing to https://huggingface.co/spaces/$USER/$SPACE"

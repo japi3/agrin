@@ -29,3 +29,4 @@ data/plantvillage/
 .DS_Store
 *.tif
 *.tiff
+data/advisory/chunks.jsonl

@@ -43,6 +43,17 @@ VECTORS_FILE = "vectors.npy"
 CHUNKS_FILE = "chunks.jsonl"
 MANIFEST_FILE = "manifest.json"
 
+# The passages are shipped gzipped. They are JSON lines, which compress to
+# about a third, and that is the difference between a file a plain git
+# remote accepts and one it rejects: Hugging Face refuses any blob over
+# 10 MiB without LFS, and the finished corpus is 12.6 MiB uncompressed.
+# It is also a smaller image and a faster clone for no loss -- the file is
+# read once at startup.
+#
+# The uncompressed name is still read when the compressed one is absent, so
+# an index built by an older version of the builder still loads.
+CHUNKS_GZ = CHUNKS_FILE + ".gz"
+
 # Cosine similarity below which a passage is treated as not an answer.
 #
 # Calibrated by hand against this corpus: questions it genuinely covers land
@@ -226,7 +237,13 @@ def load_index(directory: Path | str | None = None) -> AdvisoryIndex | None:
     path = Path(directory)
     try:
         vectors = np.load(path / VECTORS_FILE).astype(np.float32, copy=False)
-        with open(path / CHUNKS_FILE, encoding="utf-8") as handle:
+        gz = path / CHUNKS_GZ
+        if gz.exists():
+            import gzip
+            opener = lambda: gzip.open(gz, "rt", encoding="utf-8")  # noqa: E731
+        else:
+            opener = lambda: open(path / CHUNKS_FILE, encoding="utf-8")  # noqa: E731
+        with opener() as handle:
             chunks = [Chunk.from_dict(json.loads(line)) for line in handle if line.strip()]
         manifest_path = path / MANIFEST_FILE
         manifest = (
