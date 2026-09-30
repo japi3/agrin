@@ -1,0 +1,446 @@
+{
+  "_README": [
+    "A labelled test set for the photo-diagnosis path, drawn from the",
+    "PlantVillage dataset (Mohanty, Hughes & Salathe 2016), released under",
+    "CC0 1.0 -- public domain. The images are NOT stored in this repository:",
+    "this file names them and scripts/fetch_diagnosis_set.py downloads them",
+    "on demand. Nothing is redistributed, the repository stays small, and",
+    "the set is reproducible because the sample is drawn with a fixed seed.",
+    "",
+    "Healthy leaves are a third of the set on purpose. A diagnostician that",
+    "names a disease on a healthy plant is worse than one that misses a",
+    "sick one: the farmer sprays for nothing, at cost, and learns to",
+    "distrust the next answer.",
+    "",
+    "These are laboratory images on plain backgrounds. Real photographs from",
+    "a field have soil, shadow, several leaves and a shaking hand, and this",
+    "set says nothing about those. Treat any score here as an upper bound."
+  ],
+  "source": "PlantVillage \u2014 https://github.com/spMohanty/PlantVillage-Dataset",
+  "licence": "CC0 1.0 Universal (public domain)",
+  "citation": "Mohanty SP, Hughes DP, Salathe M (2016). Using Deep Learning for Image-Based Plant Disease Detection. Frontiers in Plant Science 7:1419.",
+  "sampled_with_seed": 20260930,
+  "base_url": "https://raw.githubusercontent.com/spMohanty/PlantVillage-Dataset/master/raw/color",
+  "items": [
+    {
+      "class": "Tomato___Early_blight",
+      "crop": "tomato",
+      "disease": "early blight",
+      "file": "74b3c6cf-a35b-481b-aa22-7483a52bff76___RS_Erly.B 7792.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Early_blight",
+      "crop": "tomato",
+      "disease": "early blight",
+      "file": "630ad26e-4c4e-4cfa-aa4c-75b54b5e6395___RS_Erly.B 7658.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Early_blight",
+      "crop": "tomato",
+      "disease": "early blight",
+      "file": "a40e0118-57f7-4a3c-92f5-07e968449dd0___RS_Erly.B 9536.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Early_blight",
+      "crop": "tomato",
+      "disease": "early blight",
+      "file": "bde8917a-9b0c-4a7b-8ff1-26f31609d6d7___RS_Erly.B 7750.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Early_blight",
+      "crop": "tomato",
+      "disease": "early blight",
+      "file": "3537d467-9926-49dc-8d11-74a76b196354___RS_Erly.B 7665.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Late_blight",
+      "crop": "tomato",
+      "disease": "late blight",
+      "file": "5c5a2e9e-e460-403e-9d8a-f961b1f10935___RS_Late.B 5133.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Late_blight",
+      "crop": "tomato",
+      "disease": "late blight",
+      "file": "26deb2c1-3321-46e1-b900-c27853632d65___RS_Late.B 5561.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Late_blight",
+      "crop": "tomato",
+      "disease": "late blight",
+      "file": "577ab276-9a57-4b43-ae4f-85f723ed10bc___RS_Late.B 6870.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Late_blight",
+      "crop": "tomato",
+      "disease": "late blight",
+      "file": "4431e0a9-f61b-4eff-a592-506a6c6606b2___RS_Late.B 7104.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Late_blight",
+      "crop": "tomato",
+      "disease": "late blight",
+      "file": "623fd84d-2230-42fb-bb93-170cd516ffd2___RS_Late.B 4864.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Septoria_leaf_spot",
+      "crop": "tomato",
+      "disease": "septoria leaf spot",
+      "file": "92a8d3b2-6f19-4f93-9e5f-1adf2e491a9d___Matt.S_CG 2495.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Septoria_leaf_spot",
+      "crop": "tomato",
+      "disease": "septoria leaf spot",
+      "file": "717d2ca2-2e4f-45f0-9585-847074e94d3a___Keller.St_CG 1871.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Septoria_leaf_spot",
+      "crop": "tomato",
+      "disease": "septoria leaf spot",
+      "file": "66a84685-549a-4278-825f-5236a60a5149___Keller.St_CG 1852.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Septoria_leaf_spot",
+      "crop": "tomato",
+      "disease": "septoria leaf spot",
+      "file": "41efe5a6-94ca-4761-8543-fd42b09dc4a8___Matt.S_CG 6303.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Septoria_leaf_spot",
+      "crop": "tomato",
+      "disease": "septoria leaf spot",
+      "file": "809498be-366e-420a-9351-9d7ec1916a4e___Matt.S_CG 7731.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+      "crop": "tomato",
+      "disease": "yellow leaf curl virus",
+      "file": "01717e9f-ac1b-4d16-8c9d-4ad09e95d832___YLCV_NREC 2463.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+      "crop": "tomato",
+      "disease": "yellow leaf curl virus",
+      "file": "02dfcd5a-d665-4d4a-a12d-c64682647190___UF.GRC_YLCV_Lab 01991.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+      "crop": "tomato",
+      "disease": "yellow leaf curl virus",
+      "file": "1b4ded19-b85b-4916-a158-6d8203062996___YLCV_GCREC 2230.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+      "crop": "tomato",
+      "disease": "yellow leaf curl virus",
+      "file": "21a4dee8-257f-48ea-90d2-0d2402b1a88a___UF.GRC_YLCV_Lab 01524.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+      "crop": "tomato",
+      "disease": "yellow leaf curl virus",
+      "file": "23a0a5b5-3fbd-4775-a5ed-2774e5fdd190___YLCV_NREC 2577.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Tomato___healthy",
+      "crop": "tomato",
+      "disease": null,
+      "file": "2c22b17b-e914-453a-a379-15b29fe294b0___RS_HL 9720.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Tomato___healthy",
+      "crop": "tomato",
+      "disease": null,
+      "file": "4af1cf6d-1bae-4e58-9168-2f6105a6fe9a___RS_HL 0608.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Tomato___healthy",
+      "crop": "tomato",
+      "disease": null,
+      "file": "9397ecfe-6f1f-47cf-8549-43711ec0e734___GH_HL Leaf 213.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Tomato___healthy",
+      "crop": "tomato",
+      "disease": null,
+      "file": "8ac1645d-48d9-4f3e-842b-0187daeeb57c___RS_HL 0523.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Tomato___healthy",
+      "crop": "tomato",
+      "disease": null,
+      "file": "7890f4dc-0c55-454b-ab23-3b25d3d973c4___GH_HL Leaf 366.1.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Potato___Early_blight",
+      "crop": "potato",
+      "disease": "early blight",
+      "file": "9c77f930-5d28-4b1f-8274-30c2c2dc82fb___RS_Early.B 8347.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Early_blight",
+      "crop": "potato",
+      "disease": "early blight",
+      "file": "73273541-2855-4516-92c3-658703bd2d18___RS_Early.B 6814.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Early_blight",
+      "crop": "potato",
+      "disease": "early blight",
+      "file": "08392b44-ecc6-4f38-8566-361b552cfe21___RS_Early.B 7393.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Early_blight",
+      "crop": "potato",
+      "disease": "early blight",
+      "file": "d825093a-2bd7-458d-a9a1-036db6c08dec___RS_Early.B 9018.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Early_blight",
+      "crop": "potato",
+      "disease": "early blight",
+      "file": "0a79700b-f834-41f5-ae51-6ceda6f67a48___RS_Early.B 8951.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Late_blight",
+      "crop": "potato",
+      "disease": "late blight",
+      "file": "85d29f87-cb27-4ffa-9ad8-9c47f9a53b33___RS_LB 4437.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Late_blight",
+      "crop": "potato",
+      "disease": "late blight",
+      "file": "e26ad557-11c8-44fd-aad1-dea51c613742___RS_LB 5115.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Late_blight",
+      "crop": "potato",
+      "disease": "late blight",
+      "file": "17ed933e-629f-4db2-b4f3-865f69d43589___RS_LB 2599.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Late_blight",
+      "crop": "potato",
+      "disease": "late blight",
+      "file": "2f76c068-ebba-499d-8819-2d12bde41695___RS_LB 3232.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___Late_blight",
+      "crop": "potato",
+      "disease": "late blight",
+      "file": "a6b27bfe-0e60-4984-98ca-af4b2316dfff___RS_LB 3881.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Potato___healthy",
+      "crop": "potato",
+      "disease": null,
+      "file": "e1b49d1b-165b-4f4e-8a30-735e62bc39c5___RS_HL 1839.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Potato___healthy",
+      "crop": "potato",
+      "disease": null,
+      "file": "923d4cc3-021a-4bcd-9f5f-1d6f69e4ad33___RS_HL 1888.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Potato___healthy",
+      "crop": "potato",
+      "disease": null,
+      "file": "1f9870b3-899e-46fb-98c9-cfc2ce92895b___RS_HL 1816.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Potato___healthy",
+      "crop": "potato",
+      "disease": null,
+      "file": "a02b6205-b40a-4178-8b34-3494f84b9d1f___RS_HL 1958.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Potato___healthy",
+      "crop": "potato",
+      "disease": null,
+      "file": "8583c4ff-2d8b-4b6f-89a8-fcc98917ce9b___RS_HL 1961.JPG",
+      "healthy": true
+    },
+    {
+      "class": "Corn_(maize)___Common_rust_",
+      "crop": "maize",
+      "disease": "common rust",
+      "file": "RS_Rust 2381.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Common_rust_",
+      "crop": "maize",
+      "disease": "common rust",
+      "file": "RS_Rust 2438.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Common_rust_",
+      "crop": "maize",
+      "disease": "common rust",
+      "file": "RS_Rust 1630.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Common_rust_",
+      "crop": "maize",
+      "disease": "common rust",
+      "file": "RS_Rust 2374.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Common_rust_",
+      "crop": "maize",
+      "disease": "common rust",
+      "file": "RS_Rust 2479.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Northern_Leaf_Blight",
+      "crop": "maize",
+      "disease": "northern leaf blight",
+      "file": "f6b47d16-cfbc-4786-bc6d-78a2bc037a43___RS_NLB 3545.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Northern_Leaf_Blight",
+      "crop": "maize",
+      "disease": "northern leaf blight",
+      "file": "6d307b49-1d24-48da-88ba-51d4753aed3f___RS_NLB 3988.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Northern_Leaf_Blight",
+      "crop": "maize",
+      "disease": "northern leaf blight",
+      "file": "ed8c1c19-dbd4-4c65-9ec0-e5c206667ac1___RS_NLB 3801.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Northern_Leaf_Blight",
+      "crop": "maize",
+      "disease": "northern leaf blight",
+      "file": "0b4fb93e-1a74-42ae-9227-18d900c04bd7___RS_NLB 3670.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___Northern_Leaf_Blight",
+      "crop": "maize",
+      "disease": "northern leaf blight",
+      "file": "3f7ded82-d9d3-4b3d-9beb-58c5a43f894c___RS_NLB 3656.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Corn_(maize)___healthy",
+      "crop": "maize",
+      "disease": null,
+      "file": "cbea79a3-7a68-4d16-b509-c84f333f9a38___R.S_HL 8137 copy 2.jpg",
+      "healthy": true
+    },
+    {
+      "class": "Corn_(maize)___healthy",
+      "crop": "maize",
+      "disease": null,
+      "file": "02e76b75-f201-44ee-a694-35edf97cc82b___R.S_HL 8015 copy.jpg",
+      "healthy": true
+    },
+    {
+      "class": "Corn_(maize)___healthy",
+      "crop": "maize",
+      "disease": null,
+      "file": "6afc378d-e62e-4bf5-9f99-3efd664cd377___R.S_HL 8270 copy.jpg",
+      "healthy": true
+    },
+    {
+      "class": "Corn_(maize)___healthy",
+      "crop": "maize",
+      "disease": null,
+      "file": "3bb783b4-736f-411e-a980-01d4ad88147e___R.S_HL 0648 copy 2.jpg",
+      "healthy": true
+    },
+    {
+      "class": "Corn_(maize)___healthy",
+      "crop": "maize",
+      "disease": null,
+      "file": "602d933c-1e3f-4e3e-a408-760cc9d94be9___R.S_HL 8304 copy 2.jpg",
+      "healthy": true
+    },
+    {
+      "class": "Pepper,_bell___Bacterial_spot",
+      "crop": "pepper",
+      "disease": "bacterial spot",
+      "file": "e1c5cd9c-d181-42b8-95cc-e45538f21d12___NREC_B.Spot 1864.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Pepper,_bell___Bacterial_spot",
+      "crop": "pepper",
+      "disease": "bacterial spot",
+      "file": "8294cabb-990b-4e0b-9351-441c91fa9e28___NREC_B.Spot 1941.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Pepper,_bell___Bacterial_spot",
+      "crop": "pepper",
+      "disease": "bacterial spot",
+      "file": "cf32bc40-2a83-423b-b891-17dc4a37bd86___NREC_B.Spot 1899.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Pepper,_bell___Bacterial_spot",
+      "crop": "pepper",
+      "disease": "bacterial spot",
+      "file": "8c7fe94d-5e80-4849-a92c-715d3aaf02a3___JR_B.Spot 3218.JPG",
+      "healthy": false
+    },
+    {
+      "class": "Pepper,_bell___Bacterial_spot",
+      "crop": "pepper",
+      "disease": "bacterial spot",
+      "file": "186f840e-086b-49fa-97a7-18628c6293f0___JR_B.Spot 3136.JPG",
+      "healthy": false
+    }
+  ]
+}

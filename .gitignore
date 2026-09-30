@@ -30,3 +30,4 @@ data/plantvillage/
 *.tif
 *.tiff
 data/advisory/chunks.jsonl
+data/diagnosis_eval/
