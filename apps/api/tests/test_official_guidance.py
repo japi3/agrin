@@ -317,3 +317,37 @@ class TestCapacityFailuresAreRememberedOnce:
         spent = llm._cooldowns[(0, "gemini-z")]
         llm.note_unavailable("gemini-z")
         assert llm._cooldowns[(0, "gemini-z")] == spent
+
+
+class TestStaleIdentifiersFromTheBrowser:
+    """A farmer id in a request is a hint, not a guarantee.
+
+    The database is a file. On a host with an ephemeral disk -- Render,
+    Cloud Run, any rebuilt container -- every deploy starts an empty one
+    while the browser still holds identifiers from the last. Trusting them
+    raised a foreign-key error and returned 500 to every returning visitor,
+    whose only escape was clearing site data.
+    """
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        from agrin_api.main import app
+        return TestClient(app)
+
+    def test_an_unknown_farmer_id_does_not_error(self, monkeypatch):
+        from agrin_api import storage
+        monkeypatch.setattr(storage, "get_farmer", lambda _id: None)
+        created = []
+        monkeypatch.setattr(storage, "create_farmer",
+                            lambda **kw: created.append(1) or "fresh-farmer")
+        assert storage.get_farmer("gone") is None
+        assert storage.create_farmer(language="en") == "fresh-farmer"
+
+    def test_storage_can_tell_a_missing_conversation_from_a_real_one(self):
+        """The lookup the endpoint needs to make that judgement."""
+        from agrin_api import storage
+        assert storage.get_conversation("definitely-not-a-real-id") is None
+
+    def test_a_missing_field_reads_as_absent_rather_than_raising(self):
+        from agrin_api import storage
+        assert storage.get_field("definitely-not-a-real-id") is None

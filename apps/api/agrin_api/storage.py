@@ -389,6 +389,20 @@ def append_message(conversation_id: str, role: str, content: Any,
     return mid
 
 
+def get_conversation(conversation_id: str) -> dict[str, Any] | None:
+    """One conversation, or None if the id names nothing.
+
+    Exists so the chat endpoint can tell a stale id from a missing one. A
+    browser holds these across deploys, and on a host with an ephemeral
+    disk the database behind them is gone.
+    """
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM conversation WHERE id = ?", (conversation_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
 def load_messages(conversation_id: str) -> list[dict[str, Any]]:
     """Load a conversation in Anthropic message format."""
     with connect() as conn:

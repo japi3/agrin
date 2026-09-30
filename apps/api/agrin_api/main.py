@@ -210,19 +210,35 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
     drops mid-answer, and the assistant's reply is written when the stream
     completes.
     """
+    # The farmer id is a hint from the browser, not a guarantee. It can
+    # name someone who no longer exists: this database is a file, and on a
+    # host with an ephemeral disk -- Render, Cloud Run, a rebuilt container
+    # -- every deploy starts an empty one while the browser still holds the
+    # id from the last. Trusting it raised a foreign-key error and returned
+    # 500 to every returning visitor, with no way out but clearing site
+    # data, which nobody will think to do.
     farmer_id = req.farmer_id
+    if farmer_id and storage.get_farmer(farmer_id) is None:
+        farmer_id = None
     if not farmer_id:
         farmer_id = storage.create_farmer(language=req.language or "en")
 
+    field_id = req.field_id
+    # Same for the field, and for the same reason. Checked before the
+    # conversation is created, because the conversation refers to it.
+    if field_id and storage.get_field(field_id) is None:
+        field_id = None
+
     conversation_id = req.conversation_id
+    if conversation_id and storage.get_conversation(conversation_id) is None:
+        conversation_id = None
     if not conversation_id:
         conversation_id = storage.create_conversation(
-            farmer_id, req.field_id, title=req.message[:60]
+            farmer_id, field_id, title=req.message[:60]
         )
 
     # If a bare location came in with the message, persist it as a field so
     # the farmer is never asked twice.
-    field_id = req.field_id
     if not field_id:
         with storage.connect() as conn:
             row = conn.execute("SELECT field_id FROM conversation WHERE id = ?",
