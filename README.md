@@ -6,9 +6,6 @@ Validated agronomy (FAO-56 · FAO-33 · RothC) on live soil, weather and satelli
 **🚀 Live app: https://saathi-cwm2.onrender.com/**
 *(Free hosting sleeps when idle: the first request after a quiet spell takes about a minute.)*
 
-**Track 4 · AgriN & Regenerative Agricultural Intelligence · BRICS theme: Cooperation**
-Harnoor Singh · Japleen Kaur · Thapar Institute of Engineering and Technology
-
 A farmer opens a blank chat box, speaks or types in their own language, and gets advice about their specific field. No dashboard, no forms, no tour.
 
 ---
