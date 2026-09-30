@@ -1,269 +1,260 @@
-# AgriN — Regenerative Agricultural Intelligence
+# 🌾 Saathi (ਸਾਥੀ / साथी) — AgriN
+
+**Voice-first multilingual AI farming assistant for Indian farmers**
+Validated agronomy (FAO-56 · FAO-33 · RothC) on live soil, weather and satellite data, with grounded advisory RAG (dense + BM25 + Reciprocal Rank Fusion) and an answer-checking layer that catches the model inventing figures.
+
+**🚀 Live app: https://saathi-cwm2.onrender.com/**
+*(Free hosting sleeps when idle: the first request after a quiet spell takes about a minute.)*
 
 **Track 4 · AgriN & Regenerative Agricultural Intelligence · BRICS theme: Cooperation**
+Harnoor Singh · Japleen Kaur · Thapar Institute of Engineering and Technology
 
-A farmer opens a blank chat box, speaks or types in their own language, and
-gets advice about their specific field. No dashboard, no forms, no tour. What
-they get back is grounded in validated agronomic models running on real
-satellite, soil, weather and market data.
-
----
-
-Full write-up: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — every layer,
-what crosses each boundary, and one question traced end to end.
+A farmer opens a blank chat box, speaks or types in their own language, and gets advice about their specific field. No dashboard, no forms, no tour.
 
 ---
 
 ## The one design decision everything follows from
 
-**The language model never computes agronomy.**
+> **The language model never computes agronomy.**
 
-Gemini routes, translates and explains. Every number a farmer acts on comes
-from a validated model — FAO-56 Penman-Monteith for evapotranspiration, a
-daily FAO-56 root-zone water balance for irrigation, RothC-26.3 for soil
-carbon, published epidemiological models for disease pressure.
+Gemini routes, translates and explains. Every number a farmer acts on comes from a validated model running on real measurements — FAO-56 Penman-Monteith for evapotranspiration, a daily FAO-56 root-zone water balance for irrigation, RothC-26.3 for soil carbon, published epidemiological models for disease pressure.
 
-This is not architectural preference. An LLM asked to estimate an irrigation
-depth will produce a fluent, confident, unfalsifiable number, and it is
-indistinguishable from a correct one to the person acting on it. Everything
-below exists so the model never has to guess.
-
-It also meant that when the project had to move from one model family to
-another mid-build, the swap touched **one file**.
+This is not architectural preference. An LLM asked to estimate an irrigation depth produces a fluent, confident, unfalsifiable number, and it is indistinguishable from a correct one to the person standing in the field.
 
 ---
 
-## Verification
+## ✨ Features
+
+- **Irrigation guidance** — a daily root-zone water balance on *this* field, not a calendar rule. Answers "water today or wait", and how much, in inches and pump-hours before millimetres.
+- **Crop health from satellite** — Sentinel-2 NDVI compared against what the crop should have at this growth stage, calibrated per field.
+- **Disease from a photograph** — Gemini multimodal names the likely problem, weighted by weather-driven infection pressure from Smith Periods, Analytis and Magarey models. **No dose is ever emitted** — the response schema has no field for one.
+- **Soil profile anywhere in India** — ISRIC SoilGrids, with a 1 km map of India carried locally so every coordinate answers in ~6 ms instead of 26–115 s.
+- **Crop value** — yield from the season's actual water stress (FAO-33 Ky), at today's mandi rate and the announced MSP floor. **No price forecasting**, ever.
+- **Published guidance, quoted** — varieties, seed rates, spacing, seed treatment and scheme paperwork retrieved from Government of India advisory material and quoted with a link to the source page.
+- **Banned-pesticide guardrail** — the CIBRC list (46 banned actives, 4 formulations, 8 withdrawn, 9 restricted) checked against both question and answer, in Gurmukhi and Devanagari as well as Latin, and by the trade names printed on the packet.
+- **Government schemes** — PM-KISAN, PMFBY, KCC, Soil Health Card, PMKSY, e-NAM, with the screening questions to check before travelling. Navigation, never an eligibility ruling.
+- **BRICS federation** — five country nodes train locally and publish model weights only. Field records transmitted: zero.
+- **24 languages, voice in and out** — script detection happens in code before the model sees the question, so Gurmukhi in means Gurmukhi out.
+- **Anything else** — it is a capable assistant, not a crop bot.
+
+---
+
+## 🤖 Google AI models & providers
+
+| Component | Provider / Model | Needs | Behaviour when not configured |
+|---|---|---|---|
+| Conversation & tool routing | **Gemini 3.7 Flash** (`AGRIN_MODEL`) | `GEMINI_API_KEY` | The service reports it is not configured rather than guessing |
+| Photo diagnosis | **Gemini multimodal**, structured output | same key | Diagnosis unavailable; other tools unaffected |
+| Speech to text | **Gemini audio understanding** | same key | Typing still works; an RMS silence guard runs first so an empty recording never becomes an invented sentence |
+| Text to speech | **Gemini TTS**, 24 languages | same key | Browser speech only where it genuinely has a voice for the language — never an English voice reading Gurmukhi |
+| Retrieval embeddings | **`gemini-embedding-001`**, 768-dim | same key | The guidance tool abstains and says the library is unavailable |
+| Production credentials | **Vertex AI** | `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_CLOUD_PROJECT` | Falls back to an AI Studio key; identical code either way |
+| Satellite | **Google Earth Engine** (server-side reduction) | `GOOGLE_CLOUD_PROJECT` + credentials | Planetary Computer STAC, so it works with no Google account at all |
+| Deployment | **Cloud Run** (`deploy/cloudrun.sh`) | a GCP project | Runs identically on a laptop, a VPS, Render or Hugging Face |
+
+**Model fallback chain.** Sixteen `(key, model)` pairs are tried in order, and what is spent is remembered on disk so an exhausted daily quota is not rediscovered every request. A capacity error (503/504) is recorded against *every* key, because it is about the model; a quota error against one, because that is about the key.
+
+---
+
+## 🚀 Architecture
+
+```
+Farmer (voice · text · crop photo)
+   │
+   ├── Voice ──► [Gemini speech-to-text] ──► RMS silence guard ──► transcript
+   │
+   ▼
+[Script detection in code]  (apps/api/agrin_api/prompts.py)
+   │   Gurmukhi in → Gurmukhi out, decided before the model sees the question
+   ▼
+[Orchestrator — Gemini 3.7 Flash function calling]  (agrin_api/orchestrator.py)
+   │   13 tools · runs concurrently · 16 key-and-model fallback pairs
+   │
+   ├─► COMPUTED ─────────────────────────────────────────────────────────┐
+   │   irrigation · crop health · disease · carbon · crop value · soil   │
+   │   [packages/agronomy]  FAO-56 · FAO-33 · RothC-26.3 · epidemiology  │
+   │   [packages/geo]       SoilGrids · Open-Meteo · Sentinel-2 · mandi  │
+   │                                                                      │
+   ├─► RETRIEVED ────────────────────────────────────────────────────────┤
+   │   [packages/rag]  dense cosine + BM25, fused by RRF (k=60)          │
+   │   0.62 similarity floor → below it, nothing is quoted               │
+   │                                                                      │
+   └─► REMEMBERED ───────────────────────────────────────────────────────┘
+       [agrin_api/storage.py]  SQLite: field, season, notes, photos
+   │
+   ▼
+[Validation — the only stage that reads the model's own output back]
+   ├── Grounding check: every figure matched against the quoted passages
+   ├── CIBRC banned-pesticide scan  (packages/agronomy/pesticides.py)
+   └── Refusals passed through verbatim, never papered over
+   │
+   ▼
+[Answer in the farmer's script] ──► [Gemini TTS] ──► spoken aloud
+       + evidence ledger · pictorial cards · source links
+```
+
+Full write-up, including what each layer may and may not do: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+Diagram: **[deck/Saathi-architecture.png](deck/Saathi-architecture.png)**.
+
+---
+
+## 📂 Repository structure
+
+```
+agrin/
+├── apps/
+│   ├── api/agrin_api/
+│   │   ├── main.py               # FastAPI: 14 endpoints, serves the built PWA
+│   │   ├── orchestrator.py       # Tool-calling loop, cards, grounding check
+│   │   ├── tools.py              # The 13 tools exposed to the model
+│   │   ├── schemas.py            # Tool definitions — the descriptions are load-bearing
+│   │   ├── llm.py                # Keys, models, cooldowns, the fallback chain
+│   │   ├── prompts.py            # System prompt, script detection
+│   │   ├── vision.py             # Crop photo diagnosis
+│   │   ├── speech.py             # TTS and STT, with the silence guard
+│   │   ├── storage.py            # SQLite: 8 tables, no ORM
+│   │   └── i18n.py               # 24-language interface strings
+│   └── web/                      # React 19 + TypeScript + Vite PWA (66 kB gzipped)
+├── packages/
+│   ├── agronomy/agronomy/
+│   │   ├── fao56.py              # Penman-Monteith ET₀, dual crop coefficient
+│   │   ├── waterbalance.py       # Daily root-zone balance, mass-conserving
+│   │   ├── carbon.py             # RothC-26.3, IPCC Tier 3
+│   │   ├── canopy.py             # NDVI → fractional cover (Carlson & Ripley)
+│   │   ├── disease.py            # Smith Periods · Analytis · Magarey
+│   │   ├── economics.py          # FAO-33 yield response, MSP floor
+│   │   ├── pesticides.py         # CIBRC banned / withdrawn / restricted
+│   │   ├── crops.py, schemes.py  # 16 calibrated crops, 6 schemes
+│   │   └── data/                 # msp.json, pesticides.json — both cited and dated
+│   ├── geo/geo/
+│   │   ├── soilgrids.py          # ISRIC, with the local 1 km India map
+│   │   ├── weather.py            # Open-Meteo forecast + ERA5 reanalysis
+│   │   ├── satellite.py          # Sentinel-2 via Earth Engine / Planetary Computer
+│   │   ├── mandi.py              # Agmarknet prices (data.gov.in)
+│   │   └── cache.py              # Disk cache with provenance
+│   └── rag/rag/
+│       ├── extract.py            # Vikaspedia page → ordered blocks of text
+│       ├── chunking.py           # Blocks → passages that can be quoted
+│       ├── embedding.py          # gemini-embedding-001, inside a rationed quota
+│       ├── bm25.py               # Okapi BM25 + Reciprocal Rank Fusion
+│       ├── index.py              # NumPy brute-force cosine, no vector database
+│       └── grounding.py          # Does the answer only say what the source said?
+├── data/
+│   ├── advisory/                 # chunks.jsonl.gz + vectors.npy + manifest.json
+│   └── soil/                     # india_soilgrids_1km.tif (built, not committed)
+├── federation/                   # Five country nodes, coordinator, FedAvg
+├── eval/                         # Retrieval test set and measured results
+├── scripts/                      # Corpus builder, evaluation, smoke test, release check
+├── deploy/                       # cloudrun.sh, huggingface/
+├── docs/ARCHITECTURE.md
+├── deck/                         # 12-slide submission deck + architecture diagram
+├── Dockerfile                    # One container: API + PWA
+├── render.yaml                   # Render blueprint (free plan)
+└── requirements.txt              # + requirements-geo.txt for GDAL/satellite
+```
+
+---
+
+## 🛠️ Quickstart
+
+### 1. Install
+
+```bash
+pip install -r requirements.txt -r requirements-geo.txt
+```
+
+`requirements-geo.txt` is split out because it pulls GDAL. Every import of it is inside a function, so leaving it out costs exactly one tool — satellite crop health — and the local soil map.
+
+### 2. Configure
+
+Copy `.env.example` to `.env`:
+
+| Variable | Purpose |
+|---|---|
+| `GEMINI_API_KEY` | One AI Studio key — everything works with just this |
+| `GEMINI_API_KEYS` | Comma-separated. The free tier meters per project, so a second key is a second full allowance |
+| `DATA_GOV_IN_KEY` | Mandi prices. A shared demo key is used if unset, and it is rate-limited across everyone |
+| `AGRIN_MODEL` | Default `gemini-3.7-flash` |
+| `GOOGLE_GENAI_USE_VERTEXAI` | `true` plus `GOOGLE_CLOUD_PROJECT` to use Vertex instead of AI Studio |
+| `AGRIN_INDIA_SOIL` | Path to the local soil map, if built |
+
+### 3. Run
+
+```bash
+uvicorn agrin_api.main:app --reload --port 8080   # API + built PWA
+cd apps/web && npm install && npm run dev          # frontend with hot reload
+```
+
+### 4. Build the advisory corpus (optional)
+
+```bash
+python scripts/build_advisory_index.py --languages en
+```
+
+Crawls the agriculture domain of Vikaspedia, chunks it, and embeds each passage. **Resumable**: embedding is capped at 1,000 texts per key per day, so a full corpus takes several days on one key. Most-useful-first, so a partial index is the useful part.
+
+```bash
+python scripts/check_rag.py        # is retrieval working? three questions, a verdict
+```
+
+### 5. Build the local soil map (optional, ~190 MB)
+
+```bash
+python scripts/build_india_soil.py
+```
+
+Turns every soil lookup in India from a 26–115 s network call into a ~6 ms disk read.
+
+### 6. Tests
+
+```bash
+pytest -q                          # 490 tests, no network required
+python scripts/smoke_test.py       # live end-to-end against a running server
+python scripts/release_check.py    # pre-ship checks, several languages
+```
+
+---
+
+## 📊 Evaluation
+
+### Retrieval
+
+`scripts/evaluate_retrieval.py` scores the advisory corpus on 35 on-topic questions in English, Hindi, Punjabi and Hinglish, 6 that name a variety code or a molecule, and 8 off-topic questions whose only correct outcome is silence (`eval/retrieval_set.json`). Measured on 4,640 passages:
+
+| Metric | Dense only | Hybrid (dense + BM25 + RRF) |
+|---|---|---|
+| Right subject ranked 1st | 29/35 | 29/35 |
+| Right subject in top 3 | 33/35 | 33/35 |
+| Off-topic questions abstained | **8/8** | **8/8** |
+| Typed token present in top passage | 5/6 | **6/6** |
+| Margin at the floor | +0.043 | +0.026 |
+| Search time (median) | 0.1 ms | 0.6 ms |
+
+Hybrid buys exact tokens — a variety code or a molecule name, where being wrong is worst — and costs margin. Both abstain on everything off-topic.
+
+```bash
+python scripts/evaluate_retrieval.py                # hybrid, as deployed
+python scripts/evaluate_retrieval.py --dense-only   # the comparison
+```
+
+Full reports: [eval/results_hybrid.md](eval/results_hybrid.md), [eval/results_dense.md](eval/results_dense.md). The questions were written by the team, not collected from farmers; a field test set is future work.
+
+### Agronomy
 
 This is the part we would want a judge to check first.
 
-### Reference evapotranspiration reproduces the published standard
-
-The FAO-56 implementation reproduces **Example 18 from the FAO paper's own
-annex** — end-to-end, including every intermediate term: slope of the vapour
-pressure curve, psychrometric constant, saturation and actual vapour
-pressure, extraterrestrial radiation, clear-sky radiation, net shortwave and
-longwave radiation, net radiation, and the final ET₀ of 3.9 mm/day.
-
-```bash
-cd packages/agronomy && PYTHONPATH=. pytest tests/ -q
-```
-
-### And agrees with an independent implementation on live data
-
-Open-Meteo computes FAO-56 ET₀ separately, with its own code. Across six
-sites spanning all five BRICS founding members:
-
-**Mean absolute error 0.228 mm/day over 264 station-days.**
-
-```bash
-python scripts/validate_et0_live.py
-```
-
-### The water balance conserves mass
-
-Every millimetre entering the root zone leaves as evapotranspiration,
-drainage, or stored depletion. Closure is asserted to **< 0.5 mm over a full
-season**, under irrigation and rainfed, on soils from sand to clay.
-
-### Verification summary
-
 | Component | Standard | How it is checked |
 |---|---|---|
-| Reference ET | FAO-56 (Allen et al. 1998) | Reproduces the paper's worked Example 18 including all intermediates |
-| Reference ET, live | — | MAE 0.228 mm/day vs an independent implementation, 264 station-days |
-| Water balance | FAO-56 Ch. 8 | Mass conservation closes < 0.5 mm per season |
-| Soil carbon | RothC-26.3 (Coleman & Jenkinson) | Published rate-modifier equations; normalisation check *a* ≈ 1 at 9.25 °C |
-| Disease pressure | Smith (1956), Analytis (1977), Magarey (2005) | Seasonal realism per Indian cropping calendar |
-| Soil texture | USDA Handbook 18 | Nine reference points on the textural triangle |
-| Canopy from NDVI | Carlson & Ripley (1997) | Per-field local scaling (Gutman & Ignatov 1998); verdict distribution checked against 22 real Punjab–Haryana wheat fields |
+| Reference ET | FAO-56 (Allen et al. 1998) | Reproduces the paper's worked Example 18 including every intermediate term → ET₀ = 3.9 mm/day |
+| Reference ET, live | — | **MAE 0.228 mm/day** against an independent implementation, 264 station-days, all five BRICS founding members |
+| Water balance | FAO-56 Ch. 8 | Mass conservation closes to **< 0.5 mm over a full season**, irrigated and rainfed, sand to clay |
+| Soil carbon | RothC-26.3 | Published rate-modifier equations; normalisation check *a* ≈ 1 at 9.25 °C |
+| Canopy from NDVI | Carlson & Ripley (1997) | Verdict distribution against 22 real Punjab–Haryana wheat fields |
 | Federation | McMahan et al. (2017) | Measured transfer experiment; sovereignty asserted as tests |
 
-**197 unit tests, no network required. 19 federation tests. 18 end-to-end checks.**
+**490 automated tests** — ≈250 agronomy, 80 API, 73 retrieval, 19 federation, 15 data-layer. No network required.
 
----
-
-## What it does
-
-| Capability | Grounded in |
-|---|---|
-| **Irrigation** — water today or wait, and how much | FAO-56 daily root-zone water balance over real observed and forecast weather |
-| **Soil** — texture, pH, carbon, water-holding capacity | ISRIC SoilGrids at 250 m |
-| **Crop health** — canopy vs what this stage should have | Sentinel-2 NDVI, cloud-masked, calibrated per field |
-| **Disease** — ranked diagnosis from a photograph | Gemini vision, conditioned on weather-driven infection pressure |
-| **Soil carbon** — what practice changes are worth | RothC-26.3, the IPCC Tier 3 accepted method |
-| **Prices** — today's mandi rates and where to sell | Agmarknet, ~3,000 regulated markets |
-| **Government schemes** | PM-KISAN, PMFBY, KCC, Soil Health Card, PMKSY, e-NAM — navigation, never an eligibility ruling |
-| **Published guidance** — varieties, seed rates, spacing, seed treatment, scheme paperwork | Retrieval over 17,000 passages of Government of India advisory material, quoted and linked |
-| **Anything else** | It is a capable assistant, not a crop bot |
-
----
-
-## Built for people who may not read
-
-- **Voice in and out** in 24 languages, synthesised and transcribed
-  server-side through Gemini. The browser's own speech is used only where it
-  genuinely has a voice for the language: on most devices it has none for
-  most Indian languages and silently substitutes an English voice, so spoken
-  Punjabi came out as an English speaker reading Gurmukhi phonetically.
-- The assistant is named in each language —
-  Saathi, ਸਾਥੀ, 农友, Parceiro, Umngane. The Punjabi greeting is
-  *ਸਤ ਸ੍ਰੀ ਅਕਾਲ*, not a translated "hello".
-- **A pictogram grammar** with fixed slot order — state → duration → action →
-  quantity — so the pattern is learned once and every later advisory is
-  readable.
-- **Familiar units first.** Water is quoted in inches and pump-hours before
-  millimetres. Prices always carry "per quintal", because a farmer hearing a
-  per-kg figure when it is per-quintal is out by a hundredfold.
-- **Decision first.** Cards lead with "No water needed this week"; the
-  numbers sit underneath for whoever wants them.
-- **66 kB of JavaScript**, gzipped.
-
----
-
-## Honesty as a feature
-
-Every claim carries provenance — dataset, resolution, licence, method — one
-tap away in the Evidence Ledger. More importantly, the system is built to
-say no:
-
-- A photograph that cannot support a diagnosis is **refused**, with
-  instructions for a better one.
-- **A banned pesticide is named as banned.** Refusing to state a dose stopped
-  the platform saying *how much* endosulfan to use; it did not stop it
-  engaging with the question. The CIBRC list — 46 banned actives, 4
-  formulations, 8 withdrawn, 9 restricted — is checked against both the
-  question and the answer, in Gurmukhi and Devanagari as well as Latin, and
-  by the trade names printed on the packet. The three categories are kept
-  apart, because monocrotophos is banned *on vegetables* and lawful
-  elsewhere, and telling a cotton grower otherwise is a false statement
-  about the law. Gemini correctly identified a synthetic test
-  image as a drawing rather than a leaf and declined.
-- **No pesticide dose is ever emitted.** The response schema has no field for
-  one. Doses depend on formulation and equipment, are printed on the label,
-  and are set by state agriculture departments.
-- A crop with no market arrivals returns "out of season", and a **rate-limited
-  price service returns something different** — conflating those two was a bug
-  we found and fixed.
-- Soil data displaced by the urban mask **discloses the displacement**.
-- Satellite verdicts state that they depend on the sowing date being right.
-- **No price forecasting.** Predicting mandi rates is genuinely hard; a
-  confident guess is worse than silence.
-- **Published details are quoted, never recalled.** See below.
-
-### Answers that are written down rather than computed
-
-The agronomic models cover what physics and measurement can settle — water,
-carbon, yield response, disease pressure. A great deal of farming they cannot
-touch: which variety suits a district, the seed rate per acre, the spacing,
-the seed treatment and its dose, how long to wait after spraying, what
-documents a scheme wants.
-
-Asked from memory, a language model answers all of these fluently and some of
-them wrongly. An invented variety name, a dose off by a factor of ten, a
-waiting period that is too short — each reads as authoritative, and the
-person acting on it has no way to check.
-
-So these are retrieved instead. 6,396 passages of Government of India
-advisory material, from the agriculture domain of Vikaspedia, embedded with
-`gemini-embedding-001` and searched by cosine similarity at query time. The
-model is handed the passages themselves and the instruction to state only
-what they say, and the interface shows the source links beside the answer so
-a farmer — or the extension officer they show the phone to — can open the
-original page.
-
-Two properties make this worth having rather than merely present:
-
-- **It refuses.** Similarity search always returns its best matches; for a
-  question the corpus does not cover, those are simply the least irrelevant
-  passages, ranked just as confidently as a real answer. A score floor
-  (0.62 cosine, calibrated against on- and off-topic questions that land at
-  0.71–0.79 and 0.50–0.55 respectively) turns that into an abstention, and
-  the tool tells the model in plain words not to fall back on its own recall.
-- **It crosses languages.** The corpus is largely English; the farmers are
-  not. A question typed in Hindi retrieves the English passage that answers
-  it at 0.76 cosine, in Punjabi at 0.71, and the reply comes back in the
-  language it was asked in.
-
-No vector database. At this size the index is a 27 MB array and the search is
-one matrix-vector multiply — a few milliseconds, with nothing extra to run.
-
-### Known limitations, stated plainly
-
-- The satellite **verdict thresholds** are validated at the population level
-  but not per field. Sampling 22 real fields across the Punjab–Haryana wheat
-  belt gives 77% on track, 9% behind and 9% severely behind — the shape a
-  productive region should have. That shows the thresholds are calibrated; it
-  does not show that any individual verdict is right. Per-field accuracy still
-  needs ground truth this project does not have.
-- Federation training data is **generated, not collected** — from real soil,
-  real climate and a validated water balance, but generated. There is no
-  shared BRICS farm dataset, which is the problem it exists to address.
-- A federation node holding a **single record** publishes aggregates that are
-  that record. Production needs a k-anonymity floor. There is a test that
-  says so.
-- The advisory corpus is currently **English only**, and Vikaspedia publishes
-  the same material in 22 more languages. Cross-language retrieval already
-  works, so this costs fidelity rather than coverage: a Marathi farmer gets a
-  correct answer translated from an English passage instead of the Marathi
-  passage that exists. The builder takes `--languages`; the gap is embedding
-  time on a free quota, not design.
-- The retrieval **score floor is calibrated against a written test set**,
-  not a published benchmark — there is no Indian agricultural advisory
-  retrieval benchmark to tune against. `eval/retrieval_set.json` holds 35
-  on-topic questions in English, Hindi, Punjabi and Hinglish, 6 that name a
-  variety code or a molecule, and 8 off-topic ones whose only correct
-  outcome is silence. Measured on 3,968 passages:
-
-  | | dense only | hybrid |
-  |---|---|---|
-  | Right subject ranked 1st | 29/35 | 29/35 |
-  | Right subject in top 3 | 33/35 | 33/35 |
-  | Off-topic abstained | 8/8 | 8/8 |
-  | **Typed token present in top passage** | **5/6** | **6/6** |
-  | Margin at the floor | +0.043 | +0.026 |
-  | Search time | 0.1 ms | 0.6 ms |
-
-  Hybrid buys one thing and costs one thing. It fixes exact tokens, which is
-  where being wrong is worst — the wrong wheat variety or the wrong molecule
-  is a confident, checkable error a farmer acts on. It narrows the margin
-  between the weakest right answer and the strongest wrong one from 0.043 to
-  0.026, which is thin: the floor still separates them, but not by much, and
-  that margin is the number to watch as the corpus grows.
-
-  The questions were written by the team rather than collected from farmers;
-  a field-collected set is what this should become.
-- **Retrieval does not stop the model inventing; a check does.** Asked how to
-  deworm a buffalo calf, the assistant retrieved genuine ICAR passages giving
-  Albendazole at 10 mg/kg, then added a dosing schedule and a second drug
-  that appear in no passage — and attributed all of it to the government
-  advisory. Retrieval had not removed the invention, it had lent it a
-  citation. Two rounds of prompt-writing did not stop it, so every answer
-  that quotes a source now has its quantities compared against the passages
-  it quoted, and unsupported figures raise a warning naming who to confirm
-  with.
-
-  On that question the assistant now refuses outright — "I cannot give you
-  these figures from memory because an incorrect dose can be harmful to your
-  animal", and sends the farmer to a vet or a KVK — and the check stays
-  silent, because there is nothing unsupported to flag. Both halves of that
-  matter: the refusal is what should happen, and a check that fired on a
-  clean answer would teach people to ignore it.
-
-  What has not been observed in the running app is the check firing on a real
-  invented answer, because the model has stopped producing one to catch. It
-  is verified against the recorded fabrication and its passages at both
-  layers instead. Treat it as a net under a model that may still invent, not
-  as proof that it cannot.
-
----
-
-## BRICS cooperation, measured
-
-Cross-border agricultural cooperation founders on data sovereignty, not on
-technology. So rather than assert that federated learning solves it, we
-measured it — five country nodes, each a container holding data it will not
-release.
+### BRICS cooperation, measured
 
 | | RMSE (mm of seasonal irrigation) |
 |---|---|
@@ -272,79 +263,42 @@ release.
 | The federated model, anywhere | 59 |
 | Federated, then fine-tuned locally | **50** |
 
-The transfer matrix is the clearest statement: the diagonal runs 37–77 mm,
-the off-diagonal 85–404 mm. Russia's model mispredicts Brazilian fields by
-404 mm.
-
-**Field records transmitted: zero.** 209 model parameters per node per round.
-
-Sovereignty is enforced by tests, not prose: the node's route set is asserted
-exactly, and training payload size must not vary with dataset size — a
-response that grows with record count is carrying records whatever it is
-named.
+**Field records transmitted: zero.** 209 model parameters per node per round. What holds between five countries holds between five states.
 
 ```bash
-python federation/run_experiment.py          # the measured result
-docker compose -f federation/docker-compose.yml up -d
-python federation/coordinator.py             # over the network
+python federation/run_experiment.py
 ```
 
 ---
 
-## Google AI integration
+## 🧯 Honesty as a feature
 
-| Service | Use |
-|---|---|
-| **Gemini 3.7 Flash** | Conversation, tool orchestration, 24-language generation |
-| **Gemini multimodal** | Crop disease diagnosis from photographs, structured output |
-| **Gemini TTS** | Reading advice aloud in the farmer's language |
-| **Gemini audio understanding** | Transcribing spoken questions |
-| **`gemini-embedding-001`** | Retrieval over the advisory corpus, including across languages |
-| **Vertex AI** | Production path — IAM, VPC-SC, audit logging, `asia-south1` residency |
-| **Cloud Run** | Deployment target, scale-to-zero |
+Every claim carries provenance one tap away in the Evidence Ledger. More importantly, the system is built to say no:
 
-Both credential paths work from identical code: an AI Studio key for zero
-setup, or Vertex AI with workload identity so there is no key to rotate.
+- A photograph that cannot support a diagnosis is **refused**, with instructions for a better one.
+- **No pesticide dose is ever emitted.** The response schema has no field for one.
+- **A banned pesticide is named as banned** — and monocrotophos, which is *restricted* rather than banned, is described exactly that way, because overstating the law spends the credibility the real warnings depend on.
+- **No price forecasting.** Today's rate and the MSP floor, which is a floor and not a prediction.
+- Soil data displaced by the urban mask **discloses the displacement**.
+- Below 0.62 similarity, **nothing is quoted**.
+- **A figure absent from its source raises a warning** naming who to confirm with.
 
-Model selection falls back down a chain on capacity errors, because flagship
-capacity is genuinely tight and a farmer deciding whether to irrigate cannot
-be told the model is busy.
+### Known limitations, stated plainly
+
+- The advisory corpus is **4,640 of 6,396 passages** indexed, crop-production first. Embedding is rationed at 1,000 texts per key per day.
+- **Retrieval does not stop the model inventing; a check does.** Asked how to deworm a buffalo calf, the assistant retrieved genuine ICAR passages giving Albendazole at 10 mg/kg, then added a dosing schedule and a second drug that appear in no passage. Two rounds of prompt-writing did not stop it; the grounding check did. It is a net, not a cure.
+- Satellite **verdict thresholds** are validated at the population level, not per field. 22 real fields give 77% on track, 9% behind, 9% severely behind — the shape a productive region should have. That shows the thresholds are calibrated; it does not show any individual verdict is right.
+- Federation training data is **generated, not collected** — from real soil, real climate and a validated water balance, but generated.
+- A federation node holding a **single record** publishes aggregates that are that record. Production needs a k-anonymity floor. There is a test that says so.
+- The advisory corpus is **English only** so far. Cross-language retrieval already works, so this costs fidelity rather than coverage.
+- The retrieval **score floor is calibrated against a written test set**, not a published benchmark — none exists for Indian agricultural advisory retrieval.
+- On the free Render deployment the **soil map is absent** (158 MB, not in the repository), so soil falls back to ISRIC's live service and the field panel is slow. The container carries the map; the free host cannot.
 
 ---
 
-## It costs nothing to run
+## 🌐 Data sources
 
-Every service the platform depends on is free, and that is a design
-constraint rather than an accident. The realistic first deployment is a state
-agriculture department or a farmer producer organisation, and anything
-requiring a procurement cycle before it answers one question does not get
-deployed.
-
-| Service | Cost | Key needed |
-|---|---|---|
-| Gemini API (AI Studio) | Free tier | Yes, free, no card |
-| ISRIC SoilGrids | Free | No |
-| Open-Meteo (forecast + ERA5) | Free | No |
-| Microsoft Planetary Computer (Sentinel-2) | Free | No |
-| OpenStreetMap Nominatim | Free | No |
-| data.gov.in (Agmarknet) | Free | Yes, free, no card |
-
-No billing account. No credit card. Nothing that requires a purchase order.
-
-The one limit worth knowing is that the Gemini free tier allows **20 requests
-per minute**, and a single conversation turn costs several. That is fine for
-a farmer and tight for a live demo where someone clicks quickly, so the model
-chain degrades to a slightly older Flash model rather than failing.
-
-**Vertex AI is opt-in and off by default.** It is the right production
-posture at national scale — IAM, VPC-SC, audit logging, regional data
-residency — and `deploy/cloudrun.sh` is written and ready for it, but nothing
-requires it and the platform is fully functional without ever enabling it.
-
-## Data sources
-
-All open-licensed, all globally available, none requiring a per-country
-agreement — which is what makes one platform work across every BRICS member.
+All open-licensed, all globally available, none requiring a per-country agreement — which is what makes one platform work across every BRICS member.
 
 | Source | Use | Licence |
 |---|---|---|
@@ -354,58 +308,40 @@ agreement — which is what makes one platform work across every BRICS member.
 | Agmarknet via data.gov.in | Daily mandi prices, ~3,000 APMC markets | GODL-India |
 | OpenStreetMap Nominatim | Place name → coordinates | ODbL |
 | Vikaspedia (C-DAC, MeitY) | Published advisory passages, quoted with attribution | GODL-India |
-
-Satellite reads use **Google Earth Engine** when credentials are present
-(server-side reduction) and fall back to Planetary Computer STAC otherwise,
-so the platform works with no account at all.
+| CACP / CIBRC | MSP floors; banned-pesticide list — both verified against PIB releases and dated in the data files | GODL-India |
 
 ---
 
-## Running it
+## 🐳 Running with Docker
+
+One container serves the API and the PWA. No reverse proxy to configure — the realistic first deployment is a state agriculture department or an FPO with no platform team.
 
 ```bash
-docker compose -f deploy/docker-compose.yml up --build
+docker build -t agrin .
+docker run -p 8080:8080 --env-file .env agrin
 ```
 
-Open http://localhost:8080. Only `GEMINI_API_KEY` is required — free from
-[aistudio.google.com/apikey](https://aistudio.google.com/apikey). Soil,
-weather and satellite need no key at all.
+Then open http://localhost:8080.
 
-Mandi prices work without a key too, but fall back to data.gov.in's shared
-demonstration key, which is throttled across every project using it. Set
-`DATA_GOV_IN_KEY` to your own (free, from data.gov.in → My Account) and the
-rate limiting disappears.
+---
 
-Deploy to Cloud Run:
+## ☁️ Deploying
+
+### Render (free, what the live link runs on)
+
+`render.yaml` is a blueprint: [dashboard.render.com/blueprints](https://dashboard.render.com/blueprints) → New Blueprint Instance → this repository. It prompts for `GEMINI_API_KEYS` and `DATA_GOV_IN_KEY` rather than anything being committed. Free instances sleep after 15 minutes idle and take about a minute to wake.
+
+### Google Cloud Run (the production path)
 
 ```bash
-export GOOGLE_CLOUD_PROJECT=your-project
+export GOOGLE_CLOUD_PROJECT=your-project-id
 ./deploy/cloudrun.sh
 ```
 
-Verify a running instance:
-
-```bash
-python scripts/smoke_test.py
-```
-
-### Built for India, at India's scale
-
-`scripts/prewarm_india.py` seeds the soil cache across 15 agricultural
-regions at district spacing, so a farmer's first question is never cold
-anywhere in the country. 269 points are cached; the script is resumable.
+Deploys to `asia-south1` (Mumbai) — an Indian agricultural service, so latency and data residency both argue for keeping it in-country. Scale-to-zero means an off-season district costs nothing. Set `GOOGLE_GENAI_USE_VERTEXAI=true` to run against Vertex AI with workload identity instead of an API key, so there is nothing to rotate.
 
 ---
 
-## Layout
+## 💸 It costs nothing to run
 
-```
-packages/agronomy/   Validated agronomic models + 197 tests
-packages/geo/        Data clients, caching, provenance
-packages/rag/        Advisory corpus: extraction, chunking, retrieval
-apps/api/            Gemini orchestrator, tool layer, vision
-apps/web/            Conversation-first interface
-federation/          Five-node BRICS federated learning
-deploy/              Cloud Run and on-premise
-scripts/             Live validation, smoke test, India prewarm
-```
+Every service the platform depends on is free, and that is a design constraint rather than an accident. The realistic first deployment is a state agriculture department or a farmer producer organisation, and anything that needs a purchase order before it answers one question does not get deployed.
