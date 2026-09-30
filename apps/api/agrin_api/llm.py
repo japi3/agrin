@@ -196,10 +196,32 @@ DEFAULT_COOLDOWN_S = 45.0
 # loop makes several model calls per question, so a single farmer question
 # walked the graveyard three or four times over.
 #
-# An hour rather than "until midnight Pacific" because the reset time needs
-# timezone data this image does not carry, and because re-probing hourly is
-# cheap insurance against having read the quota wrong.
-DAILY_QUOTA_COOLDOWN_S = 3600.0
+# Until the allowance actually returns, which is midnight Pacific.
+#
+# This was an hour, on the reasoning that the reset time needs timezone data
+# the image does not carry and that re-probing is cheap insurance. Re-probing
+# is not cheap. Measured on a turn that took 84 seconds: 78 of them were the
+# first model call walking sixteen key-and-model pairs whose daily allowance
+# was gone, each one a real round trip, because the hour had elapsed and they
+# had all come back into rotation. The allowance had not returned and would
+# not for hours; only the cooldown had expired.
+#
+# No timezone database is needed for this. Midnight Pacific is 07:00 UTC in
+# daylight time and 08:00 in standard time, and 07:00 is the right one to
+# pick: guessing early costs one wasted request that re-cools immediately,
+# where guessing late throws away an hour of allowance that had returned.
+DAILY_RESET_UTC_HOUR = 7
+
+
+def seconds_until_daily_reset(now: float | None = None) -> float:
+    """How long until the free tier's daily allowance returns."""
+    import datetime as _dt
+    moment = _dt.datetime.fromtimestamp(now or time.time(), _dt.timezone.utc)
+    reset = moment.replace(hour=DAILY_RESET_UTC_HOUR, minute=0, second=0,
+                           microsecond=0)
+    if reset <= moment:
+        reset += _dt.timedelta(days=1)
+    return (reset - moment).total_seconds()
 
 
 # How long to write off a model the service says is out of capacity.
@@ -270,7 +292,7 @@ def note_rate_limited(model: str, exc: Exception, key_index: int = 0) -> None:
     # model. Its retryDelay describes when the rate limiter will next accept
     # a request, not when the allowance returns, so it must not be believed.
     if "PerDay" in text or "per day" in text.lower():
-        _cooldowns[(key_index, model)] = time.time() + DAILY_QUOTA_COOLDOWN_S
+        _cooldowns[(key_index, model)] = time.time() + seconds_until_daily_reset()
         _save_cooldowns()
         return
 
@@ -390,6 +412,11 @@ def request_candidates(preferred: str | None = None) -> list[tuple[int, str]]:
     pairs = [(k, m) for m in chain for k in keys]
     ready = [p for p in pairs if not is_cooling_down(p[1], p[0])]
     cooling = [p for p in pairs if is_cooling_down(p[1], p[0])]
+    # Soonest to recover first. When everything is cooling -- which is the
+    # state that produced the 78-second first call -- the order the dead
+    # pairs are tried in is the only thing left to get right, and the one
+    # closest to its reset is the likeliest to answer.
+    cooling.sort(key=lambda p: _cooldowns.get((p[0], p[1]), 0.0))
     return ready + cooling
 
 

@@ -351,3 +351,61 @@ class TestStaleIdentifiersFromTheBrowser:
     def test_a_missing_field_reads_as_absent_rather_than_raising(self):
         from agrin_api import storage
         assert storage.get_field("definitely-not-a-real-id") is None
+
+
+class TestADailyQuotaIsWrittenOffUntilItReturns:
+    """The one-hour cooldown was the latency.
+
+    A turn took 84 seconds; 78 of them were the first model call walking
+    sixteen key-and-model pairs whose daily allowance was gone. The hour had
+    elapsed, so every dead pair was back in rotation, and each one cost a
+    real round trip. The allowance had not returned -- only the cooldown had
+    expired.
+    """
+
+    def test_it_lands_on_the_reset_hour_not_an_offset_from_now(self):
+        """Whenever it is asked, it names the next reset -- never "an hour
+        from whenever the quota happened to run out"."""
+        import datetime as dt
+        from agrin_api import llm
+        for hour in (0, 6, 8, 23):
+            moment = dt.datetime(2026, 9, 30, hour, 30, tzinfo=dt.timezone.utc)
+            secs = llm.seconds_until_daily_reset(moment.timestamp())
+            landing = moment + dt.timedelta(seconds=secs)
+            assert landing.hour == llm.DAILY_RESET_UTC_HOUR
+            assert landing.minute == 0
+            assert 0 < secs <= 24 * 3600
+
+    def test_just_after_the_reset_it_waits_almost_a_full_day(self):
+        """The case the hour got wrong: exhausted at 07:30 UTC, the
+        allowance does not return for 23 and a half hours."""
+        import datetime as dt
+        from agrin_api import llm
+        moment = dt.datetime(2026, 9, 30, 7, 30, tzinfo=dt.timezone.utc)
+        secs = llm.seconds_until_daily_reset(moment.timestamp())
+        assert secs > 23 * 3600
+
+    def test_a_quota_write_off_uses_it(self, monkeypatch):
+        from agrin_api import llm
+        import time as _t
+        monkeypatch.setattr(llm, "api_keys", lambda: ["a"])
+        monkeypatch.setattr(llm, "_save_cooldowns", lambda: None)
+        llm._cooldowns.clear()
+        llm.note_rate_limited("gemini-q", RuntimeError("429 PerDay quota"), 0)
+        remaining = llm._cooldowns[(0, "gemini-q")] - _t.time()
+        assert remaining > 3600, "a daily quota must outlast the old one-hour guess"
+
+    def test_cooling_pairs_are_ordered_by_who_recovers_first(self, monkeypatch):
+        """When everything is cooling, the order they are tried in is all
+        that is left to get right."""
+        from agrin_api import llm
+        import time as _t
+        monkeypatch.setattr(llm, "api_keys", lambda: ["a", "b"])
+        monkeypatch.setattr(llm, "_save_cooldowns", lambda: None)
+        llm._cooldowns.clear()
+        now = _t.time()
+        for (k, m), offset in (((0, llm.DEFAULT_MODEL), 9000),
+                               ((1, llm.DEFAULT_MODEL), 60)):
+            llm._cooldowns[(k, m)] = now + offset
+        order = [p for p in llm.request_candidates() if p[1] == llm.DEFAULT_MODEL]
+        assert order[0] == (1, llm.DEFAULT_MODEL), "soonest to recover comes first"
