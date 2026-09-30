@@ -5,9 +5,9 @@
   "languages": [
     "en"
   ],
-  "passages": 4640,
+  "passages": 6396,
   "passages_available": 6396,
-  "complete": false,
+  "complete": true,
   "model": "gemini-embedding-001",
   "dimensions": 768,
   "built_on": "2026-09-30"

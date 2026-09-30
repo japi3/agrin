@@ -216,18 +216,24 @@ python scripts/release_check.py    # pre-ship checks, several languages
 
 ### Retrieval
 
-`scripts/evaluate_retrieval.py` scores the advisory corpus on 35 on-topic questions in English, Hindi, Punjabi and Hinglish, 6 that name a variety code or a molecule, and 8 off-topic questions whose only correct outcome is silence (`eval/retrieval_set.json`). Measured on 4,640 passages:
+`scripts/evaluate_retrieval.py` scores the advisory corpus on 35 on-topic questions in English, Hindi, Punjabi and Hinglish, 6 that name a variety code or a molecule, and 8 off-topic questions whose only correct outcome is silence (`eval/retrieval_set.json`). Measured on the complete 6,396-passage corpus:
 
 | Metric | Dense only | Hybrid (dense + BM25 + RRF) |
 |---|---|---|
-| Right subject ranked 1st | 29/35 | 29/35 |
-| Right subject in top 3 | 33/35 | 33/35 |
+| Right subject ranked 1st | 30/35 | 30/35 |
+| Right subject in top 3 | **35/35** | **35/35** |
 | Off-topic questions abstained | **8/8** | **8/8** |
-| Typed token present in top passage | 5/6 | **6/6** |
-| Margin at the floor | +0.043 | +0.026 |
-| Search time (median) | 0.1 ms | 0.6 ms |
+| Typed token present in top passage | 4/6 | **6/6** |
+| Margin at the floor | +0.040 | +0.023 |
+| Search time (median) | 0.4 ms | 0.9 ms |
 
 Hybrid buys exact tokens — a variety code or a molecule name, where being wrong is worst — and costs margin. Both abstain on everything off-topic.
+
+The margin is the number to watch. At the full corpus the weakest correct
+answer scores 0.629 and the strongest wrong one 0.606, so the 0.62 floor
+still separates them — by nine thousandths. It has held as the corpus grew
+from 399 passages to 6,396, but it is thin, and a larger corpus is the thing
+most likely to close it.
 
 ```bash
 python scripts/evaluate_retrieval.py                # hybrid, as deployed
@@ -280,7 +286,6 @@ Every claim carries provenance one tap away in the Evidence Ledger. More importa
 
 ### Known limitations, stated plainly
 
-- The advisory corpus is **4,640 of 6,396 passages** indexed, crop-production first. Embedding is rationed at 1,000 texts per key per day.
 - **Retrieval does not stop the model inventing; a check does.** Asked how to deworm a buffalo calf, the assistant retrieved genuine ICAR passages giving Albendazole at 10 mg/kg, then added a dosing schedule and a second drug that appear in no passage. Two rounds of prompt-writing did not stop it; the grounding check did. It is a net, not a cure.
 - Satellite **verdict thresholds** are validated at the population level, not per field. 22 real fields give 77% on track, 9% behind, 9% severely behind — the shape a productive region should have. That shows the thresholds are calibrated; it does not show any individual verdict is right.
 - Federation training data is **generated, not collected** — from real soil, real climate and a validated water balance, but generated.

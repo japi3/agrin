@@ -102,15 +102,26 @@ def check_advisory_index() -> None:
 
     directory = pathlib.Path(__file__).resolve().parents[1] / "data" / "advisory"
     vectors_file = directory / "vectors.npy"
-    chunks_file = directory / "chunks.jsonl"
+    # The passages ship gzipped; the plain name is still read so an index
+    # built by an older copy of the builder is not reported as missing.
+    # This check itself said "not built" for a complete index once, because
+    # it was looking only for the uncompressed name.
+    gz = directory / "chunks.jsonl.gz"
+    plain = directory / "chunks.jsonl"
+    chunks_file = gz if gz.exists() else plain
     if not vectors_file.exists() or not chunks_file.exists():
         record("Advisory index present", WARN,
                "not built; the assistant runs without it")
         return
 
+    import gzip
     import numpy as np
     rows = len(np.load(vectors_file))
-    lines = sum(1 for line in open(chunks_file, encoding="utf-8") if line.strip())
+    opener = (lambda: gzip.open(chunks_file, "rt", encoding="utf-8")) \
+        if chunks_file.suffix == ".gz" else \
+        (lambda: open(chunks_file, encoding="utf-8"))
+    with opener() as handle:
+        lines = sum(1 for line in handle if line.strip())
     matched = rows == lines
     record("Advisory index is a matched pair", PASS if matched else FAIL,
            f"{rows} vectors, {lines} passages"
