@@ -144,7 +144,7 @@ agrin/
 ├── scripts/                      # Corpus builder, evaluation, smoke test, release check
 ├── deploy/                       # cloudrun.sh, huggingface/
 ├── docs/ARCHITECTURE.md
-├── deck/                         # 12-slide submission deck + architecture diagram
+├── deck/                         # Slide deck + architecture diagram
 ├── Dockerfile                    # One container: API + PWA
 ├── render.yaml                   # Render blueprint (free plan)
 └── requirements.txt              # + requirements-geo.txt for GDAL/satellite
@@ -237,8 +237,6 @@ python scripts/evaluate_retrieval.py --dense-only   # the comparison
 Full reports: [eval/results_hybrid.md](eval/results_hybrid.md), [eval/results_dense.md](eval/results_dense.md). The questions were written by the team, not collected from farmers; a field test set is future work.
 
 ### Agronomy
-
-This is the part we would want a judge to check first.
 
 | Component | Standard | How it is checked |
 |---|---|---|
