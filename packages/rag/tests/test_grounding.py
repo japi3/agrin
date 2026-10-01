@@ -99,3 +99,59 @@ class TestExtraction:
 
     def test_it_is_case_insensitive(self):
         assert quantities("10 MG/KG") == quantities("10 mg/kg")
+
+
+# The passages actually retrieved for the buffalo-calf question, abridged but
+# verbatim. The last two are the ones that defeated the first version of this
+# check: they are about rice herbicide timing and microgreens, and they
+# supplied "35 days" and "14 days" to a claim about deworming calves.
+RETRIEVED = [
+    "Deworming of all the adult stock with broad spectrum antihelmintic, "
+    "Albendazole (Dose: 10 mg/ kg Body weight) during Last week of September. "
+    "Dry fodder: 7 Kg, Green fodder: 10 -15 kg, concentrate mixture: 2Kg.",
+    "Deworm your animals with Albendazole or Fenbendazole @ 10mg/kg body "
+    "weight. Protect your birds from coccidiosis with cordinal powder @ 1g/litre.",
+    "post-emergence herbicide application (bispyribac sodium 25g/ha) at 25-35 "
+    "days after sowing or hand weeding at 35-45 days after sowing.",
+    "Microgreens are harvested in a gap of 7-14 days under tropical conditions.",
+]
+
+
+class TestANumberNeedsTheRightNeighbours:
+    """The failure that a bag-of-quantities check cannot see.
+
+    The first version asked only whether a number appeared somewhere in the
+    retrieved text. It does: 119 passages in this corpus mention 14, 35 or
+    56 days, none of them about calves. So a fabricated dosing schedule
+    passed, with a government citation attached.
+    """
+
+    def test_the_fabricated_schedule_is_caught(self):
+        answer = ("Calves should be dewormed on the 14th day, 35th day and "
+                  "56th day of life.")
+        missing = unsupported_quantities(answer, RETRIEVED)
+        assert {"14day", "35day", "56day"} <= missing
+
+    def test_a_coincidence_in_an_unrelated_passage_does_not_vouch_for_it(self):
+        """"35 days after sowing", about rice herbicide, must not support a
+        claim about deworming."""
+        answer = "Deworm the calf on the 35th day."
+        assert "35day" in unsupported_quantities(answer, RETRIEVED)
+
+    def test_the_real_dose_beside_the_real_drug_still_passes(self):
+        """The check has to stay quiet on correct answers or it gets
+        ignored, and then it protects nobody."""
+        answer = ("Deworm with Albendazole at 10 mg/kg of body weight in the "
+                  "last week of September.")
+        assert unsupported_quantities(answer, RETRIEVED) == set()
+
+    def test_a_figure_is_judged_by_the_sentence_it_is_in(self):
+        """Two claims, both supported, each by a different passage."""
+        answer = ("Deworm with Albendazole at 10 mg/kg. Give 7 kg of dry "
+                  "fodder daily.")
+        assert unsupported_quantities(answer, RETRIEVED) == set()
+
+    def test_a_sentence_with_no_subject_words_falls_back_to_presence(self):
+        """Nothing to corroborate against is not evidence of invention, so
+        the weaker test applies rather than a flag the writer cannot act on."""
+        assert unsupported_quantities("10 mg/kg.", RETRIEVED) == set()

@@ -41,6 +41,8 @@ import re
 
 # A number and the unit attached to it. Units are the ones that appear in
 # agricultural and veterinary advice: doses, rates, areas, intervals.
+_SENTENCE = re.compile(r"(?<=[.!?।])\s+|\n+")
+
 _UNIT = (
     r"%|mg\s*(?:/|per\s+)\s*kg|ml\s*(?:/|per\s+)\s*(?:kg|l|litre)|"
     r"mg|ml|gm|g|kg|litres?|l|"
@@ -112,32 +114,105 @@ def _canonical(number: str, unit: str) -> str:
     return f"{number}{unit}"
 
 
-def quantities(text: str) -> set[str]:
-    """Every quantity in a piece of text, in a comparable form."""
+def _normalised(text: str) -> str:
+    """Lowercased, with spelled-out units written as symbols."""
     text = (text or "").lower()
     for pattern, symbol in _SPELLED:
         text = re.sub(pattern, symbol, text, flags=re.I)
-    found = {_canonical(n, u) for n, u in _QUANTITY.findall(text)}
-    for low, high, unit in _RANGE.findall(text):
-        found.add(_canonical(low, unit))
-        found.add(_canonical(high, unit))
+    return text
+
+
+def _placed(text: str) -> list[tuple[str, int]]:
+    """Every quantity and where in the text it sits.
+
+    Positions are what makes a claim-level check possible: knowing that a
+    passage contains "14 days" somewhere is nearly worthless, and knowing
+    that it contains it next to the word "deworming" is the whole question.
+    """
+    text = _normalised(text)
+    out = [(_canonical(m.group(1), m.group(2)), m.start())
+           for m in _QUANTITY.finditer(text)]
+    for m in _RANGE.finditer(text):
+        out.append((_canonical(m.group(1), m.group(3)), m.start()))
+        out.append((_canonical(m.group(2), m.group(3)), m.start()))
+    return out
+
+
+def quantities(text: str) -> set[str]:
+    """Every quantity in a piece of text, in a comparable form."""
+    text = _normalised(text)
+    found = {q for q, _ in _placed(text)}
     for phrase, (number, unit) in _WORDS.items():
         if phrase in text:
             found.add(_canonical(number, unit))
     return found
 
 
+# How far from a quantity a word may sit and still be about it. Roughly a
+# sentence either side: wide enough that "Albendazole (Dose: 10 mg/kg Body
+# weight)" counts, narrow enough that a number in the next paragraph does
+# not.
+CONTEXT_WINDOW = 170
+
+# Words too common to tie a number to a subject.
+_STOP = {
+    "the", "and", "for", "with", "this", "that", "from", "should", "which",
+    "your", "their", "will", "can", "may", "are", "was", "were", "been",
+    "also", "then", "than", "when", "where", "what", "into", "over", "per",
+    "about", "after", "before", "during", "while", "each", "every", "some",
+    "give", "given", "giving", "used", "using", "use", "done", "being",
+}
+
+
+def _subject_words(sentence: str) -> set[str]:
+    """The words that say what a sentence is about."""
+    return {
+        w for w in re.findall(r"[a-z]{4,}", _normalised(sentence))
+        if w not in _STOP
+    }
+
+
 def unsupported_quantities(answer: str, passages: list[str]) -> set[str]:
     """Quantities the answer states that no passage supports.
 
-    An empty result means every figure in the answer can be pointed at in the
-    source. It does not mean the answer is right -- prose can still mislead --
-    only that the numbers were not made up.
+    Supported means more than "this number appears somewhere in the
+    retrieved text". That weaker test is what the first version did, and it
+    passed a fabricated calf-deworming schedule of day 14, day 35 and day 56
+    because the corpus happened to contain "35 days after sowing" in a rice
+    herbicide passage and "7-14 days" in one about microgreens. 119 passages
+    in this corpus mention those intervals and not one is about calves. With
+    passages this long, almost any plausible number finds a coincidence.
+
+    So a quantity counts as supported only where it appears in a passage
+    *near a word the answer used around it*. "10 mg/kg" beside "Albendazole"
+    is evidence; "35 days" beside "bispyribac sodium" is not, however much
+    the digits agree.
+
+    An empty result means every figure can be pointed at in the source. It
+    does not mean the answer is right -- prose can still mislead -- only
+    that the numbers were not invented.
     """
-    supported: set[str] = set()
-    for passage in passages:
-        supported |= quantities(passage)
-    return quantities(answer) - supported
+    placed = [(_normalised(p), _placed(p)) for p in passages]
+
+    def supported(quantity: str, subject: set[str]) -> bool:
+        for text, positions in placed:
+            for found, at in positions:
+                if found != quantity:
+                    continue
+                if not subject:
+                    return True      # nothing to corroborate against
+                window = text[max(0, at - CONTEXT_WINDOW):at + CONTEXT_WINDOW]
+                if any(word in window for word in subject):
+                    return True
+        return False
+
+    missing: set[str] = set()
+    for sentence in _SENTENCE.split(answer or ""):
+        subject = _subject_words(sentence)
+        for quantity in {q for q, _ in _placed(sentence)}:
+            if not supported(quantity, subject):
+                missing.add(quantity)
+    return missing
 
 
 # What to say when the check fails.
