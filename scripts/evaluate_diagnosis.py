@@ -158,6 +158,11 @@ async def main() -> int:
     failures: list[str] = []
     durations: list[float] = []
     quota_hit = False
+    # vision.py catches a spent quota and answers with a polite abstain, so
+    # the exception check below never sees it. Counted apart, these are not
+    # a model failure and their near-instant return is not a timing.
+    unanswered = consecutive_unanswered = 0
+    total = len(items)
 
     for n, item in enumerate(items, 1):
         path = IMAGES / item["class"] / item["file"]
@@ -178,6 +183,18 @@ async def main() -> int:
                 break
             failures.append(f"{item['file']}: {type(exc).__name__}")
             continue
+
+        if not result.get("ok") and "not responding" in result.get(
+                "abstain_reason", ""):
+            unanswered += 1
+            consecutive_unanswered += 1
+            if consecutive_unanswered >= 3:
+                print(f"\nservice stopped answering after {n} images "
+                      f"(quota, most likely); reporting what was scored")
+                quota_hit = True
+                break
+            continue
+        consecutive_unanswered = 0
         durations.append(time.time() - started)
 
         if not result.get("ok"):
@@ -228,7 +245,9 @@ async def main() -> int:
                 out = await diagnose_crop_photo(
                     ruined, "image/jpeg", latitude=LAT, longitude=LON,
                     language="en", language_name="English")
-                if not out.get("ok") or not out.get("image_usable", True):
+                if "not responding" in out.get("abstain_reason", ""):
+                    tried_unusable = 0  # an outage is not a refusal
+                elif not out.get("ok") or not out.get("image_usable", True):
                     refused = 1
                 else:
                     failures.append(
@@ -282,6 +301,11 @@ async def main() -> int:
             f"*{time.strftime('%Y-%m-%d')} · {scored} labelled images from "
             f"PlantVillage (CC0) · {mode} · `eval/diagnosis_set.json`*\n\n"
         )
+        if scored < total:
+            header += (
+                f"**Partial run: {scored} of {total} images scored.** The rest "
+                f"went unanswered (quota) and are not counted either way.\n\n"
+            )
         args.out.write_text(header + "\n".join(lines) + "\n", encoding="utf-8")
         print(f"wrote {args.out}")
     return 0

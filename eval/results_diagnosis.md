@@ -1,17 +1,17 @@
 # Photo-diagnosis evaluation
 
-*2026-10-01 · 5 labelled images from PlantVillage (CC0) · crop known, as in the app · `eval/diagnosis_set.json`*
+*2026-10-01 · 11 labelled images from PlantVillage (CC0) · crop known, as in the app · `eval/diagnosis_set.json`*
+
+**Partial run: 11 of 60 images scored.** The rest went unanswered (quota) and are not counted either way.
 
 | Metric | Result |
 |---|---|
-| Disease named first | **3/4 (75%)** |
-| Disease among the candidates | **4/4 (100%)** |
-| Healthy leaves left alone | **0/1** |
-| Unusable photograph refused | 1/1 |
-| Time per photograph (median) | 30.5 s |
+| Disease named first | **5/11 (45%)** |
+| Disease among the candidates | **10/11 (90%)** |
 
-Failures (2):
-  - 2c22b17b-e914-453a-a379-15b29fe294b0___RS_HL 9720.JPG: healthy leaf diagnosed as “spider mites”
-  - cbea79a3-7a68-4d16-b509-c84f333f9a38___R.S_HL 8137 copy 2.jpg: called a clean image unusable
+Not measured on this run: healthy leaves (none of the 15 was answered), the unusable-photograph refusal (it ran after quota was gone, so the service's own error was counted as a refusal), and time per photograph (the recorded median of 0.0 s timed instant error returns, not diagnoses).
+
+Failures among the scored images (1):
+  - 21a4dee8-257f-48ea-90d2-0d2402b1a88a___UF.GRC_YLCV_Lab 01524.JPG: wanted “yellow leaf curl virus”, got “magnesium deficiency”
 
 Laboratory images on plain backgrounds. A field photograph has soil, shadow, overlapping leaves and camera shake; treat these as an upper bound, not an estimate of field performance.
