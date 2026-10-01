@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { RenderCard, EvidenceLedger } from './components/Cards'
 import { FieldPanel } from './components/FieldPanel'
 import { useT, setUiLanguage } from './lib/i18n'
+import { speechLanguage } from './lib/script'
 import { streamChat, fetchLanguages, fetchHealth, saveField, session,
          type LanguageInfo, type EvidenceEntry } from './lib/api'
 
@@ -402,7 +403,13 @@ export default function App() {
    * does not, ask the server, which synthesises through Gemini.
    */
   const speak = useCallback(async (text: string) => {
-    const tag = SPEECH_TAG[lang] || 'en-IN'
+    // The script of the reply, not the interface picker. Those disagree
+    // whenever someone asks in their own language with the picker left on
+    // English, which is common -- and when they disagreed, a Punjabi reply
+    // went to an English voice, which cannot pronounce Gurmukhi and reads
+    // out the surviving punctuation instead. See lib/script.ts.
+    const spokenLang = speechLanguage(text, lang)
+    const tag = SPEECH_TAG[spokenLang] || 'en-IN'
 
     // Stop anything already playing, from either path.
     stopSpeaking()
@@ -449,7 +456,7 @@ export default function App() {
         const r = await fetch('/api/speak', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: chunk, language: lang }),
+          body: JSON.stringify({ text: chunk, language: spokenLang }),
           signal: run.controller.signal,
         })
         if (!r.ok) throw new Error(String(r.status))
