@@ -47,7 +47,29 @@ from google.genai import types
 # `or` rather than a get() default: an environment variable set to an
 # empty string is not unset, and "" would reach the SDK as the model name
 # and fail every request with "model is required".
-DEFAULT_MODEL = os.environ.get("AGRIN_MODEL") or "gemini-3.6-flash"
+#
+# The default is chosen by scripts/benchmark_models.py, which runs a real
+# question rather than asking for one token, because speed and usefulness
+# are different questions. Over three runs each:
+#
+#   gemini-3-flash-preview   10.6s   called soil, weather, farm, guidance
+#   gemini-3.6-flash         13.8s   called farm and weather only
+#   gemini-3.5-flash         31.5s
+#   gemini-3.5-flash-lite     8.4s   48-character answers, every run
+#
+# flash-lite is the fastest and the wrong choice: a 48-character reply to a
+# question about irrigation is a stub, not advice. It stays in the chain
+# because a terse answer beats an outage.
+#
+# The default carries one risk worth stating: `preview` in a model name is
+# a warning that it can be withdrawn without notice, which is exactly how
+# gemini-3.7-flash broke this service. Run probe_models.py before anything
+# that matters.
+#
+# The vision model is deliberately NOT changed with it. Reading a
+# photograph of a diseased leaf is a different task from routing tools, and
+# nothing here has measured it, so it stays on the model that was working.
+DEFAULT_MODEL = os.environ.get("AGRIN_MODEL") or "gemini-3-flash-preview"
 VISION_MODEL = os.environ.get("AGRIN_VISION_MODEL") or "gemini-3.6-flash"
 
 # Ordered fallback chain, tried when the preferred model returns 503
@@ -79,7 +101,7 @@ MODEL_FALLBACK_CHAIN = [
     m.strip()
     for m in (
         os.environ.get("AGRIN_MODEL_FALLBACKS")
-        or "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.5-flash-lite"
+        or "gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.5-flash"
     ).split(",")
     if m.strip()
 ]

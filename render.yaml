@@ -36,8 +36,8 @@ services:
       # Verify with scripts/probe_models.py before a demonstration. Model
       # names expire; this list was measured on 2026-10-26.
       - key: AGRIN_MODEL
-        value: gemini-3.6-flash
+        value: gemini-3-flash-preview
       - key: AGRIN_MODEL_FALLBACKS
-        value: gemini-3.5-flash,gemini-3-flash-preview,gemini-3.5-flash-lite
+        value: gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.5-flash
       - key: AGRIN_CORS_ORIGINS
         value: "*"

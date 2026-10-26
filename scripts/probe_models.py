@@ -115,6 +115,7 @@ async def main() -> int:
     print(f"  {'-' * 26} {'-' * 4}  {'-' * 11} {'-' * 7}")
 
     dead: list[str] = []
+    spent: list[str] = []
     for position, model in enumerate(models):
         outcomes = []
         for index, key in enumerate(keys, 1):
@@ -124,11 +125,27 @@ async def main() -> int:
             print(f"  {model:26} {index:>4}  {status:11} {elapsed:6.1f}s{note}")
         if "OK" not in outcomes:
             label = "default" if position == 0 else f"fallback {position}"
-            dead.append(f"{model} ({label})")
+            # A spent daily allowance and a withdrawn model look equally
+            # dead in a probe and need opposite responses: one resets at
+            # midnight UTC and the key rotation already covers it, the
+            # other is a timeout on every request until someone edits the
+            # configuration. Reporting them together is how you end up
+            # deleting a working model, or keeping a dead one.
+            if all(o == "429 quota" for o in outcomes):
+                spent.append(f"{model} ({label})")
+            else:
+                dead.append(f"{model} ({label})")
 
     print()
+    if spent:
+        print("Out of quota on the key(s) probed — not broken, back at 00:00 UTC:")
+        for name in spent:
+            print(f"  - {name}")
+        print("  (probe without --first-key-only to see whether other keys have room)")
+        print()
     if dead:
-        print("Dead on every key — each one is a timeout every request pays:")
+        print("Not answering, for reasons that will not fix themselves —")
+        print("each one is a timeout every request pays:")
         for name in dead:
             print(f"  - {name}")
         print("\nRemove them from AGRIN_MODEL / AGRIN_MODEL_FALLBACKS, in the")
@@ -136,6 +153,10 @@ async def main() -> int:
         print("variable set in the Render dashboard overrides the code default,")
         print("so changing llm.py alone will not fix the deployment.")
         return 1
+
+    if spent:
+        print("Nothing is broken; the allowance is just spent on these keys.")
+        return 0
 
     print("Every configured model answered.")
     return 0

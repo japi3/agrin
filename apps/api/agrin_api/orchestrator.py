@@ -57,6 +57,25 @@ MAX_TOOL_ROUNDS = 6
 # is still holding the phone at three.
 MODEL_ATTEMPT_BUDGET_S = float(os.environ.get("AGRIN_MODEL_BUDGET_S", "70"))
 
+# Total seconds for one question, across every round.
+#
+# The budget above caps a single round. Nothing capped the turn, so the
+# worst case was six rounds of it -- a model budget plus a 90-second tool
+# wait each time, which is minutes. That is not theoretical: with two
+# withdrawn models at the head of the chain, a question took 252 seconds
+# and then returned an error, having never reached a model that worked.
+#
+# Nobody waits four minutes for an answer about irrigation, and nobody
+# waits four minutes to be told the service is busy. The second is worse,
+# because the time bought nothing. Past this budget the turn stops where it
+# is and says so, keeping whatever it has already said.
+#
+# 90 seconds rather than something tighter because a legitimate question
+# that needs soil, weather and the water balance genuinely takes 10-30
+# seconds on a good day, and the point is to cut off pathology, not to fail
+# slow-but-working requests.
+TURN_BUDGET_S = float(os.environ.get("AGRIN_TURN_BUDGET_S", "90"))
+
 # Tools whose field identifier is supplied by the server, never by the model.
 #
 # The model has no business choosing which farm to read or write. Injecting
@@ -124,7 +143,8 @@ class TurnState:
 
 
 async def _run_tool(
-    name: str, args: dict[str, Any], field_id: str | None = None
+    name: str, args: dict[str, Any], field_id: str | None = None,
+    deadline: float | None = None,
 ) -> dict[str, Any]:
     """Execute one tool, converting any failure into a structured result.
 
@@ -149,8 +169,13 @@ async def _run_tool(
         # discarded in favour of the server's own view of the conversation.
         args = {**args, "field_id": field_id}
 
+    # 90 seconds, or whatever is left of the turn if that is less. A tool
+    # allowed to run past the turn budget cannot have its result used, so
+    # waiting for it only delays telling the farmer.
+    budget = 90.0 if deadline is None else max(1.0, deadline - time.time())
+
     try:
-        return await asyncio.wait_for(impl(**args), timeout=90.0)
+        return await asyncio.wait_for(impl(**args), timeout=budget)
     except asyncio.TimeoutError:
         return {
             "ok": False,
@@ -400,7 +425,16 @@ async def stream_turn(
     contents = llm.to_contents(messages)
     model_id = model or llm.DEFAULT_MODEL
 
+    turn_exhausted = False
+    turn_deadline = state.started_at + TURN_BUDGET_S
+
     for _round in range(MAX_TOOL_ROUNDS):
+        # Checked before the round rather than during it: starting a round
+        # we cannot afford means paying for it in full before noticing.
+        if time.time() - state.started_at > TURN_BUDGET_S:
+            turn_exhausted = True
+            break
+
         collected_text: list[str] = []
         function_calls: list[types.FunctionCall] = []
         stream = None
@@ -552,10 +586,12 @@ async def stream_turn(
         place_calls = [fc for fc in function_calls if fc.name == "find_place"]
         results_by_id: dict[int, dict[str, Any]] = {}
         for fc in place_calls:
-            results_by_id[id(fc)] = await _run_tool(fc.name, dict(fc.args or {}), field_id)
+            results_by_id[id(fc)] = await _run_tool(
+                fc.name, dict(fc.args or {}), field_id, deadline=turn_deadline)
         other_calls = [fc for fc in function_calls if fc.name != "find_place"]
         other_results = await asyncio.gather(
-            *(_run_tool(fc.name, _with_place(fc, dict(fc.args or {}), state), field_id)
+            *(_run_tool(fc.name, _with_place(fc, dict(fc.args or {}), state), field_id,
+                            deadline=turn_deadline)
               for fc in other_calls)
         )
         for fc, r in zip(other_calls, other_results):
@@ -666,6 +702,15 @@ async def stream_turn(
 
         contents.append(types.Content(role="user", parts=response_parts))
 
+    if turn_exhausted:
+        # Said in the reply, not only in the event: the farmer is looking at
+        # the message, not at the network tab, and silence here reads as the
+        # app having frozen.
+        yield Event("text", {"delta": (
+            "\n\nI am taking too long on this one, so I have stopped rather "
+            "than leave you waiting. Please ask again in a moment."
+        )})
+
     yield Event(
         "done",
         {
@@ -673,8 +718,11 @@ async def stream_turn(
             "cards": state.cards,
             "tool_calls": state.tool_calls,
             "elapsed_ms": int((time.time() - state.started_at) * 1000),
-            "stop_reason": "max_tool_rounds",
+            "stop_reason": "turn_budget" if turn_exhausted else "max_tool_rounds",
             "note": (
+                f"Stopped after {TURN_BUDGET_S:.0f}s, the budget for one "
+                f"question."
+                if turn_exhausted else
                 f"Stopped after {MAX_TOOL_ROUNDS} rounds of tool use to avoid "
                 f"an unbounded loop."
             ),
