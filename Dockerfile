@@ -20,6 +20,36 @@ COPY apps/web/ ./
 RUN npm run build
 
 
+# ---------------------------------------------------------------------------
+# The soil map, fetched rather than committed.
+#
+# The 165 MB GeoTIFF cannot live in git -- GitHub rejects blobs that size and
+# the clone would be unusable anyway -- so it is a release asset. It used to
+# arrive only via `COPY data/soil/`, which works on a laptop that has built
+# the map and silently does nothing on a deployment, because a git checkout
+# of this repository contains that directory's README and nothing else.
+#
+# The cost of it silently doing nothing was not a missing feature. Every soil
+# lookup fell through to the live ISRIC service, which this codebase has
+# measured at 26s, 75s, and sometimes a timeout -- so the field panel took
+# three minutes and came back with no soil at all. Against 6 ms from the
+# local map.
+#
+# Downloading in a stage of its own keeps curl and its certificate chain out
+# of the runtime image. The checksum is pinned: a half-downloaded GeoTIFF
+# would otherwise be baked into the image and fail one coordinate at a time
+# at runtime, which is far harder to diagnose than a failed build.
+FROM debian:bookworm-slim AS soilmap
+ARG SOIL_URL=https://github.com/japi3/agrin/releases/download/soil-v1/india_soilgrids_1km.tif
+ARG SOIL_SHA256=5bf29e7256f70b40b5a3f9a44303fbb29eb1fe777427c3cd3e01be5dd31d0b2a
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fSL --retry 3 --retry-delay 5 \
+         -o /india_soilgrids_1km.tif "$SOIL_URL" \
+    && echo "$SOIL_SHA256  /india_soilgrids_1km.tif" | sha256sum -c -
+
+
 FROM python:3.12-slim AS runtime
 
 # GDAL runtime libraries are needed by rasterio for the Sentinel-2 COG reads.
@@ -38,12 +68,15 @@ COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 COPY scripts/ ./scripts/
 
-# The local soil map of India, when it has been built -- see
-# scripts/build_india_soil.py. Not under /app/data, which is a mounted volume
-# and would hide anything baked into the image at that path. In a fresh
-# checkout the directory holds only its README, and soil lookups use the
-# live service exactly as before.
-COPY data/soil/ ./soil/
+# The local soil map of India -- see scripts/build_india_soil.py. Not under
+# /app/data, which is a mounted volume and would hide anything baked into
+# the image at that path.
+#
+# The README comes from the build context; the map itself comes from the
+# stage above, so that a deployment building from a git checkout gets the
+# same map a laptop does instead of quietly falling back to the live service.
+COPY data/soil/README.md ./soil/
+COPY --from=soilmap /india_soilgrids_1km.tif ./soil/
 
 # The advisory corpus -- passages of published Indian agricultural guidance
 # and their embeddings, built by scripts/build_advisory_index.py. Same
