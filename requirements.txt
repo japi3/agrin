@@ -17,9 +17,6 @@ httpx==0.28.1
 
 numpy==2.5.2
 
-# --- Browser front end (Streamlit Cloud reads this file) ---
-streamlit==1.64.0
-
 # Satellite and Earth Engine live in requirements-geo.txt. They pull GDAL,
 # which is large and slow to install, and every import of them in this
 # codebase is inside a function -- so a deployment that does not need crop

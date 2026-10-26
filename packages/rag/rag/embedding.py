@@ -29,8 +29,8 @@ here counts texts, not calls, because that is what the service counts.
 Vectors come back at 768 dimensions rather than the default 3072. The model
 is trained so that its leading dimensions stand on their own, the smaller
 vector is four times cheaper to ship and to search, and the difference in
-retrieval quality on a corpus of twenty thousand passages is not something
-this project could honestly claim to have measured. Google's own guidance is
+retrieval quality on a corpus of this size is not something this project
+could honestly claim to have measured. Google's own guidance is
 that anything other than 3072 must be re-normalised by the caller, and that
 is done here rather than left to whoever loads the file.
 """

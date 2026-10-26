@@ -6,7 +6,7 @@ rested on a handful of questions tried by hand. The score floor in
 `rag.index` carried a comment saying it was calibrated against on- and
 off-topic questions landing at 0.71-0.79 and 0.50-0.55 -- true when it was
 written, on a corpus of 399 passages, and never rechecked as that corpus grew
-ten times larger. A number like that stops being evidence the moment the
+sixteen times larger. A number like that stops being evidence the moment the
 thing it describes changes.
 
 So: a fixed set of questions, a run that prints the same table every time,

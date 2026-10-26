@@ -1,18 +1,18 @@
 """
 Finding the right passage, with no database.
 
-The whole corpus is about twenty thousand passages. At 768 dimensions that
-is a matrix of roughly sixty megabytes, and scoring a query against all of it
-is one matrix-vector multiply -- a few milliseconds in NumPy, on a machine
-that is already doing more expensive arithmetic for the water balance. A
+The whole corpus is 6,396 passages. At 768 dimensions that is a matrix of
+under twenty megabytes in memory, and scoring a query against all of it is
+one matrix-vector multiply -- a few milliseconds in NumPy, on a machine that
+is already doing more expensive arithmetic for the water balance. A
 vector database would add a service to run, a format to keep in step, and an
 index whose approximations would have to be justified, in exchange for
 nothing measurable at this size. So: a flat file and a dot product.
 
 Vectors are stored L2-normalised, which makes cosine similarity the dot
 product and takes the per-query normalisation out of the loop. They are
-stored as float16 and widened on load: the file halves to about thirty
-megabytes, and the rounding error is far below the gap between a passage
+stored as float16 and widened on load: the file halves to 9.4 MB on disk,
+and the rounding error is far below the gap between a passage
 that answers the question and one that does not.
 
 The one substantive decision here is `MIN_SCORE`. Similarity search always

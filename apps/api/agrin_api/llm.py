@@ -30,12 +30,14 @@ from typing import Any
 from google import genai
 from google.genai import types
 
-# Gemini 2.5 Flash is the default: agronomic reasoning in this platform is
-# done by validated models in `packages/agronomy`, not by the LLM, so the
-# language model's job is routing, translation and explanation. Flash is
-# markedly faster and cheaper at that job, which matters when the user is on
-# a 2G connection paying per megabyte. Pro is available for harder
-# multi-step diagnosis via AGRIN_MODEL.
+# A Flash model is the default -- the exact one is the literal below, not
+# this comment, which is the sort of thing that goes stale the first time
+# the chain moves. What matters is Flash rather than Pro: agronomic
+# reasoning in this platform is done by validated models in
+# `packages/agronomy`, not by the LLM, so the language model's job is
+# routing, translation and explanation. Flash is markedly faster and cheaper
+# at that job, which matters when the user is on a 2G connection paying per
+# megabyte. Pro is available for harder multi-step diagnosis via AGRIN_MODEL.
 DEFAULT_MODEL = os.environ.get("AGRIN_MODEL", "gemini-3.7-flash")
 VISION_MODEL = os.environ.get("AGRIN_VISION_MODEL", "gemini-3.7-flash")
 

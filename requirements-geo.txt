@@ -6,8 +6,8 @@
 # leaving this file out costs exactly one tool (crop health from Sentinel-2)
 # and the local soil map, and nothing else.
 #
-# That is what makes a Streamlit Cloud deployment practical: it installs the
-# core in under a minute instead of risking a build timeout on GDAL.
+# That is what keeps the container build practical: the core installs in
+# under a minute instead of risking a build timeout on GDAL.
 
 rasterio==1.5.1
 pystac-client==0.9.0

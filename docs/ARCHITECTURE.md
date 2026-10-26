@@ -91,7 +91,7 @@ advisory library"* while it works.
 
 **e. The tool runs.** It embeds the question with `gemini-embedding-001`
 (rotating keys so a key cooling down from chat does not also take retrieval
-out), searches 3,968 passages by cosine similarity, applies a **0.62 floor**,
+out), searches 6,396 passages by cosine similarity, applies a **0.62 floor**,
 and returns the passages themselves — plus the list of quantities they
 contain, plus an instruction not to state any other.
 
