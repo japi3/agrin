@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from pathlib import Path
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -405,9 +406,35 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 # Built once by scripts/build_india_soil.py from ISRIC's 1 km aggregate. When
 # present, every coordinate in India answers from disk; see that script for
 # what the 1 km resolution does and does not give up.
-INDIA_SOIL_PATH = os.environ.get(
-    "AGRIN_INDIA_SOIL", "/app/soil/india_soilgrids_1km.tif"
-)
+#
+# Two defaults, not one. The path that matters in production is /app/soil,
+# where the Dockerfile puts the map. But that path does not exist on a
+# developer's machine, so a checkout with the map sitting in data/soil --
+# built, present, 158 MB of it -- looked for it at /app/soil, did not find
+# it, and silently used the live service instead. Nothing said so. The only
+# symptom was that everything touching soil took 26 to 75 seconds locally
+# and nobody could see why, which cost a benchmark run to work out.
+#
+# So the repository copy is checked too, and an explicit AGRIN_INDIA_SOIL
+# still overrides both.
+# packages/geo/geo/soilgrids.py -> packages/geo/geo -> packages/geo ->
+# packages -> the repository root.
+_REPO_SOIL = Path(__file__).resolve().parents[3] / "data" / "soil" / "india_soilgrids_1km.tif"
+
+
+def _default_soil_path() -> str:
+    override = os.environ.get("AGRIN_INDIA_SOIL")
+    if override:
+        return override
+    packaged = "/app/soil/india_soilgrids_1km.tif"
+    if os.path.exists(packaged):
+        return packaged
+    if _REPO_SOIL.exists():
+        return str(_REPO_SOIL)
+    return packaged
+
+
+INDIA_SOIL_PATH = _default_soil_path()
 _NODATA = -32768
 
 _local_dataset = None

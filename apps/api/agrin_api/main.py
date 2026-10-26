@@ -723,7 +723,19 @@ if _WEB_DIST.exists():
 
     @app.get("/{full_path:path}")
     async def spa(full_path: str):
-        """Serve the SPA, falling back to index.html for client-side routes."""
+        """Serve the SPA, falling back to index.html for client-side routes.
+
+        Except under /api. This route matches anything the real routes did
+        not, so a mistyped or withdrawn endpoint was answered with the HTML
+        page and a 200 -- and the caller, expecting JSON, failed on "<" at
+        character 0. That sends you looking at the parser instead of at the
+        URL. `GET /api/field//summary`, with an empty id, returned the whole
+        application that way.
+
+        An unknown API path is a programming error and should say so.
+        """
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(404, f"No such endpoint: /{full_path}")
         candidate = _WEB_DIST / full_path
         if full_path and candidate.is_file():
             return FileResponse(candidate, headers={"Cache-Control": _REVALIDATE})
