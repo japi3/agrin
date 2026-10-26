@@ -157,8 +157,12 @@ agrin/
 ### 1. Install
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-geo.txt
 ```
+
+The virtual environment is not optional housekeeping. A current macOS has no `python` or `pip` on the path at all, only `python3` — so every `python scripts/…` command below fails with *command not found* until the environment is active, and then they all work. If you see that error, this step is the one you skipped.
 
 `requirements-geo.txt` is split out because it pulls GDAL. Every import of it is inside a function, so leaving it out costs exactly one tool — satellite crop health — and the local soil map.
 
