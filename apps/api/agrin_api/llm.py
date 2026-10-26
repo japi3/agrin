@@ -38,8 +38,17 @@ from google.genai import types
 # routing, translation and explanation. Flash is markedly faster and cheaper
 # at that job, which matters when the user is on a 2G connection paying per
 # megabyte. Pro is available for harder multi-step diagnosis via AGRIN_MODEL.
-DEFAULT_MODEL = os.environ.get("AGRIN_MODEL", "gemini-3.7-flash")
-VISION_MODEL = os.environ.get("AGRIN_VISION_MODEL", "gemini-3.7-flash")
+# Measured, not assumed. scripts/probe_models.py asks every model in this
+# file for one token and reports which answer; run it before trusting any
+# name here. On 2026-10-26 it found gemini-3.7-flash -- the default until
+# then -- returning 504 on three keys and 503 on the fourth, every time,
+# taking the full 45-second timeout to do it. gemini-3.6-flash answered on
+# all four keys in 2.7-13.5s.
+# `or` rather than a get() default: an environment variable set to an
+# empty string is not unset, and "" would reach the SDK as the model name
+# and fail every request with "model is required".
+DEFAULT_MODEL = os.environ.get("AGRIN_MODEL") or "gemini-3.6-flash"
+VISION_MODEL = os.environ.get("AGRIN_VISION_MODEL") or "gemini-3.6-flash"
 
 # Ordered fallback chain, tried when the preferred model returns 503
 # (high demand) or 429 (rate limited).
@@ -55,13 +64,22 @@ VISION_MODEL = os.environ.get("AGRIN_VISION_MODEL", "gemini-3.7-flash")
 # issued API keys and returns 404. A 404 is not retryable, so having it in the
 # chain meant that once the newer models were all busy the loop terminated on
 # a hard error and the farmer saw a failure instead of a slightly older model.
-# `gemini-flash-latest` anchors the end of the chain because it always
-# resolves to a current model, so the chain cannot rot as versions retire.
+#
+# Every name below answered when last probed (2026-10-26). That matters more
+# than it sounds: a dead model in this chain is not a harmless spare, it is a
+# 45-second timeout that every request pays before reaching a live one. The
+# chain as deployed began gemini-3.8-flash, and 3.8 was dead too, so a
+# question spent about ninety seconds failing over before any model saw it.
+#
+# gemini-flash-latest used to anchor the end, on the reasoning that an alias
+# to a current model cannot rot. It was dead on all four keys in the same
+# probe, so the alias rots too and the reasoning was wrong. Re-run
+# scripts/probe_models.py rather than trusting this list to age well.
 MODEL_FALLBACK_CHAIN = [
     m.strip()
-    for m in os.environ.get(
-        "AGRIN_MODEL_FALLBACKS",
-        "gemini-3.6-flash,gemini-3.5-flash,gemini-flash-latest",
+    for m in (
+        os.environ.get("AGRIN_MODEL_FALLBACKS")
+        or "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.5-flash-lite"
     ).split(",")
     if m.strip()
 ]

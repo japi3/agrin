@@ -45,7 +45,7 @@ ARG SOIL_SHA256=5bf29e7256f70b40b5a3f9a44303fbb29eb1fe777427c3cd3e01be5dd31d0b2a
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -fSL --retry 3 --retry-delay 5 \
+    && curl -fSL --retry 5 --retry-delay 5 --retry-all-errors \
          -o /india_soilgrids_1km.tif "$SOIL_URL" \
     && echo "$SOIL_SHA256  /india_soilgrids_1km.tif" | sha256sum -c -
 

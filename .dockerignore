@@ -20,3 +20,8 @@ data/advisory_cache
 !.env.example
 *.md
 !README.md
+
+# The soil map no longer comes from the build context -- the Dockerfile
+# fetches it from the release in a stage of its own -- so sending 165 MB to
+# the daemon on every build is pure waste.
+data/soil/*.tif

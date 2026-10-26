@@ -25,9 +25,19 @@ services:
         sync: false
       - key: DATA_GOV_IN_KEY
         sync: false
+      # Both are plain values rather than dashboard secrets, deliberately.
+      # They were dashboard-managed, and what the dashboard held had rotted:
+      # gemini-3.7-flash as the default and gemini-3.8-flash heading the
+      # chain, both withdrawn upstream and both costing a 45-second timeout
+      # on every request before a live model was reached. Nothing in the repo
+      # showed it. Kept here, the configuration is reviewable and a stale
+      # model name is a diff rather than a discovery.
+      #
+      # Verify with scripts/probe_models.py before a demonstration. Model
+      # names expire; this list was measured on 2026-10-26.
       - key: AGRIN_MODEL
-        value: gemini-3.7-flash
+        value: gemini-3.6-flash
       - key: AGRIN_MODEL_FALLBACKS
-        sync: false
+        value: gemini-3.5-flash,gemini-3-flash-preview,gemini-3.5-flash-lite
       - key: AGRIN_CORS_ORIGINS
         value: "*"
