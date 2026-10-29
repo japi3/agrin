@@ -140,6 +140,9 @@ class TurnState:
     # answer never repeats the word.
     question: str = ""
     started_at: float = field(default_factory=time.time)
+    # Signatures of cards already sent this turn, so a tool the model calls
+    # twice does not print its panel twice. See where cards are emitted.
+    emitted_cards: set[str] = field(default_factory=set)
 
 
 async def _run_tool(
@@ -624,8 +627,23 @@ async def stream_turn(
 
             card = _card_for(fc.name, result)
             if card:
-                state.cards.append(card)
-                yield Event("card", card)
+                # Only once per turn, however many times the model asks.
+                #
+                # Nothing stops the model calling a tool again in a later
+                # round -- it re-checked the schemes after reading the
+                # guidance passages, which is reasonable of it. But the
+                # browser appends every card event it receives, so the
+                # farmer saw the entire schemes panel printed twice, one
+                # directly below the other, as though the app had stuttered.
+                #
+                # Keyed on the content rather than the tool name: two soil
+                # cards for two different fields are two real answers and
+                # both belong on screen. Two identical ones are a repeat.
+                signature = json.dumps(card, sort_keys=True, default=str)
+                if signature not in state.emitted_cards:
+                    state.emitted_cards.add(signature)
+                    state.cards.append(card)
+                    yield Event("card", card)
 
             yield Event(
                 "tool_result",

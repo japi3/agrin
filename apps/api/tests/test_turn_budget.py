@@ -22,6 +22,7 @@ it only delays telling the farmer something went wrong.
 """
 
 import asyncio
+import json
 import time
 
 from agrin_api import orchestrator
@@ -123,3 +124,49 @@ class TestAToolCannotOutliveItsTurn:
                 orchestrator.TOOL_REGISTRY["get_weather"] = original
 
         assert "estimating" in result["abstain_reason"].lower()
+
+
+class TestACardIsNotPrintedTwice:
+    """A tool called twice in one turn must not print its panel twice.
+
+    Nothing stops the model re-calling a tool in a later round, and it is
+    often right to: asked about schemes and then about stubble, it looked
+    the schemes up again after reading the guidance. But the browser
+    appends every card event, so the whole schemes panel -- three schemes,
+    eligibility questions, helplines -- appeared twice in a row, which
+    reads as the application having stuttered.
+
+    The guard is on content, not on the tool name, because two soil cards
+    for two different fields are two real answers.
+    """
+
+    def test_the_same_card_twice_is_sent_once(self):
+        state = orchestrator.TurnState()
+        card = {"card": "schemes", "schemes": [{"short_name": "PM-KISAN"}]}
+        signature = json.dumps(card, sort_keys=True, default=str)
+
+        first = signature not in state.emitted_cards
+        state.emitted_cards.add(signature)
+        second = signature not in state.emitted_cards
+
+        assert first is True, "the first card must be sent"
+        assert second is False, "the identical repeat must not be"
+
+    def test_two_different_cards_both_go_through(self):
+        state = orchestrator.TurnState()
+        for card in ({"card": "soil", "field": "a"}, {"card": "soil", "field": "b"}):
+            signature = json.dumps(card, sort_keys=True, default=str)
+            assert signature not in state.emitted_cards
+            state.emitted_cards.add(signature)
+        assert len(state.emitted_cards) == 2
+
+    def test_key_order_does_not_make_a_card_look_new(self):
+        """Dicts built in a different order are the same card."""
+        a = json.dumps({"card": "schemes", "n": 3}, sort_keys=True, default=str)
+        b = json.dumps({"n": 3, "card": "schemes"}, sort_keys=True, default=str)
+        assert a == b
+
+    def test_a_fresh_turn_starts_empty(self):
+        """The guard must not leak between questions, or the second time a
+        farmer asks about schemes they would see nothing."""
+        assert orchestrator.TurnState().emitted_cards == set()
